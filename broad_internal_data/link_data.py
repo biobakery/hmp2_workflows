@@ -3,26 +3,29 @@ from doit import get_var
 import os
 import sys
 
-#here = "/seq/ibdmdb/centos6/tmp/broad_internal_data"
-#myspreadsheet = ("/seq/ibdmdb/data_deposition/HMP2/Metadata/1450/kbayer/" +
-#   "RISK_WGS_PDO-2276_SeqCompleteLaneLevel_07.25.2014_14.12.12_20.38.30.xlsx")
+#print >> sys.stderr, "spreadsheet: " + str(spreadsheet)
+#csvdir = os.path.dirname(spreadsheet)
+#print >> sys.stderr, "csvdir: " + csvdir
+#csvfile = os.path.splitext(os.path.basename(spreadsheet))[0]
+#csvfile = os.path.join(csvdir, csvfile)
+#csvfile = csvfile + ".csv"
+#print >> sys.stderr, "csvfile: " + csvfile
 
-spreadsheet = get_var('s', None)
-if not spreadsheet:
-    print >> sys.stderr, "no spreadsheet given "
-    exit
-    
-print >> sys.stderr, "spreadsheet: " + str(spreadsheet)
-
-csvdir = os.path.dirname(spreadsheet)
-print >> sys.stderr, "csvdir: " + csvdir
-csvfile = os.path.splitext(os.path.basename(spreadsheet))[0]
-csvfile = os.path.join(csvdir, csvfile)
-csvfile = csvfile + ".csv"
-
-print >> sys.stderr, "csvfile: " + csvfile
+def get_spreadsheet():
+    spreadsheet = get_var('s', None)
+    if not spreadsheet:
+        print >> sys.stderr, "no spreadsheet given "
+        return None
+    csvdir = os.path.dirname(spreadsheet)
+    #print >> sys.stderr, "csvdir: " + csvdir
+    csvfile = os.path.splitext(os.path.basename(spreadsheet))[0]
+    csvfile = os.path.join(csvdir, csvfile)
+    csvfile = csvfile + ".csv"
+    return spreadsheet, csvfile
 
 def task_make_csv():
+
+    spreadsheet, csvfile = get_spreadsheet()
     return  {
        "actions": [("xlsx2csv " +spreadsheet+ " " +csvfile)],
        "verbosity": 2,
@@ -37,7 +40,7 @@ def task_make_links():
         with open(csvfile, 'r') as f:
             next(f)
             for line in f:
-                print >> sys.stderr, "line: " + str(line)
+                #print >> sys.stderr, "line: " + str(line)
                 path = "/seq/picard_aggregation/" 
                 try:
                     path += line.split(',')[14]
@@ -53,18 +56,20 @@ def task_make_links():
     
     def link_bamfiles(csvfile):
         """ create symlink to bamfile """
+        csvdir = os.path.dirname(spreadsheet)
         for bamdir in get_bamdirs(csvfile):
-            print >> sys.stderr, "bamdir: " + bamdir
+            #print >> sys.stderr, "bamdir: " + bamdir
             for bamfile in glob(bamdir + "/*.bam"):
-                print >> sys.stderr, "found bamfile: " + bamfile
+                #print >> sys.stderr, "found bamfile: " + bamfile
                 bamfilename = os.path.basename(bamfile)
                 bamfilelink = os.path.join(csvdir, bamfilename)
            
-                print >> sys.stderr, "found bamfile: " + bamfile
-                print >> sys.stderr, "bamfilelink: " + bamfilelink
+                #print >> sys.stderr, "found bamfile: " + bamfile
                 if not os.path.exists(bamfilelink):
+                    print >> sys.stderr, bamfilelink + " -> " + bamfile
                     os.symlink(bamfile, bamfilelink)
 
+    spreadsheet, csvfile = get_spreadsheet()
 
     return {
         "actions": [(link_bamfiles, [csvfile])],
