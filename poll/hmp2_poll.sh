@@ -75,7 +75,7 @@ init_timestamps
 # then sort and find only the unique directory entries
 
 files=`find ${DATA_DIR} \
-       -name mibc_products -prune -o \
+       \( -name mibc_products -o -name anpan_products \) -prune -o \
        -newer ${DATA_DIR}/.timestamp.empty \
        -and ! -newer ${DATA_DIR}/.next_timestamp.empty \
        -type f \

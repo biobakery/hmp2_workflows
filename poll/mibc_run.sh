@@ -1,6 +1,6 @@
 #!/bin/sh
 ##
-## HMP2 Broad specific script deployed runs both mibc_build and mibc_tm with sane defaults
+## HMP2 Broad specific script deployed runs both anpan and mibc_tm with sane defaults
 ## 
 ##
 
@@ -68,8 +68,8 @@ function mk_broaddata {
 function call_mibc 
 {
   cd /seq/ibdmdb/centos6/tmp/tm
-  echo "mibc_build dag --project='${InputFile}' -a --tmpfiledir=/seq/ibdmdb/centos6/tmp/tm | mibc_tm -t ${Type} -g ${Governor} -p 8888"
-  mibc_build dag --project="${InputFile}" -a --tmpfiledir=/seq/ibdmdb/centos6/tmp/tm | mibc_tm -t ${Type} -g ${Governor} -p 8888
+  echo "anpan dag --project='${InputFile}' -a --tmpfiledir=/seq/ibdmdb/centos6/tmp/tm | mibc_tm -t ${Type} -g ${Governor} -p 8888"
+  anpan dag --project="${InputFile}" -a --tmpfiledir=/seq/ibdmdb/centos6/tmp/tm | mibc_tm -t ${Type} -g ${Governor} -p 8888
 }
 
 if [ $# -ne 3 ]; then

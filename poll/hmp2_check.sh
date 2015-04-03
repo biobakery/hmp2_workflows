@@ -46,7 +46,7 @@ function call_anadama {
 touch -d `date --date="-${TIME_DELAY_SEC} seconds" +%H:%M:%S` /tmp/.next_timestamp.empty
 
 files=`find ${DATA_DIR} \
-       -name mibc_products -prune -o \
+       \( -name mibc_products -o -name anpan_products \) -prune -o \
        -newer ${DATA_DIR}/.timestamp.empty \
        -and ! -newer /tmp/.next_timestamp.empty \
        -type f \
