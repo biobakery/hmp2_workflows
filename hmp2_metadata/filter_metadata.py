@@ -22,7 +22,7 @@ def task_make_tsv():
     spreadsheet, tsvfile, filteredfile = get_spreadsheet()
     if not spreadsheet:
         return  {
-            "actions": [("date")],
+            "actions": ["date"],
             "verbosity": 2,
             "file_dep": [],
 #            "targets": [tsvfile]
@@ -30,14 +30,14 @@ def task_make_tsv():
 
     if os.path.splitext(spreadsheet)[1] == ".xlsx":
         return  {
-            "actions": [("xlsx2csv -d tab \"" + str(spreadsheet) + "\" \"" + str(tsvfile) + "\"")],
+            "actions": [("xlsx2csv -d tab -e \"" + str(spreadsheet) + "\"  \"" + str(tsvfile) + "\"")],
             "verbosity": 2,
             "file_dep": [str(spreadsheet)],
             "targets": [tsvfile]
             }
     else:
         return  {
-            "actions": [("date")],
+            "actions": ["date"],
             "verbosity": 2,
             "file_dep": [],
             "targets": [tsvfile]
@@ -51,7 +51,7 @@ def task_filter_dates():
         tsvdir = os.path.dirname(spreadsheet)
         with open(tsvfile, "r") as input:
             columns = input.readline().split("\t")
-            indexes = [i for i,x in enumerate(columns) if "Date" in x]
+            indexes = [i for i,x in enumerate(columns) if "Date" in x or "Notes" in x]
 
         with open(tsvfile, "r") as input:
             with open(filteredfile, "w") as output:
@@ -78,10 +78,11 @@ def task_publish_filtered_metadata():
     spreadsheet, tsvfile, filteredfile = get_spreadsheet()
 
     return {
-        "actions": ['ln -s %s ' % filteredfile + " %s " % PROJECT_METADATA_FILE],
+        "actions": ['rm \"%s\"' % PROJECT_METADATA_FILE + " && ln -s \"%s\" ' % filteredfile + "\"%s\"" % PROJECT_METADATA_FILE],
         "verbosity": 2,
         "file_dep": [ str(filteredfile) ],
-        "targets": [PROJECT_METADATA_FILE]
+        "targets": ["\"%s\"" %PROJECT_METADATA_FILE], 
+        "uptodate": [False] # always run task (force overwrite of symlink)
     }
 
 DOIT_CONFIG = {
