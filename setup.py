@@ -6,10 +6,6 @@ setup(
     description='Workflows, pipelines, and scripts for hmp2',
     packages=['hmp2'],
     zip_safe=False,
-    install_requires=[
-        'anadama',
-        'anadama_workflows'
-    ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha"
     ]
