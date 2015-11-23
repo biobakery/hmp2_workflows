@@ -8,5 +8,5 @@ setup(
     zip_safe=False,
     classifiers=[
         "Development Status :: 2 - Pre-Alpha"
-    ]
+    ],
 )
