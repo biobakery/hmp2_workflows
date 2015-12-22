@@ -1,4 +1,3 @@
-import re
 import os
 import operator
 
@@ -20,16 +19,12 @@ class BroadMetadataPipeline(Pipeline):
         "wgs_sample_metadata": list(),
         "wms_sample_metadata": list(),
         "six_sample_metadata": list(),
-
-        "otu_tables_wgs": list(),
-        "otu_tables_wms": list(),
-        "otu_tables_16s": list(),
     }
     default_options = { # first field's index is 1 (not zero-based)
         "hospital_join": {
             "subject_subject_idx": 1,
-            "sample_subject_idx": 2,
-            "sample_stool_idx": 9,
+            "sample_subject_idx": 1,
+            "sample_stool_idx": 8,
         },
         "16s_join": {
             "sample_idx": 1
@@ -48,9 +43,6 @@ class BroadMetadataPipeline(Pipeline):
                  broad_16s_csv=list(),
                  broad_wgs_csv=list(),
                  broad_wts_csv=list(),
-                 otu_tables_wgs=list(),
-                 otu_tables_wms=list(),
-                 otu_tables_16s=list(),
                  products_dir=None,
                  workflow_options=dict(),
                  *args, **kwargs):
@@ -63,10 +55,6 @@ class BroadMetadataPipeline(Pipeline):
             broad_16s_csv        = broad_16s_csv,
             broad_wgs_csv        = broad_wgs_csv,
             broad_wts_csv        = broad_wts_csv,
-            otu_tables_wgs       = otu_tables_wgs,
-            otu_tables_wms       = otu_tables_wms,
-            otu_tables_16s       = otu_tables_16s,
-
             wgs_sample_metadata  = list(),
             wms_sample_metadata  = list(),
             six_sample_metadata  = list(),

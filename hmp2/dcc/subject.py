@@ -1,11 +1,10 @@
 import csv
 from collections import namedtuple
-from itertools import count, izip_longest
+from itertools import count
 
 import cutlass
 from toolz import groupby, first
 
-from . import project
 from .. import matcher
 
 
@@ -19,12 +18,12 @@ def load(session, sample_ids):
         )['results']
 
         for data in res:
-            if not subject_ids:
+            if not sample_ids:
                 break
             if data['meta']['rand_subject_id'] in sample_ids:
                 yield cutlass.Subject.load_subject(data)
                 sample_ids.remove(data['meta']['rand_subject_id'])
-        if not subject_ids:
+        if not sample_ids:
             break
             
 
@@ -34,17 +33,6 @@ def fields(fname):
         Subject = namedtuple("Subject", next(reader), rename=True)
         for row in reader:
             yield Subject._make(row)
-
-def compare(db_subj, in_subj):
-    try:
-        a = db_subj.rand_subj_id
-    except:
-        return "db_miss"
-    try:
-        b = i[0]
-    except:
-        return "in_miss"
-    return a == b
 
 rename_cache = dict()
 def _rename(s, valid_choices):

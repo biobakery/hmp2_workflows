@@ -1,6 +1,5 @@
 import os
 import sys
-import getpass
 import hashlib
 from operator import attrgetter
 import multiprocessing
@@ -12,7 +11,6 @@ import anadama.util
 
 from .subject import fields
 from .visit import SaveError
-from .. import matcher
 
 def default_mimarks_dict():
     return dict([ (k, v()) for k, v in
@@ -81,24 +79,37 @@ def md5(fname):
             m.update(buf)
     return m.hexdigest()
 
+def rm_common_prefix(list_fnames):
+    p = os.path.commonprefix(list_fnames)
+    return p, [ fname.lstrip(p) for fname in list_fnames ]
 
-def from_file(fname, samples, seq_fnames, sample_id_idx=14,
-              fname_idx=14, nest=True, n_procs=8, parse_record=parse_record):
+def find_fname(substr, fnames, commonprefix):
+    matches = [fname for fname in fnames if substr in fname]
+    if not matches:
+        return
+    return commonprefix+matches[0]
+    
+def from_file(fname, samples, seq_fnames, sample_id_idx=3,
+              fname_idx=0, nest=True, n_procs=8, parse_record=parse_record):
     samples = groupby(compose(first, attrgetter("tags")), samples)
     pool = multiprocessing.Pool(n_procs)
     md5s = pool.map(md5, seq_fnames)
     md5s = dict([(f,m) for f,m in zip(seq_fnames, md5s)])
+    commonprefix, fnames = rm_common_prefix(seq_fnames)
     for record in fields(fname):
         sampleid = record[sample_id_idx]
-        if sampleid in samples:
-            _, seq_fname = matcher.closest(record[fname_idx], seq_fnames)[0]
-            ret = parse_record(record, samples.get(sampleid)[0],
-                               seq_fname, md5s[seq_fname])
-            if nest:
-                yield ret
-            else:
-                for item in ret:
-                    yield item
+        if sampleid not in samples:
+            continue
+        seq_fname = find_fname(record[fname_idx], fnames, commonprefix)
+        if not seq_fname:
+            continue
+        ret = parse_record(record, samples.get(sampleid)[0],
+                           seq_fname, md5s[seq_fname])
+        if nest:
+            yield ret
+        else:
+            for item in ret:
+                yield item
 
 
 def save_all(ps_groups):

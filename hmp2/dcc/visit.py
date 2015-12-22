@@ -2,30 +2,31 @@
 import cutlass
 import dateutil.parser
 from itertools import chain
-from toolz import groupby, first
+from toolz import groupby
 
 from .subject import fields
 from .project import default_mixs_dict
 
-def can_parse_record(record):
-    return bool(record[13].strip())
+def can_parse_record(record, date_idx=12):
+    return bool(record[date_idx].strip())
 
-def parse_record(subject, record, i):
+def parse_record(subject, record, i, date_idx=12, etoh_samplid_idx=13,
+                 h2o_sampleid_idx=14):
     v = cutlass.Visit()
     v.visit_id = "{}_{}".format(subject.rand_subject_id, i)
     v.visit_number = i
     date = dateutil.parser.parse(
-        record[13]
+        record[date_idx]
     ).strftime(cutlass.Visit.date_format)
     v.date = date
     v.interval = 0 if i == 1 else 1
     v.links['by'] = [subject.id]
     ret = [v]
-    if bool(record[14].strip()):
+    if bool(record[etoh_samplid_idx].strip()):
         s = cutlass.Sample()
         s.body_site = "stool"
         s.fma_body_site = "FMA:64183" # Feces
-        s.tags.append(record[14].strip())
+        s.tags.append(record[etoh_samplid_idx].strip())
         d = default_mixs_dict()
         d['biome'] = "ENVO:00009003"
         d['collection_date'] = date
@@ -33,15 +34,15 @@ def parse_record(subject, record, i):
         d['env_package'] = "Human-associated"
         d['feature'] = "ENVO:00002003" # Feces
         d['geo_loc_name'] = "USA"
-        d['lat_lon'] = "+40.689060 -74.044636"
+        d['lat_lon'] = "+42.363664 -71.069230"
         d['body_product'] = "stool"
         s.mixs = d
         ret.append(s)
-    if bool(record[15].strip()):
+    if bool(record[h2o_sampleid_idx].strip()):
         s = cutlass.Sample()
         s.body_site = "stool"
         s.fma_body_site = "FMA:64183" # Feces
-        s.tags.append(record[15].strip())
+        s.tags.append(record[h2o_sampleid_idx].strip())
         d = default_mixs_dict()
         d['biome'] = "ENVO:00009003"
         d['collection_date'] = date
@@ -49,7 +50,7 @@ def parse_record(subject, record, i):
         d['env_package'] = "Human-associated"
         d['feature'] = "ENVO:00002003" # Feces
         d['geo_loc_name'] = "USA"
-        d['lat_lon'] = "+40.689060 -74.044636"
+        d['lat_lon'] = "+42.363664 -71.069230"
         d['body_product'] = "stool"
         s.mixs = d
         ret.append(s)
