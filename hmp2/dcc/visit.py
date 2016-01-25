@@ -7,52 +7,76 @@ from toolz import groupby
 from .subject import fields
 from .project import default_mixs_dict
 
+class settings:
+    water = "ENVO:00005791" # sterile water
+    ethanol = "ethanol"
+    biome = "ENVO:00009003"
+    feature = "ENVO:00002003" # Feces
+    gen_loc_name = "USA"
+    lat_lon = "+42.363664 -71.069230"
+    body_product = "stool"
+    env_package = "Human-associated"
+    fma_body_site = "FMA:64183" # Feces
+    body_site = "stool"
+
+
 def can_parse_record(record, date_idx=12):
     return bool(record[date_idx].strip())
 
-def parse_record(subject, record, i, date_idx=12, etoh_samplid_idx=13,
-                 h2o_sampleid_idx=14):
+
+def parse_record(subject, record, i, visit_cache, date_idx=12,
+                 etoh_samplid_idx=13, h2o_sampleid_idx=14):
     # add visit_cache to argument
-    v = cutlass.Visit()
-    v.visit_id = "{}_{}".format(subject.rand_subject_id, i)
-    v.visit_number = i
     date = dateutil.parser.parse(
         record[date_idx]
     ).strftime(cutlass.Visit.date_format)
+    if date in visit_cache:
+        v = visit_cache[date]
+    else:
+        v = cutlass.Visit()
+    v.visit_id = "{}_{}".format(subject.rand_subject_id, i)
+    v.visit_number = i
     v.date = date
     v.interval = 0 if i == 1 else 1
     v.links['by'] = [subject.id]
     ret = [v]
+    samples = groupby(lambda s: s.mixs['material'] , v.samples())
     if bool(record[etoh_samplid_idx].strip()):
-        s = cutlass.Sample()
-        s.body_site = "stool"
-        s.fma_body_site = "FMA:64183" # Feces
+        if settings.ethanol in samples:
+            s = samples[settings.ethanol][0]
+        else:
+            s = cutlass.Sample()
+        s.body_site = settings.body_site
+        s.fma_body_site = settings.fma_body_site
         s.tags.append(record[etoh_samplid_idx].strip())
         d = default_mixs_dict()
-        d['biome'] = "ENVO:00009003"
+        d['biome'] = settings.biome
         d['collection_date'] = date
-        d['material'] = "ethanol"
-        d['env_package'] = "Human-associated"
-        d['feature'] = "ENVO:00002003" # Feces
-        d['geo_loc_name'] = "USA"
-        d['lat_lon'] = "+42.363664 -71.069230"
-        d['body_product'] = "stool"
+        d['material'] = settings.ethanol
+        d['env_package'] = settings.env_package
+        d['feature'] = settings.feature
+        d['geo_loc_name'] = settings.gen_loc_name
+        d['lat_lon'] = settings.lat_lon
+        d['body_product'] = settings.body_product
         s.mixs = d
         ret.append(s)
     if bool(record[h2o_sampleid_idx].strip()):
-        s = cutlass.Sample()
-        s.body_site = "stool"
-        s.fma_body_site = "FMA:64183" # Feces
+        if settings.water in samples:
+            s = samples[settings.water][0]
+        else:
+            s = cutlass.Sample()
+        s.body_site = settings.body_site
+        s.fma_body_site = settings.fma_body_site
         s.tags.append(record[h2o_sampleid_idx].strip())
         d = default_mixs_dict()
-        d['biome'] = "ENVO:00009003"
+        d['biome'] = settings.biome
         d['collection_date'] = date
-        d['material'] = "ENVO:00005791" # sterile water
-        d['env_package'] = "Human-associated"
-        d['feature'] = "ENVO:00002003" # Feces
-        d['geo_loc_name'] = "USA"
-        d['lat_lon'] = "+42.363664 -71.069230"
-        d['body_product'] = "stool"
+        d['material'] = settings.water
+        d['env_package'] = settings.env_package
+        d['feature'] = settings.feature
+        d['geo_loc_name'] = settings.gen_loc_name
+        d['lat_lon'] = settings.lat_lon
+        d['body_product'] = settings.body_product
         s.mixs = d
         ret.append(s)
         
@@ -61,12 +85,12 @@ def parse_record(subject, record, i, date_idx=12, etoh_samplid_idx=13,
 
 def from_file(fname, subjects, nest=True):
     records = groupby(0, fields(fname))
-    # visit_cache = dict([(s.rand_subject_id,s) for s in subjects() ])
     for subject in subjects:
         visit_records = records.get(subject.rand_subject_id, None)
         if not visit_records:
-            pass
-        groups = iter( parse_record(subject, rec, i)
+            continue
+        visit_cache = dict([ (v.date, v) for v in subject.visits() ])
+        groups = iter( parse_record(subject, rec, i, visit_cache)
                        for i, rec in enumerate(visit_records, 1)
                        if can_parse_record(rec) )
         if nest:

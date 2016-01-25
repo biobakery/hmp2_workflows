@@ -69,6 +69,7 @@ _racemap = {
     '': "ethnic_other"
 }
 
+
 def parse_race(record):
     if not record.race:
         return "ethnic_other"
@@ -76,6 +77,7 @@ def parse_race(record):
         return "hispanic_or_latino"
     k = _rename(record.race, _racemap.keys())
     return _racemap.get(k)
+
 
 def parse_record(record, study, subject_cache):
     if record[0] in subject_cache:
@@ -96,12 +98,12 @@ def parse_record(record, study, subject_cache):
         s.tags.append("terminated_by_investigator")
     return s
     
+
 def from_file(fname, study):
     records = map(first, groupby(0, fields(fname)).itervalues())
     subject_cache = dict([ (s.rand_subject_id,s) for s in study.subjects() ])
     for record in records:
         yield parse_record(record, study, subject_cache)
-
 
     
 def sync(study, input_fname, delete_missing=False):
