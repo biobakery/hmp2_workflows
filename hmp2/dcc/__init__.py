@@ -37,6 +37,3 @@ def submit(hosp_joined_fname, sixt_joined_fname, sixt_fnames,
     ps_groups = map(
        list, sixteen.from_file(sixt_joined_fname, samples, sixt_fnames))
     sixteen.save_all(ps_groups)
-
-    
-    

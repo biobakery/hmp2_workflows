@@ -1,3 +1,4 @@
+import sys
 import csv
 from collections import OrderedDict
 from os.path import basename
@@ -36,9 +37,12 @@ default_kvs = lambda : OrderedDict([
     ("barcodesequence", "GATC")
 ])
 
-def output(out_dicts, outtsv_fname):
+def output(out_dicts, outtsv_fname, rmkeys):
     with open(outtsv_fname, 'w') as f:
-        print >> f, "\t".join(default_kvs().iterkeys())
+        d = default_kvs()
+        for k in rmkeys:
+            d.pop(k, None)
+        print >> f, "\t".join(d.iterkeys())
         for d in out_dicts:
             print >> f, "\t".join(d.itervalues())
     
@@ -80,7 +84,12 @@ def create(fna_fnames, incsv_fname, outtsv_fname, skip_header=True,
                 d['sample_name'] = line[sample_name_idx]
                 seq_fname = fname_search(fna_fnames, line[fname_prefix_idx])
                 d['RUN_PREFIX'] = basename(seq_fname)
-                d['samp_size'] = sizes['seq_fname']
+                if seq_fname not in sizes:
+                    msg = ("Unable to find sequence file "
+                           "matching "+line[fname_prefix_idx])
+                    print >> sys.stderr, msg
+                    continue
+                d['samp_size'] = str(sizes[seq_fname])
                 yield d
 
-    return output(_out_dicts(), outtsv_fname)
+    return output(_out_dicts(), outtsv_fname, rmkeys)

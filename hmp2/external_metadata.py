@@ -3,7 +3,8 @@ import os
 from anadama.pipelines import Pipeline
 from anadama_workflows import settings as aw_settings
 
-from . import qiime
+from .qiita import prep 
+from .qiita import sample
 
 class ExternalMetadataPipeline(Pipeline):
     name = "ExternalMetadata"
@@ -98,17 +99,17 @@ class ExternalMetadataPipeline(Pipeline):
         pjoin = lambda s: os.path.join(self.products_dir, s)
         yield qiita_task(pjoin("qiita_samples_16s.tsv"),
                          pjoin("qiita_prep_16s.tsv"),
-                         self.six_raw_seqs, self.six_sample_metadata,
+                         self.six_raw_seqs, self.six_sample_metadata[0],
                          self.options['qiita_join'])
         yield qiita_task(pjoin("qiita_samples_wgs.tsv"),
                          pjoin("qiita_prep_wgs.tsv"),
-                         self.wgs_raw_seqs, self.wgs_sample_metadata,
+                         self.wgs_raw_seqs, self.wgs_sample_metadata[0],
                          self.options['qiita_join'],
                          rmkeys=("PRIMER", "REGION", "target_gene",
                                   "LINKER", "PRIMER", "KEY_SEQ", "BARCODE",))
         yield qiita_task(pjoin("qiita_samples_wms.tsv"),
                          pjoin("qiita_prep_wms.tsv"),
-                         self.wms_raw_seqs, self.wms_sample_metadata,
+                         self.wms_raw_seqs, self.wms_sample_metadata[0],
                          self.options['qiita_join'],
                          rmkeys=("PRIMER", "REGION", "target_gene",
                                   "LINKER", "PRIMER", "KEY_SEQ", "BARCODE",))
@@ -122,7 +123,7 @@ def qiita_task(sample_out, prep_out, raw_seqfiles, sample_metadata,
         "targets": [sample_out],
         "file_dep": [sample_metadata],
         "actions": [
-            lambda *a, **kw: qiime.sample.create(
+            lambda *a, **kw: sample.create(
                 raw_seqfiles,
                 sample_metadata,
                 sample_out, True,
@@ -140,7 +141,7 @@ def qiita_task(sample_out, prep_out, raw_seqfiles, sample_metadata,
         "targets": [prep_out],
         "file_dep": [sample_metadata],
         "actions": [
-            lambda *a, **kw: qiime.prep.create(
+            lambda *a, **kw: prep.create(
                 raw_seqfiles,
                 sample_metadata,
                 prep_out, True, rmkeys,

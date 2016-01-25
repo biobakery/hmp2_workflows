@@ -12,6 +12,7 @@ def can_parse_record(record, date_idx=12):
 
 def parse_record(subject, record, i, date_idx=12, etoh_samplid_idx=13,
                  h2o_sampleid_idx=14):
+    # add visit_cache to argument
     v = cutlass.Visit()
     v.visit_id = "{}_{}".format(subject.rand_subject_id, i)
     v.visit_number = i
@@ -60,6 +61,7 @@ def parse_record(subject, record, i, date_idx=12, etoh_samplid_idx=13,
 
 def from_file(fname, subjects, nest=True):
     records = groupby(0, fields(fname))
+    # visit_cache = dict([(s.rand_subject_id,s) for s in subjects() ])
     for subject in subjects:
         visit_records = records.get(subject.rand_subject_id, None)
         if not visit_records:

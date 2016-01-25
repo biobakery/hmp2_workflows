@@ -15,7 +15,7 @@ def default(session):
         "ihmp", '"project"[node_type]'
     )['results']
     for data in res:
-        if res['meta']['name'] == settings.name:
+        if data['meta']['name'] == settings.name:
             return cutlass.Project.load_project(data)
     raise Exception("Unable to find project "+settings.name)
 

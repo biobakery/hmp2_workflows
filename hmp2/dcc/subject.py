@@ -77,8 +77,11 @@ def parse_race(record):
     k = _rename(record.race, _racemap.keys())
     return _racemap.get(k)
 
-def parse_record(record, study):
-    s = cutlass.Subject()
+def parse_record(record, study, subject_cache):
+    if record[0] in subject_cache:
+        s = subject_cache[record[0]] 
+    else:
+        s = cutlass.Subject()
     try:
         s.gender = _rename(record.sex, cutlass.Subject.valid_genders)
     except ValueError:
@@ -86,6 +89,7 @@ def parse_record(record, study):
     s.race = parse_race(record)
     s.rand_subject_id = record[0]
     s.links['participates_in'] = [study.id]
+
     if record[8].strip().lower() == "yes":
         s.tags.append("subject_withdrew")
     if record[9].strip().lower() == "yes":
@@ -94,8 +98,10 @@ def parse_record(record, study):
     
 def from_file(fname, study):
     records = map(first, groupby(0, fields(fname)).itervalues())
+    subject_cache = dict([ (s.rand_subject_id,s) for s in study.subjects() ])
     for record in records:
-        yield parse_record(record, study)
+        yield parse_record(record, study, subject_cache)
+
 
     
 def sync(study, input_fname, delete_missing=False):
