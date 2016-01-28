@@ -17,7 +17,7 @@ class BroadMetadataPipeline(Pipeline):
         "broad_wts_csv": list(),
 
         "wgs_sample_metadata": list(),
-        "wms_sample_metadata": list(),
+        "wts_sample_metadata": list(),
         "six_sample_metadata": list(),
     }
     default_options = { # first field's index is 1 (not zero-based)
@@ -56,7 +56,7 @@ class BroadMetadataPipeline(Pipeline):
             broad_wgs_csv        = broad_wgs_csv,
             broad_wts_csv        = broad_wts_csv,
             wgs_sample_metadata  = list(),
-            wms_sample_metadata  = list(),
+            wts_sample_metadata  = list(),
             six_sample_metadata  = list(),
         )
 

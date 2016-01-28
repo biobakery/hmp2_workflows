@@ -10,16 +10,16 @@ class ExternalMetadataPipeline(Pipeline):
     name = "ExternalMetadata"
     products = {
         "wgs_sample_metadata": list(),
-        "wms_sample_metadata": list(),
+        "wts_sample_metadata": list(),
         "six_sample_metadata": list(),
 
         "six_raw_seqs": list(),
         "wgs_raw_seqs": list(),
-        "wms_raw_seqs": list(),
+        "wts_raw_seqs": list(),
 
         "six_otu_tables": list(),
         "wgs_otu_tables": list(),
-        "wms_otu_tables": list(),
+        "wts_otu_tables": list(),
 
         "participant_metadata": list(),
         "qiita_preps": list(),
@@ -41,16 +41,16 @@ class ExternalMetadataPipeline(Pipeline):
 
     def __init__(self,
                  wgs_sample_metadata=list(),
-                 wms_sample_metadata=list(),
+                 wts_sample_metadata=list(),
                  six_sample_metadata=list(),
 
                  six_raw_seqs=list(),
                  wgs_raw_seqs=list(),
-                 wms_raw_seqs=list(),
+                 wts_raw_seqs=list(),
                  
                  six_otu_tables=list(),
                  wgs_otu_tables=list(),
-                 wms_otu_tables=list(),
+                 wts_otu_tables=list(),
 
                  participant_metadata=list(),
                  qiita_preps=list(),
@@ -63,16 +63,16 @@ class ExternalMetadataPipeline(Pipeline):
 
         self.add_products(
             wgs_sample_metadata=wgs_sample_metadata,
-            wms_sample_metadata=wms_sample_metadata,
+            wts_sample_metadata=wts_sample_metadata,
             six_sample_metadata=six_sample_metadata,
             
             six_raw_seqs=six_raw_seqs,
             wgs_raw_seqs=wgs_raw_seqs,
-            wms_raw_seqs=wms_raw_seqs,
+            wts_raw_seqs=wts_raw_seqs,
                  
             six_otu_tables=six_otu_tables,
             wgs_otu_tables=wgs_otu_tables,
-            wms_otu_tables=wms_otu_tables,
+            wts_otu_tables=wts_otu_tables,
             
             participant_metadata=list(),
             qiita_preps=list(),
@@ -107,9 +107,9 @@ class ExternalMetadataPipeline(Pipeline):
                          self.options['qiita_join'],
                          rmkeys=("PRIMER", "REGION", "target_gene",
                                   "LINKER", "PRIMER", "KEY_SEQ", "BARCODE",))
-        yield qiita_task(pjoin("qiita_samples_wms.tsv"),
-                         pjoin("qiita_prep_wms.tsv"),
-                         self.wms_raw_seqs, self.wms_sample_metadata[0],
+        yield qiita_task(pjoin("qiita_samples_wts.tsv"),
+                         pjoin("qiita_prep_wts.tsv"),
+                         self.wts_raw_seqs, self.wts_sample_metadata[0],
                          self.options['qiita_join'],
                          rmkeys=("PRIMER", "REGION", "target_gene",
                                   "LINKER", "PRIMER", "KEY_SEQ", "BARCODE",))
