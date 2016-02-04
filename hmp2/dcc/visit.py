@@ -48,7 +48,9 @@ def parse_record(subject, record, i, visit_cache, date_idx=12,
             s = cutlass.Sample()
         s.body_site = settings.body_site
         s.fma_body_site = settings.fma_body_site
-        s.tags.append(record[etoh_samplid_idx].strip())
+        sample_id = record[etoh_samplid_idx].strip()
+        if sample_id not in s.tags:
+            s.tags.append(sample_id)
         d = default_mixs_dict()
         d['biome'] = settings.biome
         d['collection_date'] = date
@@ -67,7 +69,9 @@ def parse_record(subject, record, i, visit_cache, date_idx=12,
             s = cutlass.Sample()
         s.body_site = settings.body_site
         s.fma_body_site = settings.fma_body_site
-        s.tags.append(record[h2o_sampleid_idx].strip())
+        sample_id = record[h2o_sampleid_idx].strip()
+        if sample_id not in s.tags:
+            s.tags.append(sample_id)
         d = default_mixs_dict()
         d['biome'] = settings.biome
         d['collection_date'] = date
@@ -125,7 +129,13 @@ def save_all(visit_groups):
         sample_groups.append(samples)
     if not all(valids):
         raise SaveError(valid_errors)
+    has_id = set()
     for v in visits:
+        if not v.id:
+            v.save()
+        else:
+            has_id.add(v)
+    for v in has_id:
         v.save()
     valids = list()
     valid_errors = list()
@@ -144,9 +154,15 @@ def save_all(visit_groups):
         valid_errors.append(group_errors)
     if not all(map(all, valids)):
         raise SaveError(valid_errors)
+    has_id = set()
     for g in sample_groups:
         for sample in g:
-            sample.save()
+            if not sample.id:
+                sample.save()
+            else:
+                has_id.add(sample)
+    for sample in has_id:
+        sample.save()
 
     
     

@@ -10,7 +10,7 @@ from . import subject
 from . import visit
 from . import sixteen
 from . import wgs
-from . import wts
+from . import wms as wts
 
 class settings:
     username = 'rschwager'
@@ -26,7 +26,17 @@ def submit(hosp_joined_fname, sixt_joined_fname, sixt_fnames,
     st = study.default(session, pr)
     st.save()
     subjects = list(subject.from_file(hosp_joined_fname, st))
+    validation_errors = [ (s, s.validate()) for s in subjects 
+                          if not s.is_valid() ]
+    if validation_errors:
+        raise visit.SaveError(validation_errors)
+    has_id = set()
     for s in subjects:
+        if not s.id:
+            s.save()
+        else:
+            has_id.add(s)
+    for s in has_id:
         s.save()
 
     visits = map(

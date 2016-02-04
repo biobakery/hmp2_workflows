@@ -7,6 +7,10 @@ from toolz import groupby, first
 
 from .. import matcher
 
+class settings:
+    withdraw = "subject_withdrew"
+    trmn8d = "terminated_by_investigator"
+
 
 def load(session, sample_ids):
     if not hasattr(sample_ids, "__iter__"): # exclude strings
@@ -92,10 +96,10 @@ def parse_record(record, study, subject_cache):
     s.rand_subject_id = record[0]
     s.links['participates_in'] = [study.id]
 
-    if record[8].strip().lower() == "yes":
-        s.tags.append("subject_withdrew")
-    if record[9].strip().lower() == "yes":
-        s.tags.append("terminated_by_investigator")
+    if record[8].strip().lower() == "yes" and settings.withdraw not in s.tags:
+        s.tags.append(settings.withdraw)
+    if record[9].strip().lower() == "yes" and settings.trmn8d not in s.tags:
+        s.tags.append(settings.trmn8d)
     return s
     
 

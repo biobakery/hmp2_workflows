@@ -38,7 +38,7 @@ def default_prep(sample):
     if maybe_extant_preps:
         prep = maybe_extant_preps[0]
     else:
-        prep = cutlass.SixteenSDnaPrep()
+        prep = cutlass.WGSDnaPrep()
     prep.comment = settings.prep_comment
     prep.ncbi_taxon_id = settings.ncbi_taxon_id
     prep.lib_layout = settings.lib_layout
