@@ -4,3 +4,4 @@
 .fuse_*
 *.pyc
 *.pyo
+*.log
