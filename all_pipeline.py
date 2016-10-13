@@ -4,8 +4,10 @@ import json
 import glob
 import gzip
 import operator
+from contextlib import nested
 from itertools import imap, izip
 from collections import Counter
+from StringIO import StringIO
 from os.path import dirname, basename
 
 from bunch import Bunch
@@ -77,15 +79,17 @@ for k in bin:
 
 
 
-kneaddb = Bunch(dna="/seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1/Homo_sapiens",
-                rna="/seq/ibdmdb/centos6/var/lib/mrna/mnra")
-kneaddb_deps = Bunch([ (k, GlobDependency(v+"*")) for k, v in kneaddb.items() ])
+kneaddb = Bunch(dna="/seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1",
+                rna="/seq/ibdmdb/centos6/var/lib/mrna")
+kneaddb_deps = Bunch([ (k, GlobDependency(v+"/*")) for k, v in kneaddb.items() ])
 
 h2ntdb = DirectoryDependency("/seq/ibdmdb/centos6/var/lib/humann2/chocophlan")
 h2pdb  = DirectoryDependency("/seq/ibdmdb/centos6/var/lib/humann2/uniref")
 
 
 def findfile(row):
+    if not row[0].startswith("G"):
+        return
     projdir = os.path.join(picard_dir, row[0])
     sampdirs = [ os.path.join(projdir, x) for x in os.listdir(projdir) ]
     sampdirs = filter(os.path.isdir, sampdirs)
@@ -371,22 +375,28 @@ def metaphlan2(ctx, fastq, output_biom, output_txt, output_strainbam):
         depends=[HFD(fastq), bin.metaphlan2],
         targets=[output_biom, output_txt, output_strainbam],
         name="Profile taxonomy "+str(fastq),
-        mem=2000,
+        mem=2500,
         time=90
         )
+
 
 
 def humann2(ctx, fastq, tax_tsv, output_tarbz, threads=2):
     tmpdir = fname.rmext(str(fastq), all=True)
     base = fname.rmext(basename(str(fastq)), all=True)
     logfile = fname.mangle("sample.log", dir=tmpdir)
+    def _h2(task):
+        try:
+            system(["humann2", "--output-basename", base, "--log-level", "DEBUG",
+                    "--remove-temp-output", "--threads", str(threads),
+                    "--taxonomic-profile", tax_tsv, "--input", fastq, 
+                    "--output", tmpdir, "--o-log", logfile])(task)
+            system(["tar", "-cjf", output_tarbz, tmpdir])(task)
+        finally:
+            rm_r(tmpdir)(task)
+
     ctx.grid_add_task(
-        [ system(["humann2", "--output-basename", base, "--log-level", "DEBUG",
-                  "--remove-temp-output", "--threads", str(threads),
-                  "--taxonomic-profile", tax_tsv, "--input", fastq, 
-                  "--output", tmpdir, "--o-log", logfile]), 
-          system(["tar", "-cjf", output_tarbz, tmpdir]),
-          rm_r(tmpdir) ],
+        _h2,
         depends=[HFD(fastq), tax_tsv, bin.humann2, h2ntdb, h2pdb],
         targets=output_tarbz,
         name="Profile function "+str(fastq),
@@ -394,7 +404,108 @@ def humann2(ctx, fastq, tax_tsv, output_tarbz, threads=2):
         time=8*60,
         cores=int(threads)
         )
+
+
+def _load_metaphlan_biom(fn):
+    sn = re.sub(r'.biom$', '', basename(fn))
+    with open(fn) as f:
+        ret = StringIO(f.read().replace("Metaphlan2_Analysis", sn))
+    return parse_biom_table(ret)
+
+
+def stack_chart(ctx, bioms, outdir):
+    tmpdir = fname.mangle("stacktmp", dir=dirname(bioms[0]))
+    merged_biom = fname.mangle("merged.biom", dir=tmpdir)
+    chartdir = fname.mangle("charts", dir=tmpdir)
+
+    def _merge(task):
+        bs = [ _load_metaphlan_biom(fn) for fn in bioms 
+               if os.stat(fn).st_size > 0 ]
+        for b in bs[1:]:
+            bs[0] = bs[0].merge(b)
+        with open(merged_biom, 'w') as f:
+            bs[0].getBiomFormatJsonString("ibdmdb.org", f)
+        
+    ctx.add_task( [_merge,
+                   system(["summarize_taxa_through_plots.py", "-i", merged_biom, 
+                           "-o", chartdir]),
+                   system(["mkdir", outdir]),
+                   system(["find", chartdir, "-name", '*_legend.pdf', 
+                           '-exec', 'pdftoppm', '-singlefile', '-png', '{}', '{}', ';']),
+                   system(["find", chartdir, "-name", "*.png",
+                           "-exec", "mv", "{}", outdir, ";"]),
+                   rm_r(tmpdir)],
+                  name="Plot taxonomy as stacked bars" )
+
+
+def load_metaphlan_table(fname):
+    with open(fname, 'r') as f:
+        for line in f:
+            name, value = line.strip().split("\t",1)
+            try:
+                yield name, float(value)
+            except:
+                continue
+
+
+def merge_metaphlan_tables(in_fnames, out_fname):
+    cnames = set()
+    data = dict()
+    with open(out_fname, 'w') as outf:
+        samplename = lambda x: os.path.basename(x).split("_", 1)[0]
+        for fn in in_fnames:
+            l = list(load_metaphlan_table(fn))
+            if not l:
+                continue
+            data[fn] = dict(l)
+            cnames.update(data[fn].keys())
+        all_fnames = list(sorted(data.keys()))
+        print >> outf, "\t".join(["#Clade_name"]+map(samplename, all_fnames))
+        for cname in cnames:
+            values = [str(data[fn].get(cname, 0)) for fn in all_fnames]
+            print >> outf, "\t".join([cname]+values)
+
+        
+def _last_meta_name(fn):
+    prev_line = str()
+    with open(fn) as f:
+        for line in f:
+            if re.search(r'[Bb]acteria|[Aa]rchaea.*\s+\d', line):
+                return prev_line.split('\t')[0]
+            prev_line = line
+        return prev_line.split('\t')[0]
+            
+
+def _sample_id(fn):
+    id_ = str()
+    with open(fn) as f:
+        for line in f:
+            if line.startswith("#"):
+                id_ = line.split('\t')[0]
+                continue
+            else:
+                return id_ or line.split('\t')[0]
+
     
+def pcoa_chart(ctx, taxprofs, chart_fname):
+    tmpdir = fname.mangle("pcoatmp", dir=os.path.dirname(taxprofs[0]))
+    merged_tax = fname.mangle("merged_tax.pcl", dir=tmpdir)
+    
+    def _pcoa(task):
+        system(["scriptPcoa.py", "--meta", _last_meta_name(merged_tax),
+                "--id", _sample_id(merged_tax), "--noShape", 
+                "--outputFile", fname.mangle("chart.png", dir=tmpdir),
+                merged_tax])(task)
+        system(["find", tmpdir, '-name', "*.png", 
+                "-exec", "mv", "{}", chart_fname, ";"])(task)
+    
+    ctx.add_task( [ lambda t: merge_metaphlan_tables(taxprofs, merged_tax),
+                    _pcoa,
+                    rm_r(tmpdir) ],
+                  targets=chart_fname,
+                  depends=taxprofs,
+                  name="Plot taxonomy as ordination" )
+                    
 
 def compress(ctx, fastq):
     ctx.add_task(system(["pbzip2", fastq]),
@@ -457,8 +568,8 @@ def process_wgs_mtx(ctx, wgs_data, mtx_data, metadata_json, headers, datatype_in
                fname.mangle(wgs_data[0].file, dir=tpdir, ext="biom"),
                wgs_taxtxt, 
                fname.mangle(wgs_data[0].file, dir=tpdir, tag="strain", ext="bam"))
-    #humann2(ctx, cleanfq, wgs_taxtxt, 
-    #        fname.mangle(wgs_data[0].file, dir=h2dir, tag="humann2", ext="tar.bz2"))
+    humann2(ctx, cleanfq, wgs_taxtxt, 
+            fname.mangle(wgs_data[0].file, dir=h2dir, tag="humann2", ext="tar.bz2"))
 
     for mtx_row in mtx_data:
         dirconf = output_dirs.metatranscriptomics
@@ -473,7 +584,7 @@ def process_wgs_mtx(ctx, wgs_data, mtx_data, metadata_json, headers, datatype_in
         knead(ctx, HFD(mtx_row.file), cleanfq, cleanlog, 
               dbs=kneaddb.values(), db_deps=kneaddb_deps.values())
         metaphlan2(ctx, cleanfq, biom, taxtxt, strainbam)
-    #    humann2(ctx, cleanfq, wgs_taxtxt, tarbz)
+        humann2(ctx, cleanfq, wgs_taxtxt, tarbz)
 
 
     
@@ -482,7 +593,7 @@ def main():
         d = Bunch(json.load(f))
     d.data = apply_ignores(d.data)
     datatype_idx = d.headers.index("data_type")
-    fnames = map(findfile, d.data)
+    fnames = filter(bool, map(findfile, d.data))
     d.data = [ Bunch(data=r, file=fn) for r, fn in zip(d.data, fnames) ]
     subjs = groupby(lambda b: b.data[3], d.data)
     
@@ -504,6 +615,19 @@ def main():
                         metadata_json, d.headers, datatype_idx)
 
     ctx.go(reporter=reporter, n_grid_parallel=35, n_parallel=2)
+
+    for d in output_dirs.values():
+        in_tax = [fn for fn in glob.glob(d.taxprof+"/*_tax.txt")
+                  if os.stat(fn).st_size > 0]
+        in_biom = [fn for fn in glob.glob(d.taxprof+"/*.biom")]
+        for fn in in_tax:
+            ctx.already_exists(fn)
+        for fn in in_biom:
+            ctx.already_exists(fn)
+        figdir = fname.mangle("figures", dir=d.taxprof)
+        stack_chart(ctx, in_biom, fname.mangle("stacked", dir=figdir))
+        pcoa_chart(ctx, in_tax, fname.mangle("pcoa.png", dir=figdir))
+    ctx.go(reporter=reporter, n_grid_parallel=0, n_parallel=2)
     # ctx.cli()
 
 

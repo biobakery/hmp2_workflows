@@ -110,7 +110,11 @@ conf = Bunch(
         seq_comment = "Raw Microbe Transcriptomics Sequence set ",
         storage_duration = 365, # 1 year in days
         sequencer_model = "Illumina HiSeq",
-        )
+        ),
+    prot    = Bunch(
+        prep_id = "4",
+        pride_id = "",
+        ),
 )
 
 
@@ -685,6 +689,104 @@ def save_mtx(samp, row):
     seq.links['sequenced_from'] = [prep.id]
     save(seq, True)
 
+    
+def save_proteomics(samp, row):
+    maybe_prep = list(samp.microbiomeAssayPreps())
+    if maybe_prep:
+        prep = maybe_prep[0]
+    else:
+        prep = cutlass.MicrobiomeAssayPrep()
+    dirty = False
+    dirty |= update(prep, "comment", "Broad IBDMDB default proteomics prep")
+    dirty |= update(prep, "pride_id", conf.prot.pride_id)
+    dirty |= update(prep, "center", "pnnl")
+    dirty |= update(prep, "sample_name", row[1])
+    dirty |= update(prep, "contact", "White, Richard A <richard.white@pnnl.gov")
+    dirty |= update(prep, "prep_id", conf.prot.prep_id)
+    dirty |= update(prep, "storage_duration", 365)
+    dirty |= update(prep, "epxeriment_type", "Shotgun Proteomics")
+    dirty |= update(prep, "study", "ibd")
+    prep._dirty = dirty
+    prep.links['prepared_from'] = [samp.id]
+    save(prep)
+
+    seqs = list(prep.proteomes())
+    if seqs:
+        seq = seqs[0]
+    else:
+        seq = cutlass.Proteome()
+    dirty = False
+    fn = str(row[0])
+    md5sum = md5(fn)
+    dirty |= update(seq, "analyzer", "")
+    dirty |= update(seq, "checksums", {"md5": md5sum})
+    dirty |= update(seq, "comment", str("Raw, proteomics image: "+row[1]))
+    dirty |= update(seq, "detector", "")
+    dirty |= update(seq, "instrument_name", "")
+    dirty |= update(seq, "pepid_format", "")
+    dirty |= update(seq, "pepid_url", [""])
+    dirty |= update(seq, "pride_id", "")
+    dirty |= update(seq, "processing_method", "")
+    dirty |= update(seq, "protid_format", "")
+    dirty |= update(seq, "protmod_format", "")
+    dirty |= update(seq, "protid_url", [""])
+    dirty |= update_file(seq, fn, md5sum, name="local_protmod_file")
+    dirty |= update(seq, "sample_name", row[1])
+    dirty |= update(seq, "search_engine", "")
+    dirty |= update(seq, "short_label", row[1])
+    dirty |= update(seq, "software", "")
+    dirty |= update(seq, "source", "")
+    dirty |= update(seq, "spectra_format", "")
+    dirty |= update(seq, "spectra_url", "")
+    dirty |= update(seq, "local_spectra_file", "")
+    dirty |= update(seq, "study", "ibd")
+    dirty |= update(seq, "title", conf.study.mixs.project_name)
+
+
+    seq._dirty = dirty
+    seq.links['sequenced_from'] = [prep.id]
+    save(seq, True)
+
+    trms = list(seq.trimmed_seq_sets())
+    if trms:
+        trm = trms[0]
+    else:
+        trm = cutlass.SixteenSTrimmedSeqSet()
+    dirty = False
+    dirty |= update(trm, "comment", str("Trimmed 16S sample "+row[1]))
+    dirty |= update_file(trm, seq.local_file, md5sum)
+    dirty |= update(trm, "checksums", {"md5": md5sum})
+    dirty |= update(trm, "format", "fastq")
+    dirty |= update(trm, "format_doc", "https://en.wikipedia.org/wiki/FASTQ_format")
+    dirty |= update(trm, "size", os.stat(seq.local_file).st_size)
+    dirty |= update(trm, "study", "ibd")
+    trm._dirty = dirty
+    trm.links['computed_from'] = [seq.id]
+    save(trm, True)
+
+    abd_fname = output_dirs.amplicon.taxprof+"/"+row[1]+".biom"
+    if not os.path.exists(abd_fname):
+        return
+
+    mtxs = list(trm.abundance_matrices())
+    if mtxs:
+        mtx = mtxs[0]
+    else:
+        mtx = cutlass.AbundanceMatrix()
+    dirty = False
+    md5sum = md5(abd_fname)
+    dirty |= update_file(mtx, str(abd_fname), md5sum)
+    dirty |= update(mtx, "checksums", {"md5": md5sum})    
+    dirty |= update(mtx, "format", "biom")
+    dirty |= update(mtx, "format_doc", "http://biom-format.org/#Biomformat-1.3.1 ")
+    dirty |= update(mtx, "matrix_type", "16s_community")
+    dirty |= update(mtx, "size", os.stat(mtx.local_file).st_size)
+    dirty |= update(mtx, "study", "ibd")
+    dirty |= update(mtx, "comment", "16S taxonomic profile "+str(row[1]))
+    
+    mtx.links['computed_from'] = [trm.id]
+    save(mtx, True)
+        
 
 def datatype(row):
     return row[4]
@@ -715,11 +817,13 @@ def main():
         if not samp:
             continue
         if datatype(row) == "metatranscriptomics":
-            save_mtx(samp, row)
+            #save_mtx(samp, row)
         elif datatype(row) == "metagenomics":
-            save_wgs(samp, row)
+            #save_wgs(samp, row)
         elif datatype(row) == "amplicon":
-            save_16s(samp, row)
+            #save_16s(samp, row)
+        elif datatype(row) == "proteomics":
+            #save_proteomics(samp, row)
     
 
 if __name__ == '__main__':
