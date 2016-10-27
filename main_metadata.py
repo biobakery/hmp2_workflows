@@ -114,8 +114,11 @@ for k in studytrax_grp:
                 studytrax_grp[k])
     studytrax_grp[k] = g
 
-prx_filemap = groupby(lambda f: re.sub(r'\d+-(.*?)-[0-9-]*.raw', r'\1', f),
-                      os.listdir(prx_upload_dir))
+
+prx_filemap = groupby(
+    lambda f: re.sub(r'.*(.M.[A-Z0-9]{5}).*', r'\1', f),
+    os.listdir(prx_upload_dir)
+    )
 
 # end setup
 

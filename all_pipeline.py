@@ -4,7 +4,9 @@ import json
 import glob
 import gzip
 import operator
-from contextlib import nested
+from bz2 import BZ2File
+from tarfile import TarFile
+from datetime import datetime
 from itertools import imap, izip
 from collections import Counter
 from StringIO import StringIO
@@ -400,7 +402,7 @@ def humann2(ctx, fastq, tax_tsv, output_tarbz, threads=2):
         depends=[HFD(fastq), tax_tsv, bin.humann2, h2ntdb, h2pdb],
         targets=output_tarbz,
         name="Profile function "+str(fastq),
-        mem=8000,
+        mem=12000,
         time=8*60,
         cores=int(threads)
         )
@@ -413,42 +415,100 @@ def _load_metaphlan_biom(fn):
     return parse_biom_table(ret)
 
 
-def stack_chart(ctx, bioms, outdir):
-    tmpdir = fname.mangle("stacktmp", dir=dirname(bioms[0]))
-    merged_biom = fname.mangle("merged.biom", dir=tmpdir)
+def _merge_metaphlan_bioms(in_bioms, out_merged_biom):
+    bs = [ _load_metaphlan_biom(fn) for fn in in_bioms 
+           if os.stat(fn).st_size > 0 ]
+    for b in bs[1:]:
+        bs[0] = bs[0].merge(b)
+    with open(out_merged_biom, 'w') as f:
+        bs[0].getBiomFormatJsonString("ibdmdb.org", f)
+
+
+def merge_metaphlan_bioms(ctx, in_bioms, out_merged_biom):
+    ctx.add_task(lambda t: _merge_metaphlan_bioms(in_bioms, out_merged_biom),
+                 depends=in_bioms, targets=out_merged_biom,
+                 name="Merge metphlan bioms")
+
+    
+def stack_chart(ctx, merged_biom, outdir):
+    tmpdir = fname.mangle("stacktmp", dir=dirname(merged_biom))
     chartdir = fname.mangle("charts", dir=tmpdir)
 
-    def _merge(task):
-        bs = [ _load_metaphlan_biom(fn) for fn in bioms 
-               if os.stat(fn).st_size > 0 ]
-        for b in bs[1:]:
-            bs[0] = bs[0].merge(b)
-        with open(merged_biom, 'w') as f:
-            bs[0].getBiomFormatJsonString("ibdmdb.org", f)
-        
-    ctx.add_task( [_merge,
-                   system(["summarize_taxa_through_plots.py", "-i", merged_biom, 
-                           "-o", chartdir]),
-                   system(["mkdir", outdir]),
-                   system(["find", chartdir, "-name", '*_legend.pdf', 
-                           '-exec', 'pdftoppm', '-singlefile', '-png', '{}', '{}', ';']),
-                   system(["find", chartdir, "-name", "*.png",
-                           "-exec", "mv", "{}", outdir, ";"]),
-                   rm_r(tmpdir)],
-                  name="Plot taxonomy as stacked bars" )
+    def _run(task):
+        try:
+            system(["summarize_taxa_through_plots.py", "-i", merged_biom, 
+                    "-o", chartdir])(task)
+            system(["mkdir", outdir])(task)
+            system(["find", chartdir, "-name", '*_legend.pdf', 
+                    '-exec', 'pdftoppm', '-singlefile', '-png', 
+                    '{}', '{}', ';'])(task)
+            system(["find", chartdir, "-name", "*.png",
+                    "-exec", "mv", "{}", outdir, ";"])(task)
+        finally:
+            rm_r(tmpdir)
 
+    ctx.add_task(_run, depends=merged_biom,
+                 name="Plot taxonomy as stacked bars" )
+
+
+def _load_table(f):
+    for line in f:
+        name, value = line.strip().split("\t",1)
+        try:
+            yield name, float(value)
+        except:
+            continue
+
+
+def _geth2tables(tarbz):
+    with TarFile(fileobj=BZ2File(tarbz)) as f:
+        infos = f.getmembers()
+        ret = dict([(i.name, dict(_load_table(f.extractfile(i))))
+                    for i in infos if i.name.endswith(".tsv")])
+    return ret
+
+
+def _merge_write_h2tab(tables, outfname):
+    names = set()
+    data = dict()
+    for colname, tab in tables:
+        names.update(tab.keys())
+        data[colname] = tab
+        colnames = list(sorted(data.keys()))
+    with open(outfname, 'w') as outf:
+        print >> outf, "\t".join(["#pathway_or_genefamily"]+colnames)
+        for name in names:
+            values = [str(data[colname].get(name, 0)) for colname in colnames]
+            print >> outf, "\t".join([name]+values)
+
+
+def _merge_humann2_tables(tables, out_genefam, out_pathabund, out_pathcov):
+    alltables = map(_geth2tables, tables)
+    gf, pa, pc = list(), list(), list()
+    for t in alltables:
+        for k in t:
+            if k.endswith("_genefamilies.tsv"):
+                gf.append((basename(k).replace("_genefamilies.tsv", ""), t[k]))
+            elif k.endswith("_pathabundance.tsv"):
+                pa.append((basename(k).replace("_pathabundance.tsv", ""), t[k]))
+            elif k.endswith("_pathcoverage.tsv"):
+                pc.append((basename(k).replace("_pathcoverage.tsv", ""), t[k]))
+    _merge_write_h2tab(gf, out_genefam)
+    _merge_write_h2tab(pa, out_pathabund)
+    _merge_write_h2tab(pc, out_pathcov)
+
+def merge_humann2_tables(ctx, tables, out_genefam, out_pathabund, out_pathcov):
+    ctx.add_task(lambda t: _merge_humann2_tables(tables,),
+                 depends=tables, targets=[gf, pa, pc], 
+                 name="Merge Humann2 tables")
+                                                    
 
 def load_metaphlan_table(fname):
     with open(fname, 'r') as f:
-        for line in f:
-            name, value = line.strip().split("\t",1)
-            try:
-                yield name, float(value)
-            except:
-                continue
+        ret = _load_table(f)
+    return ret
 
-
-def merge_metaphlan_tables(in_fnames, out_fname):
+def _merge_metaphlan_tables(in_fnames, out_fname):
     cnames = set()
     data = dict()
     with open(out_fname, 'w') as outf:
@@ -465,7 +525,13 @@ def merge_metaphlan_tables(in_fnames, out_fname):
             values = [str(data[fn].get(cname, 0)) for fn in all_fnames]
             print >> outf, "\t".join([cname]+values)
 
-        
+            
+def merge_metaphlan_tables(ctx, in_fnames, out_fname):
+    ctx.add_task(lambda t: _merge_metaphlan_tables(in_fnames, out_fname),
+                 depends=in_fnames, targets=out_fname,
+                 name="Merge metaphlan taxonomic profiles")
+
+    
 def _last_meta_name(fn):
     prev_line = str()
     with open(fn) as f:
@@ -487,25 +553,24 @@ def _sample_id(fn):
                 return id_ or line.split('\t')[0]
 
     
-def pcoa_chart(ctx, taxprofs, chart_fname):
-    tmpdir = fname.mangle("pcoatmp", dir=os.path.dirname(taxprofs[0]))
-    merged_tax = fname.mangle("merged_tax.pcl", dir=tmpdir)
+def pcoa_chart(ctx, merged_tax, chart_fname):
+    tmpdir = fname.mangle("pcoatmp", dir=os.path.dirname(merged_tax))
     
     def _pcoa(task):
-        system(["scriptPcoa.py", "--meta", _last_meta_name(merged_tax),
-                "--id", _sample_id(merged_tax), "--noShape", 
-                "--outputFile", fname.mangle("chart.png", dir=tmpdir),
-                merged_tax])(task)
-        system(["find", tmpdir, '-name', "*.png", 
-                "-exec", "mv", "{}", chart_fname, ";"])(task)
-    
-    ctx.add_task( [ lambda t: merge_metaphlan_tables(taxprofs, merged_tax),
-                    _pcoa,
-                    rm_r(tmpdir) ],
-                  targets=chart_fname,
-                  depends=taxprofs,
-                  name="Plot taxonomy as ordination" )
-                    
+        try:
+            system(["scriptPcoa.py", "--meta", _last_meta_name(merged_tax),
+                    "--id", _sample_id(merged_tax), "--noShape", 
+                    "--outputFile", fname.mangle("chart.png", dir=tmpdir),
+                    merged_tax])(task)
+            system(["find", tmpdir, '-name', "*.png", 
+                    "-exec", "mv", "{}", chart_fname, ";"])(task)
+        finally:
+            rm_r(tmpdir)
+
+    ctx.add_task(_pcoa,
+                 targets=chart_fname, depends=merged_tax,
+                 name="Plot taxonomy as ordination")
+
 
 def compress(ctx, fastq):
     ctx.add_task(system(["pbzip2", fastq]),
@@ -587,6 +652,30 @@ def process_wgs_mtx(ctx, wgs_data, mtx_data, metadata_json, headers, datatype_in
         humann2(ctx, cleanfq, wgs_taxtxt, tarbz)
 
 
+def generate_figures(ctx):
+    today = datetime.now().strftime("%F")
+    for d in output_dirs.values():
+        in_tax = [fn for fn in glob.glob(d.taxprof+"/*_tax.txt")
+                  if os.stat(fn).st_size > 0]
+        in_biom = glob.glob(d.taxprof+"/*.biom")
+        in_tarbz = glob.glob(d.h2+"/*.tar.bz2")
+        for fn in in_tax+in_biom+in_tarbz:
+            ctx.already_exists(fn)
+        merged_tax = fname.mangle("merged-metaphlan-table", tag=today, 
+                                  dir=d.taxprof, ext="tsv")
+        merged_biom = fname.mangle(merged_tax, ext="biom")
+        gf = fname.mangle("merged_genefamilies", dir=d.h2, tag=today, ext="tsv")
+        pa = fname.mangle("merged_pathabundance", dir=d.h2, tag=today, ext="tsv")
+        pc = fname.mangle("merged_pathcoverage", dir=d.h2, tag=today, ext="tsv")
+        figdir = fname.mangle("figures", dir=d.taxprof)
+        merge_metaphlan_tables(ctx, in_tax, merged_tax)
+        merge_metaphlan_bioms(ctx, in_biom, merged_biom)
+        merge_humann2_tables(ctx, in_tarbz, gf, pa, pc)
+        stack_chart(ctx, merged_biom, fname.mangle("stacked", dir=figdir))
+        pcoa_chart(ctx, merged_tax, fname.mangle("taxonomy_pcoa.png", dir=figdir))
+        pcoa_chart(ctx, gf, fname.mangle("genefamily_pcoa.png", dir=figdir))
+        pcoa_chart(ctx, pa, fname.mangle("pathabundance_pcoa.png", dir=figdir))
+        
     
 def main():
     with open(str(metadata_json), 'r') as f:
@@ -614,19 +703,12 @@ def main():
                         bytype.get("metatranscriptomics", []),
                         metadata_json, d.headers, datatype_idx)
 
-    ctx.go(reporter=reporter, n_grid_parallel=35, n_parallel=2)
+    try:
+        ctx.go(reporter=reporter, n_grid_parallel=35, n_parallel=2)
+    except anadama.runcontext.RunFailed:
+        pass
 
-    for d in output_dirs.values():
-        in_tax = [fn for fn in glob.glob(d.taxprof+"/*_tax.txt")
-                  if os.stat(fn).st_size > 0]
-        in_biom = [fn for fn in glob.glob(d.taxprof+"/*.biom")]
-        for fn in in_tax:
-            ctx.already_exists(fn)
-        for fn in in_biom:
-            ctx.already_exists(fn)
-        figdir = fname.mangle("figures", dir=d.taxprof)
-        stack_chart(ctx, in_biom, fname.mangle("stacked", dir=figdir))
-        pcoa_chart(ctx, in_tax, fname.mangle("pcoa.png", dir=figdir))
+    generate_figures(ctx)
     ctx.go(reporter=reporter, n_grid_parallel=0, n_parallel=2)
     # ctx.cli()
 
