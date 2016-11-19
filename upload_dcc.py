@@ -86,7 +86,7 @@ conf = Bunch(
         prep_comment = "Broad IBDMDB default WGS dna prep",
         seq_comment = "Raw WGS Sequence set ",
         storage_duration = 365, # 1 year in days
-        sequencer_model = "Illumina HiSeq",
+        sequencer_model = "Illumina HiSeq 2000",
         ),
     mtx     = Bunch(
         library_method_text = \
@@ -109,7 +109,7 @@ conf = Bunch(
         prep_comment = "Broad IBDMDB default Microbe Transcriptomics dna prep",
         seq_comment = "Raw Microbe Transcriptomics Sequence set ",
         storage_duration = 365, # 1 year in days
-        sequencer_model = "Illumina HiSeq",
+        sequencer_model = "Illumina HiSeq 2000",
         ),
     prot    = Bunch(
         prep_id = "4",
@@ -164,6 +164,22 @@ dietmap = {
     "sweets": u'dr_q29',
 }
 
+boolmap = {
+    "no":    False,
+    "n":     False,
+    "false": False,
+    "f":     False,
+    "null":  False,
+    "nan":   False,
+    "nil":   False,
+    "n/a":   False,
+
+    "yes":   True,
+    "y":     True,
+    "t":     True,
+    "true":  True,
+}
+
 neq = HasNoEqual()
 
 limsconvert = lambda k: k[1:3]+"-"+k[3:]
@@ -177,7 +193,17 @@ def setup_getters(headers):
 
 def get(row, key):
     return row[ _gettermap[key] ]
-    
+
+def getbool(row, key):
+    val = get(row, key)
+    if not val:
+        return False
+    try:
+        ret = int(val)
+    except ValueError:
+        ret = boolmap.get(val.lower(), True)
+    return bool(ret)
+
 def textsanitize(t):
     return re.sub(r'\s+', ' ', t)
 
@@ -363,10 +389,10 @@ def sync_visit(maybe_dcc, subj, row):
     dirty |= update(v, "date", "2000-01-01")
     dirty |= update(v, "interval", get(row, "interval_days"))
     dirty |= update(va, "hbi_total", float(get(row, 'hbi_score') or 0))
-    dirty |= update(va, "abx", bool(int(get(row, "dr_q2a") or 0)))
-    dirty |= update(va, "chemo", bool(int(get(row, "dr_q2b") or 0)))
+    dirty |= update(va, "abx", getbool(row, "dr_q2a"))
+    dirty |= update(va, "chemo", getbool(row, "dr_q2b"))
     for key,val in dietmap.items():
-        dirty |= update(va, key, bool(int(get(row, val) or 0)))
+        dirty |= update(va, key, getbool(row, val))
     save(subj)
     v.links['by'] = [subj.id]
     v._dirty = dirty
@@ -429,6 +455,10 @@ def dccify(session, st, agg):
         subjs.append(subj)
         dcc_visits = groupby(attrgetter("visit_number"), subj.visits())
         for visit_no, sample_group in grp.iteritems():
+            if visit_no is None:
+                logging.warning("Unable to save visits or samples for subject"
+                                " %s because it has no visit numbers", subj_id)
+                continue
             dcc_visit = dcc_visits.get(int(visit_no), [])
             dcc_visit = sync_visit(dcc_visit, subj, sample_group[0])
             visits.append(dcc_visit)
@@ -796,34 +826,26 @@ def main():
     logging.getLogger().setLevel(logging.DEBUG)
     data, agg = aggregate(str(metadata_json))
     session = iHMPSession(conf.session.user, conf.session.passwd)
-    jsonfn = "/tmp/samples.json"
-    import json
-    if not os.path.exists(jsonfn):
-        pr = project(session)
-        st = study(session, pr)
-        save(st)
-        dcc_subjs, dcc_vs, dcc_samps = dccify(session, st, agg)
-        for l in (dcc_subjs, dcc_vs, dcc_samps):
-            for obj in l:
-                save(obj)
-        with open(jsonfn, 'w') as f:
-            json.dump([s._get_raw_doc() for s in dcc_samps], f)
-    else:
-        with open(jsonfn, 'r') as f:
-            dcc_samps = [ cutlass.Sample.load_sample(d) for d in json.load(f) ]
+    pr = project(session)
+    st = study(session, pr)
+    save(st)
+    dcc_subjs, dcc_vs, dcc_samps = dccify(session, st, agg)
+    for l in (dcc_subjs, dcc_vs, dcc_samps):
+        for obj in l:
+            save(obj)
     sample_grp = groupby(attrgetter("name"), dcc_samps)
     for row in data['data']:
         samp = sample_grp.get(limsconvert(row[1]), [None])[0]
         if not samp:
             continue
         if datatype(row) == "metatranscriptomics":
-            #save_mtx(samp, row)
+            save_mtx(samp, row)
         elif datatype(row) == "metagenomics":
-            #save_wgs(samp, row)
+            save_wgs(samp, row)
         elif datatype(row) == "amplicon":
-            #save_16s(samp, row)
+            save_16s(samp, row)
         elif datatype(row) == "proteomics":
-            #save_proteomics(samp, row)
+            save_proteomics(samp, row)
     
 
 if __name__ == '__main__':
