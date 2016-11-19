@@ -23,6 +23,7 @@ from biom.parse import (
     parse_classic_table_to_rich_table
     )
 
+import anadama
 from anadama.sge import SGEPowerup
 from anadama.runcontext import RunContext
 from anadama.deps import FileDependency
@@ -82,7 +83,8 @@ for k in bin:
 
 
 kneaddb = Bunch(dna="/seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1",
-                rna="/seq/ibdmdb/centos6/var/lib/mrna")
+                rna="/seq/ibdmdb/centos6/var/lib/mrna",
+                six="/seq/ibdmdb/centos6/var/lib/silva-119-1_SSURef_nr99")
 kneaddb_deps = Bunch([ (k, GlobDependency(v+"/*")) for k, v in kneaddb.items() ])
 
 h2ntdb = DirectoryDependency("/seq/ibdmdb/centos6/var/lib/humann2/chocophlan")
@@ -367,7 +369,7 @@ def knead(ctx, bamfile, output_clean, output_stats, threads=2,
         )
 
 
-def metaphlan2(ctx, fastq, output_biom, output_txt, output_strainbam):
+def metaphlan2(ctx, fastq, output_biom, output_txt, output_strainbam, mem=2500, time=90):
     sam = fname.mangle(output_strainbam, ext="sam")
     ctx.grid_add_task(
         [ system(["metaphlan2.py", "--no_map", "--input_type", "fastq",
@@ -377,8 +379,8 @@ def metaphlan2(ctx, fastq, output_biom, output_txt, output_strainbam):
         depends=[HFD(fastq), bin.metaphlan2],
         targets=[output_biom, output_txt, output_strainbam],
         name="Profile taxonomy "+str(fastq),
-        mem=2500,
-        time=90
+        mem=mem,
+        time=time
         )
 
 
@@ -392,7 +394,7 @@ def humann2(ctx, fastq, tax_tsv, output_tarbz, threads=2):
             system(["humann2", "--output-basename", base, "--log-level", "DEBUG",
                     "--remove-temp-output", "--threads", str(threads),
                     "--taxonomic-profile", tax_tsv, "--input", fastq, 
-                    "--output", tmpdir, "--o-log", logfile])(task)
+                    "--gap-fill", "on", "--output", tmpdir, "--o-log", logfile, ])(task)
             system(["tar", "-cjf", output_tarbz, tmpdir])(task)
         finally:
             rm_r(tmpdir)(task)
@@ -438,6 +440,8 @@ def stack_chart(ctx, merged_biom, outdir):
         try:
             system(["summarize_taxa_through_plots.py", "-i", merged_biom, 
                     "-o", chartdir])(task)
+            if os.path.isdir(outdir):
+                rm_r(tmpdir)(task)
             system(["mkdir", outdir])(task)
             system(["find", chartdir, "-name", '*_legend.pdf', 
                     '-exec', 'pdftoppm', '-singlefile', '-png', 
@@ -445,7 +449,7 @@ def stack_chart(ctx, merged_biom, outdir):
             system(["find", chartdir, "-name", "*.png",
                     "-exec", "mv", "{}", outdir, ";"])(task)
         finally:
-            rm_r(tmpdir)
+            rm_r(tmpdir)(task)
 
     ctx.add_task(_run, depends=merged_biom,
                  name="Plot taxonomy as stacked bars" )
@@ -474,7 +478,7 @@ def _merge_write_h2tab(tables, outfname):
     for colname, tab in tables:
         names.update(tab.keys())
         data[colname] = tab
-        colnames = list(sorted(data.keys()))
+    colnames = list(sorted(data.keys()))
     with open(outfname, 'w') as outf:
         print >> outf, "\t".join(["#pathway_or_genefamily"]+colnames)
         for name in names:
@@ -498,14 +502,18 @@ def _merge_humann2_tables(tables, out_genefam, out_pathabund, out_pathcov):
     _merge_write_h2tab(pc, out_pathcov)
 
 def merge_humann2_tables(ctx, tables, out_genefam, out_pathabund, out_pathcov):
-    ctx.add_task(lambda t: _merge_humann2_tables(tables,),
-                 depends=tables, targets=[gf, pa, pc], 
-                 name="Merge Humann2 tables")
+    ctx.grid_add_task(
+        lambda t: _merge_humann2_tables(tables, out_genefam, out_pathabund, out_pathcov),
+        depends=tables, targets=[out_genefam, out_pathabund, out_pathcov], 
+        name="Merge Humann2 tables",
+        mem=20000,
+        time=4*60,
+        cores=1)
                                                     
 
 def load_metaphlan_table(fname):
     with open(fname, 'r') as f:
-        ret = _load_table(f)
+        ret = list(_load_table(f))
     return ret
 
 def _merge_metaphlan_tables(in_fnames, out_fname):
@@ -531,15 +539,17 @@ def merge_metaphlan_tables(ctx, in_fnames, out_fname):
                  depends=in_fnames, targets=out_fname,
                  name="Merge metaphlan taxonomic profiles")
 
-    
-def _last_meta_name(fn):
+
+def _last_meta_name(fn, searchkey=None):
+    if not searchkey:
+        searchkey = r'[Bb]acteria|[Aa]rchaea.*\s+\d'
     prev_line = str()
     with open(fn) as f:
         for line in f:
-            if re.search(r'[Bb]acteria|[Aa]rchaea.*\s+\d', line):
-                return prev_line.split('\t')[0]
+            if re.search(searchkey, line):
+                return prev_line.strip().split('\t')[0]
             prev_line = line
-        return prev_line.split('\t')[0]
+        return prev_line.strip().split('\t')[0]
             
 
 def _sample_id(fn):
@@ -547,18 +557,18 @@ def _sample_id(fn):
     with open(fn) as f:
         for line in f:
             if line.startswith("#"):
-                id_ = line.split('\t')[0]
+                id_ = line.strip().split('\t')[0]
                 continue
             else:
-                return id_ or line.split('\t')[0]
+                return id_ or line.strip().split('\t')[0]
 
     
-def pcoa_chart(ctx, merged_tax, chart_fname):
+def pcoa_chart(ctx, merged_tax, chart_fname, grid=False, searchkey=None):
     tmpdir = fname.mangle("pcoatmp", dir=os.path.dirname(merged_tax))
     
     def _pcoa(task):
         try:
-            system(["scriptPcoa.py", "--meta", _last_meta_name(merged_tax),
+            system(["scriptPcoa.py", "--meta", _last_meta_name(merged_tax, searchkey),
                     "--id", _sample_id(merged_tax), "--noShape", 
                     "--outputFile", fname.mangle("chart.png", dir=tmpdir),
                     merged_tax])(task)
@@ -567,9 +577,17 @@ def pcoa_chart(ctx, merged_tax, chart_fname):
         finally:
             rm_r(tmpdir)
 
-    ctx.add_task(_pcoa,
-                 targets=chart_fname, depends=merged_tax,
+    kwargs = dict(targets=chart_fname, depends=merged_tax,
                  name="Plot taxonomy as ordination")
+
+    if grid:
+        kwargs['mem'] = 40000
+        kwargs['time'] = 6*60
+        kwargs['cores'] = 1
+        ctx.grid_add_task(_pcoa, **kwargs)
+    else:
+        ctx.add_task(_pcoa, **kwargs)
+                 
 
 
 def compress(ctx, fastq):
@@ -647,7 +665,7 @@ def process_wgs_mtx(ctx, wgs_data, mtx_data, metadata_json, headers, datatype_in
 
         ctx.already_exists(HFD(mtx_row.file))
         knead(ctx, HFD(mtx_row.file), cleanfq, cleanlog, 
-              dbs=kneaddb.values(), db_deps=kneaddb_deps.values())
+              dbs=[kneaddb.dna, kneaddb.rna, kneaddb.six], db_deps=kneaddb_deps.values())
         metaphlan2(ctx, cleanfq, biom, taxtxt, strainbam)
         humann2(ctx, cleanfq, wgs_taxtxt, tarbz)
 
@@ -661,20 +679,20 @@ def generate_figures(ctx):
         in_tarbz = glob.glob(d.h2+"/*.tar.bz2")
         for fn in in_tax+in_biom+in_tarbz:
             ctx.already_exists(fn)
-        merged_tax = fname.mangle("merged-metaphlan-table", tag=today, 
-                                  dir=d.taxprof, ext="tsv")
-        merged_biom = fname.mangle(merged_tax, ext="biom")
-        gf = fname.mangle("merged_genefamilies", dir=d.h2, tag=today, ext="tsv")
-        pa = fname.mangle("merged_pathabundance", dir=d.h2, tag=today, ext="tsv")
-        pc = fname.mangle("merged_pathcoverage", dir=d.h2, tag=today, ext="tsv")
+        merged_tax = fname.mangle("metaphlan", tag=today, 
+                                  dir=d.taxprof, ext="merged.tsv")
+        merged_biom = re.sub(r'.tsv$', '.biom', merged_tax)
+        gf = fname.mangle("genefamilies", dir=d.h2, tag=today, ext="merged.tsv")
+        pa = fname.mangle("pathabundance", dir=d.h2, tag=today, ext="merged.tsv")
+        pc = fname.mangle("pathcoverage", dir=d.h2, tag=today, ext="merged.tsv")
         figdir = fname.mangle("figures", dir=d.taxprof)
         merge_metaphlan_tables(ctx, in_tax, merged_tax)
         merge_metaphlan_bioms(ctx, in_biom, merged_biom)
         merge_humann2_tables(ctx, in_tarbz, gf, pa, pc)
         stack_chart(ctx, merged_biom, fname.mangle("stacked", dir=figdir))
         pcoa_chart(ctx, merged_tax, fname.mangle("taxonomy_pcoa.png", dir=figdir))
-        pcoa_chart(ctx, gf, fname.mangle("genefamily_pcoa.png", dir=figdir))
-        pcoa_chart(ctx, pa, fname.mangle("pathabundance_pcoa.png", dir=figdir))
+        pcoa_chart(ctx, gf, fname.mangle("genefamily_pcoa.png", dir=figdir), 
+                   grid=True, searchkey=r"^[^#]")
         
     
 def main():
@@ -688,7 +706,7 @@ def main():
     
     ctx = RunContext(grid_powerup=SGEPowerup(queue="long", tmpdir="/seq/ibdmdb/tmp/anasge"))
     reporter = LoggerReporter(ctx, loglevel_str='debug', 
-                              logfile="/seq/ibdmdb/anadama_run.log")
+                              logfile="/seq/ibdmdb/public/HMP2/Metadata/anadama_run.log")
     ctx.already_exists(metadata_json)
     ctx.already_exists(*bin.values())
     ctx.already_exists(h2ntdb, h2pdb)
@@ -703,13 +721,14 @@ def main():
                         bytype.get("metatranscriptomics", []),
                         metadata_json, d.headers, datatype_idx)
 
+
     try:
         ctx.go(reporter=reporter, n_grid_parallel=35, n_parallel=2)
     except anadama.runcontext.RunFailed:
         pass
 
     generate_figures(ctx)
-    ctx.go(reporter=reporter, n_grid_parallel=0, n_parallel=2)
+    ctx.go(reporter=reporter, n_grid_parallel=3, n_parallel=2)
     # ctx.cli()
 
 
