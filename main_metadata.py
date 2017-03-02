@@ -1,60 +1,26 @@
+# -*- coding: utf-8 -*-
+
+"""
+genereate_merged_metadata_json.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Gathers several metadata sources from HMP2 collaborators in disparate formats
+and merges them all to produce a 'master' metadata JSON file that is used by
+downstream HMP2 pipelines.
+
+:copyright: (c) 2015 by Randall Schwager.
+:license: Apache2
+"""
+
+import argparse
 import os
 import re
 import sys
 import csv
 import json
+import yaml
 
 from toolz import pluck, groupby
 from dateutil.parser import parse as dateparse
-
-#settings
-
-valid_data_types = ("amplicon", "proteomics", 
-                    "metagenomics", "metatranscriptomics")
-
-CUSTOM_HEADERS = ['Project',                'External ID',      'Participant ID', 
-                  'Site/Sub/Coll ID',       'data_type',        'week_num', 
-                  'interval_days',          'visit_num',        'Research Project',
-                  'PDO Number',             'GSSR IDs',         'Product', 
-                  'LCSET',                  'Aggregated Lanes', 'WR ID', 
-                  '# Lanes in Aggregation', 'Total Reads']
-
-studytrax_names = ("/seq/ibdmdb/data_deposition/HMP2"
-                   "/Metadata/json/hospital_mapping.csv")
-
-studytrax_rows = ("/seq/ibdmdb/data_deposition/HMP2"
-                   "/Metadata/json/hospital.csv")
-
-receipt_map_json = ("/seq/ibdmdb/data_deposition/HMP2"
-                    "/Metadata/json/receipt_date_map.json")
-
-fecalcal_csv = ("/seq/ibdmdb/data_deposition/HMP2"
-                "/Metadata/json/fecalcal.csv")
-
-age_map_csv = ("/seq/ibdmdb/data_deposition/HMP2"
-               "/Metadata/json/age_map.csv")
-
-melanie_ordering = ("/seq/ibdmdb/data_deposition/HMP2/Metadata/json/"
-                    "melanie_order.csv")
-
-prx_upload_dir = "/seq/ibdmdb/data_deposition/HMP2/Proteomics/1633/rschwager/"
-
-mtx_pilot1 = ("/seq/ibdmdb/data_deposition/HMP2"
-               "/Metadata/json/Aggregated Picard Report for IBDMDB TagSeq_wCollabSampleID2.csv")
-
-wgs_pilot1 = ("/seq/ibdmdb/data_deposition/HMP2"
-               "/Metadata/json/IBDMDB_PDO-5457_5458_WGS_SeqComplete_2.19.2015_wCollabSampleID2.csv")
-
-sxs_pilot1 = ("/seq/ibdmdb/data_deposition/HMP2"
-               "/Metadata/json/IBDMDB_16S_PDO-4852_SeqComplete.csv")
-
-wgs_pilot2 = ("/seq/ibdmdb/data_deposition/HMP2"
-               "/Metadata/json/IBDMDB_PilotII_WGS_SeqComplete_4.27.2016.csv")
-
-prx_pilot1 = ("/seq/ibdmdb/data_deposition/HMP2/Metadata/json/"
-              "proteomics.csv")
-
-# end settings
 
 
 def err(msg, *args, **kwargs):
@@ -191,6 +157,35 @@ def create_row(gnum_or_path, lims_id, subject_id, collection_num,
 
     
 if __name__ == '__main__':
+
+
+def parse_cli_arguments():
+    """Parses command line arguments passed in by the user.
+
+    :returns: ArgumentParser
+    :rtype: argparse.ArgumentParser
+    """
+    parser = argparse.ArgumentParser('Gathers several metadata sources in ' 
+                                     'disparate formats and produces a merged '
+                                     'metadata JSON file used by downstream '
+                                     'HMP2 pipelines.')
+    parser.add_argument('-c', '--config-file', help='A YAML file containing '
+                        'configuration options for the merge process. This '
+                        'file should contain the paths to all the metadata '
+                        'files that are required to create the "master" '
+                        'metadata file.')
+    parser.add_argument('-o', '--output-file', required=True, 
+                        help='The path to the desired output "master" JSON '
+                        'metadata file.')
+    
+    return parser.parse_args()
+
+
+def main(args):
+    conf = yaml.load(open(args.config_file, 'r'))   
+    
+
+    ## OLD CODE AHOY
     rows = []
     for r in load_csv(mtx_pilot1)[1:]:
         subcoll = re.sub(r".*?(\d+C\d+)", r'\1', r[3])
@@ -279,3 +274,7 @@ if __name__ == '__main__':
          "data": ordered},
         sys.stdout
         )
+
+
+if __name__ == "__main__":
+    main(parse_cli_arguments())
