@@ -1,0 +1,2 @@
+-e hg+ssh://hg@bitbucket.org/biobakery/anadama2#egg=anadama2
+-e hg+ssh://hg@bitbucket.org/biobakery/biobakery_workflows#egg=biobakery-workflows
