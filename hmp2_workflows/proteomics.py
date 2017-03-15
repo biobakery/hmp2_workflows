@@ -29,8 +29,8 @@ THE SOFTWARE.
 
 from anadama2 import Workflow
 
-from hmp2_workflows.utils import verify_files, stage_files
-
+from hmp2_workflows.tasks.common import (verify_files, stage_file, 
+                                         refresh_metadata)
 
 
 def parse_cli_arguments():
@@ -53,15 +53,31 @@ def parse_cli_arguments():
                           'containing Proteomics files to be processed.')
     workflow.add_argument('--md5-checksums', desc='MD5 checksums for files '
                           'found in the supplied input directory.')
-    workflow.add_argument('-m' '--metadata-file', desc='Metadata file '
+    workflow.add_argument('--metadata-file', desc='Metadata file '
                           'assosciated with provided Proteomics files')
 
     return (workflow, workflow.parse_args())
 
 
 def main(workflow, args):
-   valid_files = verify_files(workflow, input_directory, 
+    ## Step #1 - Verify MD5sums of all data provided to IBDMDB
+    validated_files = verify_files(workflow, args.input_directory, 
+                                   args.md5_checksums)
 
+    ## Step #2 - Stage files to processing directory
+    files_to_process = stage_data_files(workflow, 
+                                        args.input_directory,
+                                        conf.processing_dir,
+                                        validated_files,
+                                        symlink=False)
+                                       
+    ## Step #3 - Trigger a metadata file refresh
+    refresh_metadata(workflow, files_to_process, args.metadata_file)
+
+    ## Step #4 - Stage processed files to public directories for dissemination
+    public_files = stage_data_files(workflow, conf.processing_dir,
+                                    conf.public_dir, files_to_process)
+    
 
 aa __name__ == "__main__":
     main(parse_cli_arguments())

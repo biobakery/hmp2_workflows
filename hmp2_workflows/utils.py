@@ -105,7 +105,6 @@ def stage_data_files(origin_dir, dest_dir, files, symlink=True):
         ## TODO: Add code to rsync copy files over if the symlink flag is 
         ## set to false.
     else:
-
         def _stage_file(target_file):
             """Handles staging an individual directory from the origin 
             directory to the destination directory. If the file does not exist
