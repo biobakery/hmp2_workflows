@@ -27,10 +27,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+from itertools import chain
+
 from anadama2 import Workflow
 
+from biobakery_workflows.utilities import find_files
+
 from hmp2_workflows.tasks.common import (verify_files, stage_file, 
-                                         refresh_metadata)
+                                        make_files_web_visible)
+from hmp2_workflows.utils import parse_cfg_file. parse_manifest_file
 
 
 def parse_cli_arguments():
@@ -45,39 +50,59 @@ def parse_cli_arguments():
         AnaDAMA2.cli.Configuration: Arguments passed into this workflow.
     """
     workflow = Workflow(version='0.1', description='A workflow to handle HMP2 '
-                        'Proteomics data.')
-
+                        'Proteomics data.', remove_options=['input', 'output'])
+    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+                          'files to process in this workflow run.')
     workflow.add_argument('--config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
-    workflow.add_argument('--input-directory', desc='Input directory '
-                          'containing Proteomics files to be processed.')
     workflow.add_argument('--md5-checksums', desc='MD5 checksums for files '
                           'found in the supplied input directory.')
-    workflow.add_argument('--metadata-file', desc='Metadata file '
-                          'assosciated with provided Proteomics files')
 
     return (workflow, workflow.parse_args())
 
 
 def main(workflow, args):
-    ## Step #1 - Verify MD5sums of all data provided to IBDMDB
-    validated_files = verify_files(workflow, args.input_directory, 
-                                   args.md5_checksums)
+    conf = parse_cfg_file(args.config_file, section='proteomics')
 
-    ## Step #2 - Stage files to processing directory
-    files_to_process = stage_data_files(workflow, 
-                                        args.input_directory,
-                                        conf.processing_dir,
-                                        validated_files,
-                                        symlink=False)
-                                       
-    ## Step #3 - Trigger a metadata file refresh
-    refresh_metadata(workflow, files_to_process, args.metadata_file)
-
-    ## Step #4 - Stage processed files to public directories for dissemination
-    public_files = stage_data_files(workflow, conf.processing_dir,
-                                    conf.public_dir, files_to_process)
+    ## Parse the manifest file containing all data files from this submission
+    manifest = parse_cfg_file(args.manifest_file)
+    data_files = manifest.get('submitted_files')
     
+    if data_files and data_files.get('proteomics'):
+        input_files = data_files.get('proteomics')
 
-aa __name__ == "__main__":
+        ## Step #1 - Verify MD5sums of all input data provided to IBDMDB
+        validated_files = verify_files(workflow, input_files, 
+                                       args.md5_checksums)
+
+        ## Step 2 - Move files over to our deposition directory
+        deposited_files = stage_data_files(workflow,
+                                           validated_files,
+                                           conf.deposition_dir,
+                                           delete=True)
+        
+        ## Step #3 - Stage files to processing directory
+        ##
+        ## For the Proteomics data it is ok to symlink these files over from the 
+        ## data deposition folder because these files aren't actually processed
+        ## but we need them to be in place here to show up on the website.
+        files_to_process = stage_data_files(workflow, 
+                                            deposited_files,
+                                            conf.processing_dir,
+                                            symlink=True)
+
+        output_files = (data_files.get('output_files') if 
+            'output_files' in data_files else [])
+         
+        ## Step #4 - Stage output files to public folder
+        public_files = stage_data_files(workflow, output_files, 
+                                        conf.public_dir)
+        
+        ## Step #5 - Make files web-visible by creating the complete.html file
+        ## in each of our output directories.
+        make_file_web_visible(workflow, files_to_process, files_to_process, 
+                              public_files)
+
+
+if __name__ == "__main__":
     main(parse_cli_arguments())

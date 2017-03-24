@@ -61,7 +61,8 @@ def verify_files(workflow, input_files, checksums_file):
     return input_files
 
 
-def stage_files(workflow, input_files, target_dir, symlink=False):
+def stage_files(workflow, input_files, target_dir, delete=False, 
+                preserve=False, symlink=False):
     """Moves data files from the supplied origin directory to the supplied
     destination directory. In order to include a file verification check in
     the staging process rsync is used by default to copy files.
@@ -77,6 +78,10 @@ def stage_files(workflow, input_files, target_dir, symlink=False):
         input_files: A collection of input files to be staged.
         dest_dir (string): Path to destination directory where files should 
                            be moved.
+        delete (boolean): If set to True the file on the source side is deleted
+                          upon successful transfer.
+        preserve (boolean): If set to True preserve the source subdirectory 
+                            structure on the target side.
         symlink (boolean): By default create symlinks from the origin 
                            directory to the destination directory. If set to 
                            False files will be copied using rsync.
@@ -108,7 +113,14 @@ def stage_files(workflow, input_files, target_dir, symlink=False):
 
     ## TODO: Figure out a better way to handle this rather than creating 
     ## N rsync calls.
-    stage_cmd = "rsync -rvz [depends[0]] [targets[0]]"
+    stage_cmd = "rsync -avz [depends[0]] [targets[0]]"
+    
+    if delete:
+        stage_cmd = stage_cmd.replace('-avz', '--remove-source-files -avz')
+    if preserve:
+        stage_cmd = stage_cmd.replace('-avz', 
+                                      '--rsync-path=\"mkdir -p `dirname '
+                                      '[depends[0]]`\" -avz')
     if symlink:
         stage_cmd = "ln -s [depends[0]] [targets[0]]"
 
@@ -117,3 +129,43 @@ def stage_files(workflow, input_files, target_dir, symlink=False):
                             targets = target_files)
 
     return target_files
+
+
+def make_files_web_visible(workflow, *files):
+    """Receives a list of files to be disseminated and ensures that they are 
+    visible on the IBDMDB website.
+
+    Args:
+        files (list): A list of files that should be made visible on the 
+                      IBDMDB website.
+
+    Requires:
+        None   
+
+    Returns:
+        list: A list of all files that should now be publicly visible on the 
+              IBDMDB website.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import common
+
+        workflow = anadama2.Workflow()
+
+        visible_files = common.make_files_web_visible(workflow, 
+                                                      ['/tmp/public/fooA.sam'])
+
+        workflow.go()
+    """
+    ## Making a group of files web visible is as simple as touching a file 
+    ## named complete.html in the directories containing the files we want 
+    ## to show up on the website
+    public_dirs = itertools.groupby(files, os.path.dirname)
+    complete_files = [os.path.join(public_dir, 'complete.html') for public_dir
+                      in public_dirs]
+
+    workflow.add_task_group('touch [targets[0]]',
+                            depends = public_dirs,
+                            targets = complete_files)
+
+    return files

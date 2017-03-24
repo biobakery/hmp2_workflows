@@ -1,0 +1,41 @@
+## This is a configuration file encompassing all the parameters needed to 
+## execute the HMP2 AnADAMA2 analysis pipelines.
+
+###################
+# BASE PARAMETERS #
+###################
+
+base: &base
+    # It seems like a lot of the sequences handled by the Broad are dropped
+    # in the following directory.
+    broad_sequence_dir: /seq/picard_aggregation
+
+    # Next comes up the directories where our AnADAMA2 pipelines will pull and
+    # deposit files to.        
+    deposition_dir: /seq/ibdmdb/data_deposition
+    processing_dir: /seq/ibdmdb/processing
+    public_dir: /seq/ibdmdb/public/
+
+    # Databases used by the various different workflows. 
+    # TODO: Move these to a centralized location
+    databases:
+        - otu: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.udb
+        - chimera: /seq/ibdmdb/centos6/var/lib/uchime/gold.fa
+        - taxonomy: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
+        - copy_num: /seq/ibdmdb/centos6/picrust-1.0.0/picrust/data/16S_13_5_precalculated.tab.gz        
+        - knead_dna: /seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1
+        - knead_rna: /seq/ibdmdb/centos6/var/lib/mrna
+        - knead_six: /seq/ibdmdb/centos6/var/lib/silva-119-1_SSURef_nr99
+        - humann2_nt: /seq/ibdmdb/centos6/var/lib/humann2/chocophlan
+        - humann2_p: /seq/ibdmdb/centos6/var/lib/humann2/uniref
+
+#########################
+# PROTEOMICS PARAMETERS #
+#########################
+
+proteomics: &proteomics
+    <<: *base
+    
+    output_ftypes:
+        - _rollup.txt
+        - .png        

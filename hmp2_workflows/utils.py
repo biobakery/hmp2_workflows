@@ -14,6 +14,31 @@ import tempfile
 
 from itertools import islice
 
+import yaml
+
+
+def parse_cfg_file(config_file, section=None):
+    """Parses the provided YAML config file. If a specific section is 
+    provided to parse only this section is returned.
+
+    Args:
+        config_file (string): Path to YAML config file 
+        section (string): Specific section in the supplied config file 
+                          to return.
+    Requires:
+        None
+    Returns: 
+        dict: A dictionary containing all configuration parameters found
+              in the supplied config file.
+    """
+    stream = file(config_file, 'r')
+    config = yaml.load(stream)
+    
+    if not section in config:
+        raise KeyError('Section not found in config file', section)
+
+    return config.get(section) if section else config
+
 
 def parse_checksums_file(checksums_file):
     """Parses a file containing MD5 checksums in the following format:
