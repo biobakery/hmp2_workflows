@@ -29,9 +29,9 @@ base: &base
         - humann2_nt: /seq/ibdmdb/centos6/var/lib/humann2/chocophlan
         - humann2_p: /seq/ibdmdb/centos6/var/lib/humann2/uniref
 
-#########################
-# PROTEOMICS PARAMETERS #
-#########################
+############################
+# PER-DATATYPE  PARAMETERS #
+############################
 
 proteomics: &proteomics
     <<: *base
@@ -39,3 +39,20 @@ proteomics: &proteomics
     output_ftypes:
         - _rollup.txt
         - .png        
+
+wgs: &wgs
+    <<: *base
+
+    output_ftypes:
+        - _tax.txt
+        - .png
+        - .merged.tsv
+        - .tar.bz2
+        - .biom          
+
+16s: &16s
+    <<: *base
+
+mtx: &mtx
+    <<: *base
+

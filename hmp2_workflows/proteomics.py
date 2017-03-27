@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-proteomics.py
-~~~~~~~~~~~~~
+hmp2_workflows.proteomics
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 An AnADAMA2 workflow that handles HMP2 Proteomics data and metadata files.
 
@@ -35,7 +35,7 @@ from biobakery_workflows.utilities import find_files
 
 from hmp2_workflows.tasks.common import (verify_files, stage_file, 
                                         make_files_web_visible)
-from hmp2_workflows.utils import parse_cfg_file. parse_manifest_file
+from hmp2_workflows.utils import parse_cfg_file
 
 
 def parse_cli_arguments():

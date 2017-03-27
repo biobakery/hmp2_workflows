@@ -21,9 +21,9 @@ def verify_files(workflow, input_files, checksums_file):
 
     Args:
         input_file_dir (string): Path to directory containing files to be 
-                                 checked.
+           checked.
         checksums_file (string): Path to file containing the source side md5 
-                                 checksums.
+            checksums.
 
     Requires:
         None
@@ -77,14 +77,14 @@ def stage_files(workflow, input_files, target_dir, delete=False,
         workflow (anadama2.Workflow): The workflow object.
         input_files: A collection of input files to be staged.
         dest_dir (string): Path to destination directory where files should 
-                           be moved.
+            be moved.
         delete (boolean): If set to True the file on the source side is deleted
-                          upon successful transfer.
+            upon successful transfer.
         preserve (boolean): If set to True preserve the source subdirectory 
-                            structure on the target side.
+            structure on the target side.
         symlink (boolean): By default create symlinks from the origin 
-                           directory to the destination directory. If set to 
-                           False files will be copied using rsync.
+            directory to the destination directory. If set to 
+            False files will be copied using rsync.
 
     Requires:
         rsync v3.0.6+: A versatile file copying tool.
@@ -144,7 +144,7 @@ def make_files_web_visible(workflow, *files):
 
     Returns:
         list: A list of all files that should now be publicly visible on the 
-              IBDMDB website.
+            IBDMDB website.
 
     Example:
         from anadama2 import Workflow
@@ -168,4 +168,6 @@ def make_files_web_visible(workflow, *files):
                             depends = public_dirs,
                             targets = complete_files)
 
+    ## Again kinda lazy, but the files passed in will be the ones that are
+    ## made public.
     return files
