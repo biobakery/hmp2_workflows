@@ -1,0 +1,35 @@
+D,Format,CSV
+D,Header,1
+F,Sheet Name,,,,Choice,"'CCHMC','MGH','CSMC','Emory','MGH Peds'"
+F,Subject,,,,Integer,
+F,Status,,,,Choice,"'complete','active','dropped','SF'"
+F,Collection #,,,,Integer,
+F,Site/Sub/Coll,,,,Text,
+F,Receipt Status,,,,Choice,'True'
+F,Actual Date of Receipt,,,,Text,
+F,Parent Sample A,,X,,Text,
+F,Parent Sample B,,X,,Text,
+F,DNA/RNA,,X,,Text,
+F,DNA/RNA mass,,X,,Text,
+F,DNA/RNA status,,X,,Choice,"'destroyed','missed','In Storage','Extracted'"
+F,MbX,,X,,Text,
+F,MBX mass,,X,,Text,
+F,MBX status,,X,,Choice,"'destroyed','missed','In Storage','Shipped','INCONTAINER'"
+F,MBX leak?,,X,,Choice,"'missed','Yes'"
+F,MBX Volume Recorded,,X,,Text,
+F,Viromics,,X,,Text,
+F,Viromics mass,,X,,Text,
+F,Viromics status,,X,,Choice,"'destroyed','missed','In Storage'"
+F,Viromics Selection,,X,,Choice,'YES'
+F,Storage,,X,,Text,
+F,Storage mass,,X,,Text,
+F,Storage status,,X,,Choice,"'destroyed','missed','In Storage'"
+F,Storage Sample Selection,,X,,Choice,'YES'
+F,Fecal Calprotectin,,X,,Text,
+F,Fecal Cal mass,,X,,Text,
+F,Fecal Cal status,,X,,Choice,"'destroyed','missed','INSTORAGE','EXPORTED','TERMINATED'"
+F,Fecal Cal Selection,,X,,Choice,"'YES','PROT'"
+F,Proteomics,,X,,Text,
+F,Proteomics mass,,X,,Text,
+F,Proteomics status,,X,,Choice,"'destroyed','missed','INSTORAGE','EXPORTED','TERMINATED','RECEIVED'"
+F,Prot. Sample Selection,,X,,Choice,'YES'

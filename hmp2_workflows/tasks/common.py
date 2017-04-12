@@ -18,7 +18,6 @@ def verify_files(workflow, input_files, checksums_file):
     contanining md5 checksums must have been generated on the source side of 
     the files and provided when these files were uploaded.
 
-
     Args:
         input_file_dir (string): Path to directory containing files to be 
            checked.
@@ -160,7 +159,8 @@ def make_files_web_visible(workflow, *files):
     ## Making a group of files web visible is as simple as touching a file 
     ## named complete.html in the directories containing the files we want 
     ## to show up on the website
-    public_dirs = itertools.groupby(files, os.path.dirname)
+    public_files = itertools.chain_from_iterable(list(files))
+    public_dirs = itertools.groupby(public_files, os.path.dirname)
     complete_files = [os.path.join(public_dir, 'complete.html') for public_dir
                       in public_dirs]
 
@@ -171,3 +171,5 @@ def make_files_web_visible(workflow, *files):
     ## Again kinda lazy, but the files passed in will be the ones that are
     ## made public.
     return files
+
+

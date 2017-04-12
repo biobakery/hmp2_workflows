@@ -33,6 +33,7 @@ def bam_to_fastq(workflow, input_files, output_dir, threads):
 
         from hmp2_workflows.tasks.file_conv import bam_to_fastq
 
+ 
         workflow = Workflow()
         fastq_files = bam_to_fastq(workflow,
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],

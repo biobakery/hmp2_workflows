@@ -56,3 +56,23 @@ wgs: &wgs
 mtx: &mtx
     <<: *base
 
+############################
+#        METADATA          #
+############################
+
+## The parameters below are required by the HMP2 metadata curation pipelines.
+metadata: &metadata
+    <<: *base
+
+    ## The list below defines the allowable data types that the metadata 
+    ## pipeline should accept.
+    data_types:
+        - amplicon
+        - proteomics
+        - metagenomics
+        - metatranscriptomics
+
+    ## The cutplace CID files to use against our metadata files.
+    validators:
+        - studytrax: config/validation/studytrax.cid
+        - broad_datasheet: config/validation/broad.cid
