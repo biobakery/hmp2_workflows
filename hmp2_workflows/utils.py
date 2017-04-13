@@ -6,13 +6,29 @@ hmp2_workflows.utils
 
 This module provides utility functions that are used within the AnaDaMa2 
 HMP2 workflows.
+
+Copyright (c) 2017 Harvard School of Public Health
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 """
 
 import os
-import subprocess
-import tempfile
-
-from itertools import islice
 
 import yaml
 
@@ -93,7 +109,7 @@ def parse_cfg_file(config_file, section=None):
     stream = file(config_file, 'r')
     config = yaml.load(stream)
     
-    if not section in config:
+    if section and not section in config:
         raise KeyError('Section not found in config file', section)
 
     return config.get(section) if section else config
@@ -125,20 +141,15 @@ def parse_checksums_file(checksums_file):
 
     with open(checksums_file) as md5_fh:
         for line in md5_fh:
-            (checksum, filename) = md5_fh.split('\t')        
+            (checksum, filename) = line.split()
             
-            filename = os.path.basename(filename)
-            checksum_str = "%s  %s" 
-
-            if "*" in filename:
-                filename = filename.replace('*', '')
-                checksum_str = "%s *%s"
+            filename = os.path.basename(filename).replace('*', '')
 
             # Quick check to make sure the checksum is 32 characters long   
             # since MD5 checksums should always be 32 characters long.
             if len(checksum) != 32:
                 raise ValueError('MD5 Checksum value is not valid', checksum)
 
-            md5_map[filename] = checksum_str % (checksum, filename)
+            md5_map[filename] = checksum
 
     return md5_map            

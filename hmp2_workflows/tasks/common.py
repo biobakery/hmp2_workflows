@@ -6,9 +6,32 @@ hmp2_workflows.tasks.common
 
 This module contains common functions that are used across the board in
 all HMP2 AnADAMA2 workflows.
+
+Copyright (c) 2017 Harvard School of Public Health
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 """
 
-from biobakey_workflow import utils as bbakery_utils
+import itertools
+import os
+
+from biobakery_workflows import utilities as bbakery_utils
 from hmp2_workflows import utils as hmp2_utils
 
 
@@ -48,9 +71,9 @@ def verify_files(workflow, input_files, checksums_file):
         if not md5sum:
             raise KeyError('MD5 checksum not found.', input_file)
 
-        workflow.add_task_gridable('echo "[args[0]]" [depends[0]] | md5sum -c -',
-                                   depends =[input_file],
-                                   args = [md5sum_str],
+        workflow.add_task_gridable('echo "[args[0]] *[depends[0]]" | md5sum -c -',
+                                   depends = [input_file],
+                                   args = [md5sum],
                                    time = 24*60,
                                    mem = 1024,
                                    cores = 1)
@@ -130,7 +153,7 @@ def stage_files(workflow, input_files, target_dir, delete=False,
     return target_files
 
 
-def make_files_web_visible(workflow, *files):
+def make_files_web_visible(workflow, files):
     """Receives a list of files to be disseminated and ensures that they are 
     visible on the IBDMDB website.
 
@@ -159,13 +182,13 @@ def make_files_web_visible(workflow, *files):
     ## Making a group of files web visible is as simple as touching a file 
     ## named complete.html in the directories containing the files we want 
     ## to show up on the website
-    public_files = itertools.chain_from_iterable(list(files))
+    public_files = itertools.chain.from_iterable(files)
     public_dirs = itertools.groupby(public_files, os.path.dirname)
-    complete_files = [os.path.join(public_dir, 'complete.html') for public_dir
+    complete_files = [os.path.join(item[0], 'complete.html') for item
                       in public_dirs]
 
     workflow.add_task_group('touch [targets[0]]',
-                            depends = public_dirs,
+                            depends = map(os.path.dirname, complete_files),
                             targets = complete_files)
 
     ## Again kinda lazy, but the files passed in will be the ones that are

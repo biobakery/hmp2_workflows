@@ -27,11 +27,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+import datetime
+import os
+
 from itertools import chain
 
 from anadama2 import Workflow
 
-from biobakery_workflows.utilities import find_files
+from biobakery_workflows.utilities import find_files, create_folders
 
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                         make_files_web_visible)
@@ -51,36 +54,69 @@ def parse_cli_arguments():
     """
     workflow = Workflow(version='0.1', description='A workflow to handle HMP2 '
                         'Proteomics data.', remove_options=['input', 'output'])
-    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+    workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
-    workflow.add_argument('--config-file', desc='Configuration file '
+    workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
-    workflow.add_argument('--md5-checksums', desc='MD5 checksums for files '
+    workflow.add_argument('checksums-file', desc='MD5 checksums for files '
                           'found in the supplied input directory.')
 
-    return (workflow, workflow.parse_args())
+    return workflow
 
 
-def main(workflow, args):
+def main(workflow):
+    args = workflow.parse_args()
     conf = parse_cfg_file(args.config_file, section='proteomics')
 
     ## Parse the manifest file containing all data files from this submission
     manifest = parse_cfg_file(args.manifest_file)
+    project = manifest.get('project')
     data_files = manifest.get('submitted_files')
-    
+
     if data_files and data_files.get('proteomics'):
-        input_files = data_files.get('proteomics')
+        (input_files, output_files) = data_files.get('proteomics').values()
 
         ## Step #1 - Verify MD5sums of all input data provided to IBDMDB
+        ## 
+        ## Since our proteomics files will be coming from the PNNL our
+        ## files won't be in the same location as the Broad files so 
+        ## we'll need to get MD5's manually supplied.
         validated_files = verify_files(workflow, input_files, 
-                                       args.md5_checksums)
+                                       args.checksums_file)
+
+        ## Setup the directories where we will be depositing our files
+        date_stamp = str(datetime.date.today())
+        base_deposition_dir = os.path.join(conf.get('deposition_dir'),
+                                           project,
+                                           date_stamp)
+        deposition_dir = os.path.join(base_deposition_dir, 'proteomics')
+        create_folders(deposition_dir)
+
+        processing_dir = os.path.join(conf.get('processing_dir'),
+                                      project,
+                                      date_stamp,
+                                      'proteomics')
+        create_folders(processing_dir)
+
+        public_dir = os.path.join(conf.get('public_dir'),
+                                  project,
+                                  date_stamp,
+                                  'proteomics')
+        create_folders(public_dir)
+
+        ## Move the manifest file over so we have information about this 
+        ## batch of data in the deposition directory
+        manifest_file = stage_files(workflow,
+                                    [args.manifest_file],
+                                    base_deposition_dir,
+                                    delete=False)
 
         ## Step 2 - Move files over to our deposition directory
         deposited_files = stage_files(workflow,
                                       validated_files,
-                                      conf.deposition_dir,
-                                      delete=True)
-        
+                                      deposition_dir,
+                                      delete=False)
+
         ## Step #3 - Stage files to processing directory
         ##
         ## For the Proteomics data it is ok to symlink these files over from the 
@@ -88,20 +124,25 @@ def main(workflow, args):
         ## but we need them to be in place here to show up on the website.
         files_to_process = stage_files(workflow, 
                                        deposited_files,
-                                       conf.processing_dir,
+                                       processing_dir,
                                        symlink=True)
 
-        output_files = (data_files.get('output_files') if 
-            'output_files' in data_files else [])
-         
+        output_files = output_files if output_files else []         
+
         ## Step #4 - Stage output files to public folder
         public_files = stage_files(workflow, output_files, 
-                                   conf.public_dir)
+                                   public_dir)
         
+        ## TODO: We need to generate metadata files for the output files that
+        ## are included with this dataset. Need to talk to George about 
+        ## getting the ID-mapped version of these files since they will be 
+        ## needed here.
+
         ## Step #5 - Make files web-visible by creating the complete.html file
         ## in each of our output directories.
-        make_file_web_visible(workflow, files_to_process, files_to_process, 
-                              public_files)
+        make_files_web_visible(workflow, [files_to_process, public_files])
+
+        workflow.go()
 
 
 if __name__ == "__main__":
