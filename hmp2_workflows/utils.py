@@ -28,9 +28,12 @@ furnished to do so, subject to the following conditions:
     THE SOFTWARE.
 """
 
+import datetime
 import os
 
 import yaml
+
+from biobakery_workflows import utilities as bb_utils
 
 
 def create_merged_md5checksum_file(checksum_files, merged_checksum_file):
@@ -91,6 +94,7 @@ def create_merged_md5checksum_file(checksum_files, merged_checksum_file):
     merged_checksum_file.close()
 
     return merged_checksum_file
+
 
 def parse_cfg_file(config_file, section=None):
     """Parses the provided YAML config file. If a specific section is 
@@ -153,3 +157,53 @@ def parse_checksums_file(checksums_file):
             md5_map[filename] = checksum
 
     return md5_map            
+
+
+def create_project_directories(directories, project, data_type):
+    """Creates project directories that are required for raw, intermediate
+    and output files produced by HMP2 workflows. The template for directories
+    created is in the following format:
+
+            <BASE DIR>/<PROJECT>/<TIME STAMP>/<DATA TYPE>
+
+    Returns a list containing all created directories.
+
+    Args:
+        directories (list): A list containing all directories which will 
+            have the above template applied to create a project directory.
+        project (string): The project to use when creating project 
+            directories.
+        data_type (string): The data type for these project directories.
+
+    Requires:
+        None
+
+    Returns:
+        list: A list containing create project directories.
+
+    Example:
+        from hmp2_workflows import utils
+
+        base_dirs = ['/tmp/foo', '/tmp/bar', '/tmp/baz']
+        project = 'HMP'
+        data_type = '16S'
+
+        project_dirs = utils.create_project_directories(base_dirs, 
+                                                        project, 
+                                                        data_type)
+
+        print project_dirs
+        ## ['/tmp/foo/HMP/2017-04-17/16S',
+            '/tmp/bar/HMP/2017-04-17/16S',
+            '/tmp/baz/HMP/2017-04-17/16S']
+    """
+    project_dirs = []
+    date_stamp = str(datetime.date.today())
+
+    for directory in directories:
+        target_dir = os.path.join(directory, project, date_stamp, data_type)
+        bb_utils.create_folder(target_dir)
+        project_dirs.append(target_dir)
+
+    return project_dirs
+

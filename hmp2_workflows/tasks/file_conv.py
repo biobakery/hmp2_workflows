@@ -30,6 +30,7 @@ furnished to do so, subject to the following conditions:
 import os
 
 from biobakery_workflows import utils as bbutils
+from biobaker_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
 
 
 def bam_to_fastq(workflow, input_files, output_dir, threads):
@@ -73,3 +74,46 @@ def bam_to_fastq(workflow, input_files, output_dir, threads):
                                      cores = threads)
 
     return output_files
+
+
+def batch_convert_tsv_to_biom(workflow, tsv_files): 
+    """Batch converts tsv files to the biom format. BIOM files will be 
+    deposited in the same folder as source TSV files and will carry the 
+    same filenames.
+
+    Args:
+        workflow (anadama2.Workflow): The workflow object.
+        tsv_files (list): A list containing all TSV files to be converted 
+            to BIOM format.
+    
+    Requires:
+        Biom v2: A tool for general use formatting of biological data.
+
+    Returns: 
+        list: A list containing paths to all converted BIOM files.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import common
+
+        workflow = anadama2.Workflow()
+
+        tsv_files = ['/tmp/foo.tsv', '/tmp/bar.tsv', '/tmp/baz.tsv']
+        biom_files = common.batch_convert_tsv_to_biom(workflow, tsv_files)
+
+        print biom_files
+        ## ['/tmp/foo.biom', '/tmp/bar.biom', '/tmp/baz.biom']
+    """
+    biom_files = []
+
+    tsv_fnames = bbutils.sample_names(tsv_files)
+    tsv_dir = os.path.dirname(tsv_files[0])
+
+    biom_files = [os.path.join(tsv_dir, biom_fname) for biom_fname in 
+                  bbutils.name_files(tsv_fnames, tsv_dir, extension='biom')]
+
+    for (tsv_file, biom_file) in zip(tsv_files, biom_files):
+        convert_to_biom_from_tsv(workflow, tsv_file, biom_file)
+
+    return biom_files
+

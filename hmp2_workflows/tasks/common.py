@@ -100,8 +100,6 @@ def stage_files(workflow, input_files, target_dir, delete=False,
         input_files: A collection of input files to be staged.
         dest_dir (string): Path to destination directory where files should 
             be moved.
-        delete (boolean): If set to True the file on the source side is deleted
-            upon successful transfer.
         preserve (boolean): If set to True preserve the source subdirectory 
             structure on the target side.
         symlink (boolean): By default create symlinks from the origin 
@@ -137,8 +135,6 @@ def stage_files(workflow, input_files, target_dir, delete=False,
     ## N rsync calls.
     stage_cmd = "rsync -avz [depends[0]] [targets[0]]"
     
-    if delete:
-        stage_cmd = stage_cmd.replace('-avz', '--remove-source-files -avz')
     if preserve:
         stage_cmd = stage_cmd.replace('-avz', 
                                       '--rsync-path=\"mkdir -p `dirname '
@@ -195,4 +191,44 @@ def make_files_web_visible(workflow, files):
     ## made public.
     return files
 
+
+def tar_files(workflow, files, output_tarball):
+    """Creates a tarball package of the provided files with the given output
+    tarball file path.
+
+    Args:
+        workflow (anadama2.Workflow): The workflow object.
+        files (list): A list of files to package together into a tarball.
+        output_tarball (string): The desired output tarball file.
+
+    Requires:
+        None
+
+    Returns:
+        string: Path to the newly created tarball file.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import common
+
+        workflow = anadama2.Workflow()
+
+        files_to_tar = ['/tmp/foo.txt', '/tmp/bar.txt']
+        tar_file = '/tmp/foo_bar.tar'
+
+        out_tar = common.tar_files(workflow, files_to_tar, tar_file)
+    """
+    ## We don't want to include the whole directory structure in our output
+    ## tarball so we get rid of it by using the --directory parameter.
+    file_dirs = [dirs[0] for dirs in itertools.groupby(files, 
+                                                       os.path.dirname)]
+    tar_dir_string = " ".join(["--directory %s" % file_dir for file_dir 
+                               in file_dirs])
+
+    tar_cmd = "tar -cvfz [targets[0]] %s %s" % (tar_dir_string, " ".join(files))
+    workflow.add_task(tar_cmd,
+                      depends = files
+                      targets = output_tarball)
+
+    return output_tarball
 

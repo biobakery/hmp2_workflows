@@ -108,14 +108,12 @@ def main(workflow):
         ## batch of data in the deposition directory
         manifest_file = stage_files(workflow,
                                     [args.manifest_file],
-                                    base_deposition_dir,
-                                    delete=False)
+                                    base_deposition_dir)
 
         ## Step 2 - Move files over to our deposition directory
         deposited_files = stage_files(workflow,
                                       validated_files,
-                                      deposition_dir,
-                                      delete=False)
+                                      deposition_dir)
 
         ## Step #3 - Stage files to processing directory
         ##
@@ -141,6 +139,10 @@ def main(workflow):
         ## Step #5 - Make files web-visible by creating the complete.html file
         ## in each of our output directories.
         make_files_web_visible(workflow, [files_to_process, public_files])
+
+        ## Step #6 - Once all the files have been staged we can go ahead and
+        ## delete the raw files from their original directory as well as the 
+        ## MANIFEST file.
 
         workflow.go()
 
