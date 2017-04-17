@@ -31,6 +31,8 @@ import itertools
 import os
 import tempfile
 
+from itertools import chain
+
 from anadama2 import Workflow
 
 from biobakery_workflows.tasks.shotgun import (quality_control, 
@@ -40,12 +42,12 @@ from biobakery_workflows.tasks.shotgun import (quality_control,
 from biobakery_workflows.utilities import find_files
 
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
-                                         create_project_dirs,
                                          tar_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import (bam_to_fastq,
                                             batch_convert_tsv_to_biom)
 from hmp2_workflows.utils import (parse_cfg_file, 
+                                  create_project_dirs,
                                   create_merged_md5sum_file)
 
 
@@ -62,26 +64,28 @@ def parse_cli_arguments():
     """
     workflow = Workflow(version='0.1', description='A workflow to handle HMP2 '
                         'WGS data.', remove_options=['input', 'output'])
-    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+    workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
-    workflow.add_argument('--config-file', desc='Configuration file '
+    workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('threads', desc='number of threads/cores for each '
+                          'task to use', default=1)
 
-    return (workflow, workflow.parse_args())
+    return workflow
 
 
-def main(workflow, args):
+def main(workflow):
+    args = workflow.parse_args()
     conf = parse_cfg_file(args.config_file, section='wgs')
 
-    contaminate_db = conf.get('database').get('knead_dna')
-    project = conf.get('project')
+    contaminate_db = conf.get('databases').get('knead_dna')
 
     manifest = parse_cfg_file(args.manifest_file)
     data_files = manifest.get('submitted_files')
-
+    project = manifest.get('project')
 
     if data_files and data_files.get('WGS'):
-        (input_files, output_files) = data_files.get('WGS').values()
+        input_files = data_files.get('WGS').get('input')
 
         ## Create all the project directories we will need in the following 
         ## steps. These will be in the layout of:
@@ -103,16 +107,17 @@ def main(workflow, args):
         ## Our md5sums are going to be in the directories with their 
         ## respective files so we'll want to collate them somehow.
         ## TODO: Gather up all md5sums for files and create an md5sums file
-        input_dirs = [group[0] for group in itertools.grouby(input_files, 
-                                                             os.path.dirname)]
-        md5sum_files = find_files(input_dirs, ext='.md5')
+        input_dirs = [group[0] for group in itertools.groupby(input_files, 
+                                                              os.path.dirname)]
+        md5sum_files = chain.from_iterable([find_files(input_dir, '.md5') for 
+                                            input_dir in input_dirs])
         merged_md5sum_file = tempfile.mktemp('.md5')
         checksums_file = create_merged_md5sum_file(md5sum_files, 
                                                    merged_md5sum_file)
 
         ## Validate files to ensure file integrity via md5 checksums
         validated_files = verify_files(workflow, input_files, 
-                                       checksums_file, args.threads)
+                                       checksums_file)
 
         manifest_file = stage_files(workflow,
                                     [args.manifest_file],
@@ -188,10 +193,10 @@ def main(workflow, args):
 
         ## TODO: Add static webpage visualization generation in here
         make_files_web_visible(workflow, 
-                               cleaned_fastqs,
-                               tax_profile_outputs[0:1],
-                               tax_biom_files,
-                               func_tar_files)
+                               [cleaned_fastqs,
+                                tax_profile_outputs[0:1],
+                                tax_biom_files,
+                                func_tar_files])
 
         workflow.go()
 

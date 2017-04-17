@@ -36,7 +36,7 @@ import yaml
 from biobakery_workflows import utilities as bb_utils
 
 
-def create_merged_md5checksum_file(checksum_files, merged_checksum_file):
+def create_merged_md5sum_file(checksum_files, merged_checksum_file):
     """Parses a list of files containing md5checksums for a respective 
     file in the same directory. These files should only contain an md5checksum
     and when merged together will produce a file that resembles the following:
@@ -72,27 +72,25 @@ def create_merged_md5checksum_file(checksum_files, merged_checksum_file):
     
         utils.create_merged_md5checksum_file(md5_list, merged_md5_file)
     """
-    merged_checksum_fh = open(merged_checksum_file, 'w')
+    with open(merged_checksum_file, 'w') as merged_checksum_fh:
+        for checksum_file in checksum_files:
+            ## Double check to make sure our md5 checksum files are in the proper
+            ## naming convention.
+            file_parts = os.path.basename(checksum_file).split(os.extsep)
+            file_exts = file_parts[1:]
 
-    for checksum_file in checksum_files:
-        ## Double check to make sure our md5 checksum files are in the proper
-        ## naming convention.
-        (_basename, exts) = os.path.splitext(checksum_file)
+            if not file_exts or len(file_exts) <= 1:
+                raise ValueError('Checksum file name format is incorrect', 
+                                 checksum_file)
 
-        if not exts or exts.count('.') <= 1:
-            raise ValueError('Checksum file name format is incorrect', 
-                             checksum_file)
+            source_file = checksum_file.replace('.md5', '')
+            checksum_str = open(checksum_file).readline().strip()
 
-        source_file = checksum_file.replace('.md5', '')
-        checksum_str = open(checksum_file).readline().strip()
+            if len(checksum_str) != 32:
+                raise ValueError('MD5 Checksum value is not valid', checksum_str)
 
-        if len(checksum_str) != 32:
-            raise ValueError('MD5 Checksum value is not valid', checksum_str)
-
-        merged_checksum_fh.write("%s *%s" % (checksum_str, source_file))
+            merged_checksum_fh.write("%s *%s\n" % (checksum_str, source_file))
     
-    merged_checksum_file.close()
-
     return merged_checksum_file
 
 
@@ -159,7 +157,7 @@ def parse_checksums_file(checksums_file):
     return md5_map            
 
 
-def create_project_directories(directories, project, data_type):
+def create_project_dirs(directories, project, data_type):
     """Creates project directories that are required for raw, intermediate
     and output files produced by HMP2 workflows. The template for directories
     created is in the following format:
@@ -202,7 +200,7 @@ def create_project_directories(directories, project, data_type):
 
     for directory in directories:
         target_dir = os.path.join(directory, project, date_stamp, data_type)
-        bb_utils.create_folder(target_dir)
+        bb_utils.create_folders(target_dir)
         project_dirs.append(target_dir)
 
     return project_dirs

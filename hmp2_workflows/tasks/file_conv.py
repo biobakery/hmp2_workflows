@@ -29,11 +29,11 @@ furnished to do so, subject to the following conditions:
 
 import os
 
-from biobakery_workflows import utils as bbutils
-from biobaker_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
+from biobakery_workflows import utilities as bbutils
+from biobakery_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
 
 
-def bam_to_fastq(workflow, input_files, output_dir, threads):
+def bam_to_fastq(workflow, input_files, output_dir, threads = 1):
     """Converts BAM sequence files to a single interleaved FASTQ file using
     the samtools bam2fq utility.
 
@@ -64,9 +64,9 @@ def bam_to_fastq(workflow, input_files, output_dir, threads):
     """
     output_files = bbutils.name_files(map(os.path.basename, input_files),
                                       output_dir, 
-                                      ext='fastq')
+                                      extension = 'fastq')
 
-    workflow.add_task_group_gridable('samtools bam2fq [depends[0]] > [target[0]]',
+    workflow.add_task_group_gridable('samtools bam2fq [depends[0]] > [targets[0]]',
                                      depends = input_files,
                                      targets = output_files,
                                      time = 24*60,

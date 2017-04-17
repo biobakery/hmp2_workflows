@@ -31,8 +31,8 @@ furnished to do so, subject to the following conditions:
 import itertools
 import os
 
-from biobakery_workflows import utilities as bbakery_utils
-from hmp2_workflows import utils as hmp2_utils
+from biobakery_workflows import utilities as bbutils
+from hmp2_workflows import utils as hutils
 
 
 def verify_files(workflow, input_files, checksums_file):
@@ -63,7 +63,7 @@ def verify_files(workflow, input_files, checksums_file):
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/tmp/foo_checksums.txt)
     """
-    checksums_dict = hmp2_utils.parse_checksums_file(checksums_file)
+    checksums_dict = hutils.parse_checksums_file(checksums_file)
 
     for input_file in input_files:
         md5sum = checksums_dict.get(os.path.basename(input_file))
@@ -129,7 +129,7 @@ def stage_files(workflow, input_files, target_dir, delete=False,
 
     ## TODO: We need to preserve the file directory structure here because
     ## it tells when the files were received and is used by the website.
-    target_files = bbakery_utils.name_files(input_files, target_dir)
+    target_files = bbutils.name_files(input_files, target_dir)
 
     ## TODO: Figure out a better way to handle this rather than creating 
     ## N rsync calls.
@@ -227,7 +227,7 @@ def tar_files(workflow, files, output_tarball):
 
     tar_cmd = "tar -cvfz [targets[0]] %s %s" % (tar_dir_string, " ".join(files))
     workflow.add_task(tar_cmd,
-                      depends = files
+                      depends = files,
                       targets = output_tarball)
 
     return output_tarball
