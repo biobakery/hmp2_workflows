@@ -113,7 +113,8 @@ def batch_convert_tsv_to_biom(workflow, tsv_files):
                   bbutils.name_files(tsv_fnames, tsv_dir, extension='biom')]
 
     for (tsv_file, biom_file) in zip(tsv_files, biom_files):
-        convert_to_biom_from_tsv(workflow, tsv_file, biom_file)
+        convert_to_biom_from_tsv(workflow, tsv_file, biom_file, 
+                                 obs_metadata=None)
 
     return biom_files
 

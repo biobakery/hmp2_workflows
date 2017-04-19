@@ -39,9 +39,11 @@ from biobakery_workflows.tasks.shotgun import (quality_control,
                                                taxonomic_profile,
                                                functional_profile)
 
-from biobakery_workflows.utilities import find_files
-
-from hmp2_workflows.tasks.common import (verify_files, stage_files,
+from biobakery_workflows.utilities import (find_files,
+                                           sample_names as get_sample_names,
+                                           name_files)
+from hmp2_workflows.tasks.common import (verify_files, 
+                                         stage_files,
                                          tar_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import (bam_to_fastq,
@@ -62,7 +64,7 @@ def parse_cli_arguments():
         anadama2.Workflow: The workflow object for this pipeline
         anadama2.cli.Configuration: Arguments passed into this workflow.
     """
-    workflow = Workflow(version='0.1', description='A workflow to handle HMP2 '
+    workflow = Workflow(version='1.0', description='A workflow to handle HMP2 '
                         'WGS data.', remove_options=['input', 'output'])
     workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
@@ -131,8 +133,9 @@ def main(workflow):
                                       deposition_dir,
                                       symlink=True)
 
-        fastq_files = bam_to_fastq(workflow, deposited_files, 
-                                   processing_dir, args.threads)
+        #fastq_files = bam_to_fastq(workflow, deposited_files, 
+        #                           processing_dir, args.threads)
+        fastq_files = deposited_files
 
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         fastq_files, 
@@ -148,7 +151,7 @@ def main(workflow):
         ##      * metaphlan2 SAM files 
         tax_profile_outputs = taxonomic_profile(workflow,
                                                 cleaned_fastqs,
-                                                public_dir,
+                                                processing_dir,
                                                 args.threads)
 
         ## Generate functional profile output using humann2. Outputs are the 
@@ -159,9 +162,10 @@ def main(workflow):
         ##      * Merged pathway abundances
         func_profile_outputs = functional_profile(workflow,
                                                   cleaned_fastqs,
-                                                  public_dir,
+                                                  processing_dir,
                                                   args.threads,
                                                   tax_profile_outputs[1])
+
 
         ## BIOM files are also distributed on the IBDMDB website so we need 
         ## to make sure we round those all up and move them to the public 
@@ -169,35 +173,65 @@ def main(workflow):
         biom_files = batch_convert_tsv_to_biom(workflow, tax_profile_outputs[1])
         tax_biom_files = stage_files(workflow,
                                      biom_files,
-                                     public_dir)
+                                     processing_dir)
+
         
+        ## A bunch of analysis files are going to be in the processing
+        ## directory so let's take care of moving the ones we want available 
+        ## on the IBDMDB website to the 'public' directory
+        pub_cleaned_fastqs = stage_files(workflow,
+                                         cleaned_fastqs,
+                                         public_dir)
+        pub_merged_tax_profile = stage_files(workflow,
+                                             [tax_profile_outputs[0]],
+                                             public_dir)
+        pub_tax_profiles = stage_files(workflow,
+                                       tax_profile_outputs[1],
+                                       public_dir)
+        pub_tax_biom = stage_files(workflow,
+                                   tax_biom_files,
+                                   public_dir)
+
         ## The functional files are a little trickier. We need to get 
         ## each of the individual files and package them up into a tarball
-        norm_genefamilies = find_files(os.path.join(public_dir, 'genes'),
-                                       'relab.tsv')
-        norm_ecsfiles = find_files(os.path.join(public_dir, 'ecs'),
-                                  '.relab.tsv')
-        norm_path_files = find_files(os.path.join(public_dir, 'pathways'), 
-                                     '.relab.tsv')
-        
+        sample_names = get_sample_names(validated_files)
+        norm_genefamilies = name_files(sample_names, 
+                                       processing_dir, 
+                                       subfolder = 'genes',
+                                       tag = 'genefamilies_relab',
+                                       extension = 'tsv')
+        norm_ecs_files = name_files(sample_names,
+                                    processing_dir,
+                                    subfolder = 'ecs',
+                                    tag = 'genefamilies_ecs_relab',
+                                    extension = 'tsv')
+        norm_path_files = name_files(sample_names,
+                                     processing_dir,
+                                     subfolder = 'pathways',
+                                     tag = 'pathabundance_relab',
+                                     extension = 'tsv')
+
         func_tar_files = []
-        for (genefam_file, ecs_file, path_file) in zip(norm_genefamilies,
-                                                       norm_ecsfiles,
-                                                       norm_path_files):
-            sample_name = os.path.splitext(os.path.basename(genefam_file))
-            tar_path = os.path.join(public_dir, "%s_humann2.tar" % sample_name)
+        for (sample, gene_file, ecs_file, path_file) in zip(sample_names,
+                                                            norm_genefamilies,
+                                                            norm_ecs_files,
+                                                            norm_path_files):
+            tar_path = os.path.join(public_dir, "%s_humann2.tar" % sample)
             func_tar_file = tar_files(workflow, 
-                                      [genefam_file, ecs_file, path_file],
+                                      [gene_file, ecs_file, path_file],
                                       tar_path)
             func_tar_files.append(func_tar_file)
 
         ## TODO: Add static webpage visualization generation in here
         make_files_web_visible(workflow, 
-                               [cleaned_fastqs,
-                                tax_profile_outputs[0:1],
-                                tax_biom_files,
+                               [pub_cleaned_fastqs,
+                                pub_merged_tax_profile,
+                                pub_tax_profiles,
+                                pub_tax_biom,
                                 func_tar_files])
 
+        ## TODO: Add code/tasks to handle generating all the metadata that 
+        ## we need.
         workflow.go()
 
 

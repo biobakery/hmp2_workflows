@@ -30,6 +30,7 @@ furnished to do so, subject to the following conditions:
 
 import itertools
 import os
+import tempfile
 
 from biobakery_workflows import utilities as bbutils
 from hmp2_workflows import utils as hutils
@@ -218,17 +219,21 @@ def tar_files(workflow, files, output_tarball):
 
         out_tar = common.tar_files(workflow, files_to_tar, tar_file)
     """
-    ## We don't want to include the whole directory structure in our output
-    ## tarball so we get rid of it by using the --directory parameter.
-    file_dirs = [dirs[0] for dirs in itertools.groupby(files, 
-                                                       os.path.dirname)]
-    tar_dir_string = " ".join(["--directory %s" % file_dir for file_dir 
-                               in file_dirs])
+    ## Though there may be a cleaner way of doing this we need to create 
+    ## a temporary folder to symlink all the files we want to package into 
+    ## a tarball to get rid of tar'ing the directory structure as well.
+    symlink_files = []
+    tmp_dir = tempfile.mkdtemp()
+    
+    for target_file in files:
+        symlink_path = os.path.join(tmp_dir, os.path.basename(target_file))
+        symlink_files.append(symlink_path)
+        os.symlink(target_file, symlink_path)
 
-    tar_cmd = "tar -cvfz [targets[0]] %s %s" % (tar_dir_string, " ".join(files))
-    workflow.add_task(tar_cmd,
+    workflow.add_task('tar cvzf [targets[0]] -C [args[0]] .',
                       depends = files,
-                      targets = output_tarball)
+                      targets = [output_tarball],
+                      args = [tmp_dir])
 
     return output_tarball
 
