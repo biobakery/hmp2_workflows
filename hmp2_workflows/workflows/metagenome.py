@@ -49,6 +49,7 @@ from hmp2_workflows.tasks.common import (verify_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import (bam_to_fastq,
                                             batch_convert_tsv_to_biom)
+from hmp2_workflows.tasks.metadata import generate_sample_metadata
 from hmp2_workflows.utils import (parse_cfg_file, 
                                   create_project_dirs,
                                   create_merged_md5sum_file)
@@ -71,6 +72,8 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('metadata-file', desc='Accompanying metadata file '
+                           'for the provided data files.', default=None)
     workflow.add_argument('threads', desc='number of threads/cores for each '
                           'task to use', default=1)
 
@@ -174,12 +177,14 @@ def main(workflow):
                                      biom_files,
                                      processing_dir)
 
-        
         ## A bunch of analysis files are going to be in the processing
         ## directory so let's take care of moving the ones we want available 
         ## on the IBDMDB website to the 'public' directory
         pub_raw_dir = os.path.join(public_dir, 'raw')
         create_folders(pub_raw_dir)
+
+        pub_metadata_dir = os.path.join(public_dir, 'metadata')
+        create_folders(pub_metadata_dir)
 
         pub_tax_profile_dir = os.path.join(public_dir, 'tax_profile')
         create_folders(pub_tax_profile_dir)
@@ -202,7 +207,6 @@ def main(workflow):
         pub_func_files = stage_files(workflow, 
                                      func_profile_outputs,
                                      pub_func_profile_dir)
-
 
         ## The functional files are a little trickier. We need to get 
         ## each of the individual files and package them up into a tarball
@@ -235,7 +239,6 @@ def main(workflow):
                                       tar_path)
             func_tar_files.append(func_tar_file)
 
-
         ## We also want to package together the logs from kneaddata that 
         ## are generated during the QC/clean-up process
         kneaddata_log_files = name_files(sample_names,
@@ -246,10 +249,20 @@ def main(workflow):
                                     kneaddata_log_files,
                                     pub_raw_dir)
 
+        ## One of the last steps in the pipeline will be generating the 
+        ## individual metadata files for any type of product where 
+        ## metadata is available
+        pub_metadata_files = generate_sample_metadata(workflow,
+                                                      'metagenomics',
+                                                      sample_names,
+                                                      args.metadata_file,
+                                                      pub_metadata_dir)
+
         ## TODO: Add static webpage visualization generation in here
         make_files_web_visible(workflow, 
                                [pub_cleaned_fastqs,
                                 pub_log_files,
+                                pub_metadata_files,
                                 pub_merged_tax_profile,
                                 pub_tax_profiles,
                                 pub_tax_biom,

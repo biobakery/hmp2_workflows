@@ -30,11 +30,9 @@ furnished to do so, subject to the following conditions:
 
 import os
 
-import cutplace
-import cutplace.errors
+import pandas as pd
 
-from biobackery_workflow import utils as b_utils
-from hmp2_workflows import utils as h_utils
+from biobakery_workflows import utilities as bb_utils
 
 
 def validate_metadata_file(workflow, input_file, validation_file):
@@ -73,4 +71,69 @@ def validate_metadata_file(workflow, input_file, validation_file):
     workflow.add_task_gridable('cutplace [depends[0] [depends[1]]',
                                depends=[input_file, validation_file])
 
+
+def generate_sample_metadata(workflow, data_type, samples, metadata_file, 
+                             output_dir, id_column = 'External ID'):
+    """Generates a series of individual metadata files in CSV format 
+    from the provided merged metadata file. Each of the provided samples
+    has a metadata file generated to accompany any product files generated 
+    by the analysis pipelines.
+
+    Args:
+        workflow (anadama2.Workflow): The workflow object.
+        data_type (string): The data type of the provided samples. One of 
+            either 'metageonimcs', 'proteomices', 'amplicon'.
+        samples (list): A list of all samples that will have individual 
+            metadata files written.
+        metadata_file (string): Path to the merged metadata file.
+        id_column (string): The ID column to attempt to map sample names to 
+            in the merged metadata file. Default set to "External ID" but 
+            can change depending on the data type.
+        output_dir (string): Path to output directory to write each 
+            sample metadata file too.
+
+    Requires:
+        None
+
+    Returns:
+        list: A list containing the path to all sample metadata files created.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import metadata
+
+        workflow = anadama2.Workflow()
+        
+        samples = ['sampleA', 'sampleB']
+        metadadta_file = '/tmp/merged_metadata.csv'
+        output_dir = '/tmp/metadata'
+
+        metadata_files = metadata.generate_sample_metadata(workflow, 
+                                                           'metagenomics',
+                                                           samples, 
+                                                           metadata_file, 
+                                                           output_dir)
+        print metadata_files
+        ## ['/tmp/metadata/sampleA.csv', '/tmp/metadata/sampleB.csv']
+    """
+    metadata_df = pd.read_csv(metadata_file)
+
+    sample_metadata_dict = dict(zip(samples,
+                                    bb_utils.name_files(samples, output_dir,
+                                                        extension = 'csv')))
+   
+    def _workflow_gen_metadata(task):
+        metadata_subset = metadata_df.loc[(metadata_df[id_column].isin(samples)) &
+                                          (metadata_df['data_type'] == data_type)]
+
+        for (_index, row) in metadata_subset.iterrows():
+            sample_metadata_file = sample_metadata_dict.get(row[id_column])
+            metadata_subset.xs(_index).to_csv(sample_metadata_file, index=False)
+
+    workflow.add_task(_workflow_gen_metadata,
+                      targets = sample_metadata_dict.values(),
+                      depends = [metadata_file],
+                      name = 'Generate sample metadata')
+
+    return sample_metadata_dict.values()
 

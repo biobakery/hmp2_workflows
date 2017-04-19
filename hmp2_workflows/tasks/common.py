@@ -32,8 +32,8 @@ import itertools
 import os
 import tempfile
 
-from biobakery_workflows import utilities as bbutils
-from hmp2_workflows import utils as hutils
+from biobakery_workflows import utilities as bb_utils
+from hmp2_workflows import utils as hmp_utils
 
 
 def verify_files(workflow, input_files, checksums_file):
@@ -64,7 +64,7 @@ def verify_files(workflow, input_files, checksums_file):
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/tmp/foo_checksums.txt)
     """
-    checksums_dict = hutils.parse_checksums_file(checksums_file)
+    checksums_dict = hmp_utils.parse_checksums_file(checksums_file)
 
     for input_file in input_files:
         md5sum = checksums_dict.get(os.path.basename(input_file))
@@ -130,7 +130,7 @@ def stage_files(workflow, input_files, target_dir, delete=False,
 
     ## TODO: We need to preserve the file directory structure here because
     ## it tells when the files were received and is used by the website.
-    target_files = bbutils.name_files(input_files, target_dir)
+    target_files = bb_utils.name_files(input_files, target_dir)
 
     ## TODO: Figure out a better way to handle this rather than creating 
     ## N rsync calls.
