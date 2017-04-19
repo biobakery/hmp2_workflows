@@ -41,6 +41,7 @@ from biobakery_workflows.tasks.shotgun import (quality_control,
 
 from biobakery_workflows.utilities import (find_files,
                                            sample_names as get_sample_names,
+                                           create_folders,
                                            name_files)
 from hmp2_workflows.tasks.common import (verify_files, 
                                          stage_files,
@@ -108,7 +109,6 @@ def main(workflow):
 
         ## Our md5sums are going to be in the directories with their 
         ## respective files so we'll want to collate them somehow.
-        ## TODO: Gather up all md5sums for files and create an md5sums file
         input_dirs = [group[0] for group in itertools.groupby(input_files, 
                                                               os.path.dirname)]
         md5sum_files = chain.from_iterable([find_files(input_dir, '.md5') for 
@@ -166,7 +166,6 @@ def main(workflow):
                                                   args.threads,
                                                   tax_profile_outputs[1])
 
-
         ## BIOM files are also distributed on the IBDMDB website so we need 
         ## to make sure we round those all up and move them to the public 
         ## directory
@@ -179,18 +178,31 @@ def main(workflow):
         ## A bunch of analysis files are going to be in the processing
         ## directory so let's take care of moving the ones we want available 
         ## on the IBDMDB website to the 'public' directory
+        pub_raw_dir = os.path.join(public_dir, 'raw')
+        create_folders(pub_raw_dir)
+
+        pub_tax_profile_dir = os.path.join(public_dir, 'tax_profile')
+        create_folders(pub_tax_profile_dir)
+
+        pub_func_profile_dir = os.path.join(public_dir, 'func_profile')
+        create_folders(pub_func_profile_dir)
+
         pub_cleaned_fastqs = stage_files(workflow,
                                          cleaned_fastqs,
-                                         public_dir)
+                                         pub_raw_dir)
         pub_merged_tax_profile = stage_files(workflow,
                                              [tax_profile_outputs[0]],
-                                             public_dir)
+                                             pub_tax_profile_dir)
         pub_tax_profiles = stage_files(workflow,
                                        tax_profile_outputs[1],
-                                       public_dir)
+                                       pub_tax_profile_dir)
         pub_tax_biom = stage_files(workflow,
                                    tax_biom_files,
-                                   public_dir)
+                                   pub_tax_profile_dir)
+        pub_func_files = stage_files(workflow, 
+                                     func_profile_outputs,
+                                     pub_func_profile_dir)
+
 
         ## The functional files are a little trickier. We need to get 
         ## each of the individual files and package them up into a tarball
@@ -216,18 +228,32 @@ def main(workflow):
                                                             norm_genefamilies,
                                                             norm_ecs_files,
                                                             norm_path_files):
-            tar_path = os.path.join(public_dir, "%s_humann2.tar" % sample)
+            tar_path = os.path.join(pub_func_profile_dir, 
+                                    "%s_humann2.tgz" % sample)
             func_tar_file = tar_files(workflow, 
                                       [gene_file, ecs_file, path_file],
                                       tar_path)
             func_tar_files.append(func_tar_file)
 
+
+        ## We also want to package together the logs from kneaddata that 
+        ## are generated during the QC/clean-up process
+        kneaddata_log_files = name_files(sample_names,
+                                         processing_dir,
+                                         subfolder = 'kneaddata',
+                                         extension = 'log')
+        pub_log_files = stage_files(workflow,
+                                    kneaddata_log_files,
+                                    pub_raw_dir)
+
         ## TODO: Add static webpage visualization generation in here
         make_files_web_visible(workflow, 
                                [pub_cleaned_fastqs,
+                                pub_log_files,
                                 pub_merged_tax_profile,
                                 pub_tax_profiles,
                                 pub_tax_biom,
+                                pub_func_files,
                                 func_tar_files])
 
         ## TODO: Add code/tasks to handle generating all the metadata that 
