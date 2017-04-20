@@ -19,9 +19,10 @@ base: &base
     # Databases used by the various different workflows. 
     # TODO: Move these to a centralized location
     databases:
-        otu: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.udb
+        gg_usearch: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.udb
+        gg_taxonomy: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
+        gg_fasta: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.fasta
         chimera: /seq/ibdmdb/centos6/var/lib/uchime/gold.fa
-        taxonomy: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
         copy_num: /seq/ibdmdb/centos6/picrust-1.0.0/picrust/data/16S_13_5_precalculated.tab.gz        
         knead_dna: /seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1
         knead_rna: /seq/ibdmdb/centos6/var/lib/mrna
@@ -50,7 +51,7 @@ wgs: &wgs
         - .tar.bz2
         - .biom          
 
-16s: &16s
+16S: &16S
     <<: *base
 
 mtx: &mtx
