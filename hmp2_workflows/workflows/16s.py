@@ -39,10 +39,13 @@ from anadama2 import Workflow
 from biobakery_workflows.tasks.sixteen_s import (quality_control,
                                                  taxonomic_profile,
                                                  functional_profile)
-from biobakery_workflows.utilities import find_files
+from biobakery_workflows.utilities import (find_files,
+                                           create_folders,
+                                           sample_names as get_sample_names)
 
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                          make_files_web_visible)
+from hmp2_workflows.tasks.metadata import generate_sample_metadata
 from hmp2_workflows.tasks.file_conv import bam_to_fastq
 from hmp2_workflows.utils import (parse_cfg_file, 
                                   create_project_dirs,
@@ -67,6 +70,8 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('metadata-file', desc='Accompanying metadata file '
+                           'for the provided data files.', default=None)
     workflow.add_argument('threads', desc='number of threads/cores for each '
                           'task to use', default=1)
 
@@ -90,7 +95,8 @@ def main(workflow):
 
     if data_files and data_files.get('16S'):
         input_files = data_files.get('16S').get('input')
-
+        sample_names = get_sample_names(input_files)
+        
         ## Create project directories needed in the following steps.
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
                                             conf.get('processing_dir'),
@@ -130,6 +136,8 @@ def main(workflow):
         fastq_files = bam_to_fastq(workflow, deposited_files, 
                                    processing_dir)
         
+        ## TODO: Configure some of these hard-coded params to either be 
+        ## read from the command-line or from the config file
         qc_fasta_outs = quality_control(workflow,
                                         fastq_files,
                                         processing_dir,
@@ -153,12 +161,23 @@ def main(workflow):
                                                      closed_ref_tsv, 
                                                      processing_dir)
 
-        ## TODO: We are making public directories and not individual files 
-        ## here so I need to be really careful not to make public files that 
-        ## we don't want public
+
+        ## Generate metadata for all raw files/product files when available.
+        pub_metadata_dir = os.path.join(public_dir, 'metadata')
+        create_folders(pub_metadata_dir)
+
+        pub_metadata_files = generate_sample_metadata(workflow,
+                                                      'amplicon',
+                                                      sample_names,
+                                                      args.metadata_file,
+                                                      pub_metadata_dir)
+
+        ## TODO: This is really ugly. Need to figure out a way to not end up
+        ## wrapping our lists in lists so that stuff doesn't break
         make_files_web_visible(workflow, 
                                [qc_fasta_outs,
                                 [closed_ref_tsv],
+                                pub_metadata_files,
                                 [predict_metagenomes_tsv]])
 
         workflow.go()
