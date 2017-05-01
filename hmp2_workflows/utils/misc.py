@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-hmp2_workflows.utils
-~~~~~~~~~~~~~~~~~~~~
+hmp2_workflows.utils.misc
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This module provides utility functions that are used within the AnaDaMa2 
-HMP2 workflows.
+A collection of miscellaneous functions needed for the HMP2-IBDMDB AnADAMA2
+workflows.
 
 Copyright (c) 2017 Harvard School of Public Health
 

@@ -165,7 +165,8 @@ def main(workflow):
         ## Generate metadata for all raw files/product files when available.
         pub_metadata_dir = os.path.join(public_dir, 'metadata')
         create_folders(pub_metadata_dir)
-
+        
+        ## TODO: We'll likely need to merge our metadata here
         pub_metadata_files = generate_sample_metadata(workflow,
                                                       'amplicon',
                                                       sample_names,

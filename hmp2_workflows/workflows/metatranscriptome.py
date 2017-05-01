@@ -63,6 +63,8 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('--config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('threads', desc='number of threads/cores for each '
+                          'task to use', default=1)
 
     return (workflow, workflow.parse_args())
 
@@ -77,8 +79,8 @@ def main(workflow, args):
     metatranscriptome_db = conf.get('database').get('knead_mtx')
     sixs_db = conf.get('database').get('knead_six')
 
-    if data_files and data_files.get('mtx'):
-        input_files = data_files.get('mtx')
+    if data_files and data_files.get('MTX'):
+        input_files_mtx = data_files.get('MTX')
 
         ## Our md5sums are going to be in the directories with their 
         ## respective files so we'll want to collate them somehow.
@@ -112,6 +114,12 @@ def main(workflow, args):
                                                         [contaminate_db, 
                                                          sixs_db,
                                                          metatranscriptome_db])
+
+        ## Since metatranscriptomics analysis is enhanced by use of WGS
+        ## products we are going to need to see if any corresponding 
+        ## input files for WGS exist for this dataset and grab the corresponding
+        ## products we need.
+
         
         ## Generate taxonomic profile output. Output are stored in a list 
         ## and are the following:   
