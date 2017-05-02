@@ -263,7 +263,9 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
     subject = subjects.get(metadata_subject_id)
 
     if not subject: 
-        subject = Cutlass.Subject()
+        subject = cutlass.Subject()
+    else:
+        subject = subject[0]
     
     req_metadata = {}
     req_metadata['rand_subject_id'] = metadata_subject_id
@@ -281,19 +283,164 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
 
     if subject.is_valid():
         success = subject.save()
-        raise ValueError('Saving subject %s failed.' % subject.rand_subject_id)
+        raise ValueError('Saving subject %s failed.' % metadata_subject_id)
     else:
         raise ValueError('Subject validation failed: %s' % subject.validate())
     
     return subject
 
 
-def create_or_update_visit(visits, subject, metadata):
+def create_or_update_visit(visits, visit_num, subject_id, metadata):
     """Creates an iHMP OSDF Visit object if it does not exist or updates an
     already existing Visit object with the provided metadata.
 
     Args:
-        visits (list): A list of exisitng OSDF Visit objects.
-        subject (cutlass.Subject): The OSDF Subject that the 
+        visits (list): A list of existing OSDF Visit objects.
+        visit_num (string): The visit number to search for or create a new 
+            Visit object for.
+        subject_id (string): Subject ID that this visit is/should be 
+            associated with.
+        metadata (pandas.Series): Metadata that should be associated with 
+            this Visit.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.Visit: The created or updated OSDF Visit object.
     """
-    pass
+    visit = visits.get(visit_num)
+    
+    ## TODO: Figure out what's going on with Visit Attributes
+    if not visit:
+        visit = cutlass.Visit()
+    else:
+        visit = visit[0]
+        
+    req_metadata = {}
+    req_metadata['visit_number'] = visit_num
+    req_metadata['visit_id'] = "%s_%s" % (subject_id, visit_num)
+    req_metadata['interval'] = metadata.get('interval_days')
+    ## This is hard-coded to meet HIPAA compliance.
+    req_metadata['date'] = "2000-01-01"     
+
+    map(lambda key: setattr(visit, key, req_metadata.get(key)),
+        get_fields_to_update(req_metadata, visit))
+
+    visit.links['by'] = [subject_id]
+
+    if visit.is_valid():
+        success = visit.save()
+        raise ValueError('Saving visit %s failed.' % visit_num)
+    else:
+        raise ValueError('Visit validation failed: %s' % visit.validate())
+
+    return visit
+
+
+def _create_or_update_sample_attribute(sample_id, metadata, conf):
+    """Creates an iHMP OSDF Sample Attribute object if it does not exist or
+    updates an already existing object with the provided metadata.
+
+    Args:
+        sample_id (string): The sample ID that this Sample Attribute object
+            should be linked too.
+        metadata (pandas.Series): A collection of metadata that will be used 
+            to instantiate or update the Sample Attribute Object
+        conf (dict): Python representation of YAML configuration file that 
+            contains 
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.SampleAttribute: The created or updated OSDF Sample Attribute
+            object.
+    """
+    sample_attrs = sample.sampleAttributes()
+
+    ## Sample Attributes are a bit tricky to handle in that they are a 
+    ## colleciton associated with a sample and not key'd up on an specific
+    ## field so its more difficult to keep track of when we are dealing with
+    ## updating an existing SampleAttribute object or we need to create a new 
+    ## one.
+    ##
+    ## For the purposes of the IBD project each sample will only have one 
+    ## SampleAttribute object associated with it so this simplifies the process
+    ## of checking whether or not we are updating the object or creating a new 
+    ## object.
+    sample_attr = next(sample_attrs, None)
+    if not sample_attr:
+        sample_attr = cutlass.SampleAttribute()
+    
+        
+    req_metadata = {}
+    req_metadata['study'] = conf.get('study')
+    req_metadata['fecalcal'] = metadata['FecalCal Result:']
+    
+    map(lambda key: setattr(sample_attr, key, req_metadata.get(key)),
+        get_fields_to_update(req_metadata, sample_attr))
+
+    sample_attribute.links['associated_with'] = [sample_id]
+
+    if sample_attribute.is_valid():
+        success = sample_attribute.save()
+        raise ValueError('Saving sample attribute for sample %s failed.', 
+                         sample_id) if not success
+    else:
+        raise ValueError('Sample attribute validationg failed: %s' % 
+                         sample_attr.validate())                   
+
+    return sample_attr
+
+
+def create_or_update_sample(samples, sample_id, visit_id, metadata):
+    """Creates an iHMP OSDF Sample object if it doesn't exist or updates 
+    an already exisiting Sample object with the provided metadata.
+
+    Args:
+        samples (list): A list of exisiting OSDF Sample objects.
+        sample_id (string): The sample ID to search for or create a new 
+            Sample object for.
+        visit_id (string): Visit ID that this sample is/should be associated
+            with.
+        metadata (pandas.Series): Metadata that is assocaited with this 
+            Sample.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.Subject: The create or updated OSDF Subject object.
+    """
+    sample = samples.get(sample_id)
+
+    if not sample:
+        sample = cutlass.Sample()
+    else:
+        sample = sample[0]
+
+    req_metadata = {}
+    req_metadata['mixs'] = {}
+    req_metadata['name'] = sample_id
+    req_metadata['body_site'] = conf.get('body_site')
+    req_metadata['fma_body_site'] = conf.get('fma_body_site')
+    req_metadata['mixs'].update(conf.get('mixs'))
+
+    map(lambda key: setattr(sample, key, req_metadata.get(key)),
+        get_fields_to_upgrade(req_metadata, sample))
+
+    sample.links['collected_during'] = [visit_id]
+
+    if sample.is_valid():
+        success = sample.save()
+        raise ValueError('Saving sample % failed.' % sample_id)
+
+        ## If we successfully create a Sample we need to attach a 
+        ## SampleAttribute to it.
+        sample_attr = _create_or_update_sample_attribute(sample.id, metadata)
+    else:
+        raise ValueError('Sample validation failed; %s' % sample.validate())
+   
+    return sample
+        

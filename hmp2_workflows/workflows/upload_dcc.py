@@ -124,7 +124,8 @@ def main(workflow):
                                                            subject_id.replace('C', ''),
                                                            dcc_study.id,
                                                            metadata)
-                dcc_visits = dcc_subject.children()
+                dcc_visits = dcc.group_osdf_collection(dcc_subject.children(),
+                                                       'visit_number')
                 
                 ## Now we loop over each row of the subject-associated-metadata
                 ## and see if the specific visit exists in 
@@ -132,7 +133,8 @@ def main(workflow):
                     sample_coll_row = samples_coll_df[row.get(tracking_map_col)]
 
                     dcc_visit = dcc.create_or_update_visit(dcc_visits, 
-                                                           dcc_subject, 
+                                                           row.get('visit_num'),
+                                                           dcc_subject.id, 
                                                            row)
                     dcc_sample = dcc.create_or_update_samples(dcc_visit,
                                                               sample_coll_row,
