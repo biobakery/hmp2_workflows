@@ -91,41 +91,52 @@ dcc: &dcc
     password: fishnet-socket-dolphin-can
 
     namespace: ihmp
+    project_id: iHMP
 
     metadata_id_mappings:
-        proteomics: Tube B:Proteomics
+        proteomics: "Tube B:Proteomics"
         wgs: External ID
         16s: External ID
         mtx: External ID
 
-    metadata_to_tracking_mapping: Sample ID: Tube B (No preservative)
+    metadata_to_tracking_mapping: "Sample ID: Tube B (No preservative)"
     tracking_id_col: Parent Sample B       
+    
+    # Each of the Prep's and data files has an affiliated study title which
+    # is actually diffeernt from the Study object name...
+    data_study: ibd
+    
+    race_map:
+        Other: ethnic_other
+        "More than one race": ethnic_other
+        "Black or African American": african_american
+        White: caucasian
 
     study:
-        name: ibdmdb
-        project_name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
-        description: >
+        name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
+        subtype: ibd
+        description: >-
             A new three-year "multi-omic" study investigating the roles played
             by microbes and their interactions with the human body.
-        contact: Curtis Huttenhower <chuttenh@hsph.harvard.edu>
+        contact: "Curtis Huttenhower"
         center: Broad Institute
         tags:
-            - bioproject:PRJNA306874            
+            - "bioproject:PRJNA306874"
 
     sample:
-        water: ENVO:5792
+        water: "ENVO:5792"
         ethanol: ethanol
-        biome: ENVO:00009003
-        feature: ENVO:00002003
+        biome: "ENVO:00009003"
+        feature: "ENVO:00002003"
         geo_loc_name: USA
         body_product: stool
-        env_package: Human-associated
-        fma_body_site: FMA:64183
+        env_package: "Human-associated"
+        fma_body_site: "FMA:64183"
         body_site: stool
     
     16s:
         prep_id: 1
-        library_method_text: >
+        library_method_text: >-
             Samples are diluted and run in a 30 cycle PCR that specifically
             amplifies the V4 region of the 16S ribosomal subunit, with the
             primers making use of the highly conserved regions on either
@@ -137,7 +148,7 @@ dcc: &dcc
             handed off for MiSeq.
 
     wgs:
-        library_method_text: >
+        library_method_text: >-
             Metagenomic DNA samples were quantified by Quant-iT PicoGreen dsDNA
             Assay (Life Technologies) and normalized to a concentration of
             50 pg/microliter. Illumina sequencing libraries were prepared from
@@ -150,7 +161,7 @@ dcc: &dcc
             library were determined using an Agilent Bioanalyzer DNA 1000
             kit (Agilent Technologies).
         prep_id: 2
-        sequencing_contact: tpoon@broadintitute.org
+        sequencing_contact: "tpoon@broadintitute.org"
         sequencing_center: Broad Institute
         ncbi_taxon_id: 408170 
         lib_layout: fragment
@@ -161,7 +172,7 @@ dcc: &dcc
         sequencer_model: Illumina HiSeq 2000
 
     mtx:
-        library_method_text: >
+        library_method_text: >-
             Our method, RNAtag-Seq, utilizes a molecular barcoding strategy
             that generates multiple libraries in a single reaction, lowers
             labor and reagent costs per sample, and produces data on
@@ -172,7 +183,7 @@ dcc: &dcc
             strand-specific, quantitative sequencing of full-length
             transcripts in diverse prokaryotic and eukaryotic species.
         prep_id: 3
-        sequencing_contact: tpoon@broadintitute.org
+        sequencing_contact: "tpoon@broadintitute.org"
         sequencing_center: Broad Institute
         ncbi_taxon_id: 408170 
         lib_layout: fragment
@@ -184,6 +195,10 @@ dcc: &dcc
 
     proteomics:
         prep_id: 4
+        center: PNNL
+        contact: "White, Richard A <richard.white@pnnl.gov"
+        storage_duration: 365
+        experiment_type: Shotgun Proteomics
         analyzer: QExactive
         detector: QExactive
         instrument_name: QExactive

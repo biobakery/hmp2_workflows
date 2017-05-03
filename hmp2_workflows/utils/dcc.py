@@ -32,7 +32,6 @@ import hashlib
 import itertools
 import operator
 import os
-import tempfile
 
 import cutlass
 
@@ -55,9 +54,61 @@ def group_osdf_objects(osdf_collection, group_by_field):
         dictionary: A dictionary containing all OSDF Subject keyed on 
             the provided group by field.
     """
-    return itertools.groupby(operator.attrgetter(group_by_field), 
-                             osdf_collection)
+    grouped_objs = itertools.groupby(osdf_collection, 
+                                     operator.attrgetter(group_by_field))
+    return dict((k, list(g)) for k, g in grouped_objs)
 
+
+def create_sample_map(data_type, data_files):
+    """Creates a mapping file of the sample identifiers present in the project
+    metadata file to the corresponding data file. 
+
+    Args:
+        data_type (string): The file type for the files provided in the 
+            data_files parameter.
+        data_files (list): Filenames to map back to sample identifiers. 
+            Depending on the source of the file (Broad, PNNL etc.) naming 
+            schemes for files are different and not to be handled on a case
+            by case basis.
+
+    Requires:
+        None
+
+    Returns:
+        dict: A dictionary key'd on sample identifier in our metadata 
+            and values consisting of paths to the corresponding data 
+            file.
+    """
+    sample_map = {}
+
+    ## We're going to make a bit of a dangerous assumption here. Currently we
+    ## are seeing samples being named two ways:
+    ##
+    ##  1.) Broad: MSM5LLHX.bam
+    ##  2.) PNNL: 160513-SM-AHYMJ-14.raw
+    ## 
+    ## In both cases here we the sample name is prefixed by 'SM' and may or 
+    ## may not have hyphens or underscores separating it. The Broad samples 
+    ## are also prefixed by the originating center represented by one 
+    ## one character in front of our 'SM' prefix.
+    for data_file in data_files:
+        ## With proteomics datasets we sometimes get 'pool' files that 
+        ## can be ignored for the time being.
+        if 'pool' in data_file:
+            continue
+
+        (file_name, ext) = os.path.splitext(os.path.basename(data_file))
+
+        if data_type == 'proteomics':
+            sample_id = "%s-%s" % ('SM', 
+                                   file_name.replace('_', '-').split('-')[2])
+        else:
+            sample_id = filename[1:]
+
+        sample_map[sample_id] = data_file
+
+    return sample_map
+    
 
 def get_fields_to_update(new_metadata, osdf_object):
     """Compares existing values for metadata in the provided iHMP OSDF 
@@ -75,6 +126,8 @@ def get_fields_to_update(new_metadata, osdf_object):
     Returns:
         list: A list of fields which will be updated.
     """
+    updated_fields = []
+    
     required_fields = new_metadata.keys()
 
     ## Nested paramters in the tags and mixs fields need to be handled
@@ -86,55 +139,21 @@ def get_fields_to_update(new_metadata, osdf_object):
 
         tags_new = sorted(new_metadata.get('tags'))
         tags_curr = sorted(osdf_object.tags)
-        updated_fields.append('tags') if tags_new != tags_curr
+        if tags_new != tags_curr:
+            updated_fields.append('tags')
 
     if 'mixs' in required_fields:
         required_fields.remove('mixs')
 
         mixs_new = sorted(new_metadata.get('mixs').values())
         mixs_curr = sorted(osdf_object.mixs.values())
-        updated_fields.append('mixs') if mixs_new != mixs_curr
+        if mixs_new != mixs_curr: 
+            updated_fields.append('mixs')
 
     updated_fields.extend([key for key in new_metadata.keys() 
-                           if new_metadata.get(key) != osdf_object.get(key)])
+                           if new_metadata.get(key) != getattr(osdf_object, key)])
     
     return updated_fields
-
-
-def is_metadata_updates(cutlass_obj, metadata_new):
-    """Given an existing cutlass object, attempt to figure out if  new
-    metadata being passed contains any new information that constitutes 
-    an update to the object.
-
-    Args:
-        dcc_object (cutlass.*): A cutlass object of type Study, Subject, 
-            Sample, Visit, or file type (Proteome, WgsDnaPrep etc.).
-        metadata_new (pyyaml.Loader): Metadata to be validated (against 
-            objects metadata).
-
-    Requires:
-        None
-
-    Returns:
-        boolean: True or False depending on whether or not the metadata 
-            provided constitutes an update to the cutlass object.
-    """
-    fields_to_check = metadata_new.keys()
-
-    ## Create 
-    req_metadata_new = map(lambda key: metadata_new.get(key, None),
-                           fields_to_check)
-    req_metadata_obj = map(lambda key: getattr(key, cutlass_obj),
-                           fields_to_check)
-
-    ## Because of mixs objects we need to also append metadata there 
-    req_metadata_obj.extend(map(lambda key: getattr(key, cutlass_obj.mixs),
-                                fields_to_check))
-    
-    req_metadata_new_md5 = hashlib.md5(repr(req_metadata_new)).hexdigest()
-    req_metadata_obj_md5 = hashlib.md5(repr(req_metadata_obj)).hexdigest()
-
-    return req_metadata_new_md5 == req_metadata_obj_md5
 
 
 def get_project(conf, session):
@@ -170,11 +189,12 @@ def get_project(conf, session):
 
     osdf = session.get_osdf()
     query = '{ "query": { "match": { "meta.name": "%s" } } }' % project_id
-    query_res = osdf.query_all_pages('ihmp', query)        
+    query_resp = osdf.query_all_pages(namespace, query)        
  
-    if query_res.get('search_result_total') != 1:
+    if query_resp.get('search_result_total') != 1:
         raise ValueError('Could not find existing project: %s' % project_id)
-
+    
+    query_res = query_resp.get('results')[0]
     dcc_project_id = query_res.get('id')
 
     return cutlass.Project.load(dcc_project_id)
@@ -217,32 +237,36 @@ def get_or_update_study(conf, session, project_id):
     study_id = study_metadata.get('name')
 
     osdf = session.get_osdf()
-    query = '{ "query": { "match": { "meta.name": "%s" } } }' % study_id
-    query_res = osdf.query_all_pages(namespace, query)
+    query = ('{ "query": { "match": { "meta.name": { "query": "%s", "operator"'
+            ': "and" } } } }' % study_id)
+    query_resp = osdf.query_all_pages(namespace, query)
 
-    if query_res.get('search_result_total') != 1:
+    if query_resp.get('search_result_total') != 1:
         raise ValueError('Could not find existing study: %s' % study_id)
 
+    query_res = query_resp.get('results')[0]
     study_id = query_res.get('id')
-    study = cutlass.Study.load(dcc_study_id)
+    study = cutlass.Study.load(study_id)
 
     fields_to_update = get_fields_to_update(study_metadata, study)
     map(lambda key: setattr(study, key, study_metadata.get(key)),
         fields_to_update)
         
-    study.links['part_of'] = project_id if fields_to_update
+    if fields_to_update: 
+        study.links['part_of'] = [project_id]
         
-    if study.is_valid():
-        success = study.save()
-        raise ValueError('Saving study %s failed.' % study.name) if not success
-    else:
-        raise ValueError('Study validation failed: %s' % study.validate())
+        if study.is_valid():
+            success = study.save()
+            if not success: 
+                raise ValueError('Saving study %s failed.' % study.name) 
+        else:
+            raise ValueError('Study validation failed: %s' % study.validate())
 
     return study
 
 
 def create_or_update_subject(subjects, metadata_subject_id, study_id, 
-                             metadata):
+                             metadata, conf):
     """Creates an iHMP OSDF Subject object if it does not exist or updates 
     an existing Subject object with new metadata when present.
 
@@ -253,6 +277,9 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
         study_id (string): OSDF Study ID that supplied subject should be 
             linked too.
         metadata (panda.Series): All metadata for one subject/sample combo
+        conf (dict): A python dictionary representation of the YAML 
+            configuration file containing metadata parameters needed for 
+            the DCC upload.
 
     Requires:
         None
@@ -266,26 +293,40 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
         subject = cutlass.Subject()
     else:
         subject = subject[0]
-    
+ 
+    race_map = conf.get('race_map')
+
     req_metadata = {}
     req_metadata['rand_subject_id'] = metadata_subject_id
-    req_metadata['gender'] = metadata['Sex'].lower()
-    req_metadata['race'] = metadata['race']
-    req_metadata['tags']['diagnosis'] = metadata['Diagnosis'].lower().replace(' ', '_')
-    req_metadata['tags']['age_at_dx'] = metadata['age_at_dx']
-    req_metadata['tags']['highest_education'] = metadata['Education Level']
+    req_metadata['gender'] = metadata['Sex'].iloc[0].lower()
+    req_metadata['race'] = race_map.get(metadata['Race'].iloc[0]
+                                                        .replace(' ', '_'))
+    req_metadata['tags'] = []
+    req_metadata['tags'].append('diagnosis:%s' 
+                                % metadata['Diagnosis'].iloc[0]
+                                                       .lower()
+                                                       .replace('\'', '')
+                                                       .replace(' ', '_'))
+    req_metadata['tags'].append('age_at_dx:%s' 
+                                % metadata['Age at diagnosis'].iloc[0])
+    req_metadata['tags'].append('highest_education:%s' 
+                                % metadata['Education Level'].iloc[0])
 
-    fields_to_upadte = get_fields_to_update(req_metadata, subject)
+    fields_to_update = get_fields_to_update(req_metadata, subject)
     map(lambda key: setattr(subject, key, req_metadata.get(key)),
         fields_to_update)
 
-    subject.links['participates_in'] = [study_id]
+    if fields_to_update:
+        subject.links['participates_in'] = [study_id]
 
-    if subject.is_valid():
-        success = subject.save()
-        raise ValueError('Saving subject %s failed.' % metadata_subject_id)
-    else:
-        raise ValueError('Subject validation failed: %s' % subject.validate())
+        if subject.is_valid():
+            success = subject.save()
+            if not success:
+                raise ValueError('Saving subject %s failed.' % 
+                                 metadata_subject_id)
+        else:
+            raise ValueError('Subject validation failed: %s' % 
+                             subject.validate())
     
     return subject
 
@@ -320,31 +361,34 @@ def create_or_update_visit(visits, visit_num, subject_id, metadata):
     req_metadata = {}
     req_metadata['visit_number'] = visit_num
     req_metadata['visit_id'] = "%s_%s" % (subject_id, visit_num)
-    req_metadata['interval'] = metadata.get('interval_days')
+    req_metadata['interval'] = metadata['interval_days']
     ## This is hard-coded to meet HIPAA compliance.
     req_metadata['date'] = "2000-01-01"     
 
-    map(lambda key: setattr(visit, key, req_metadata.get(key)),
-        get_fields_to_update(req_metadata, visit))
+    fields_to_update = get_fields_to_update(req_metadata, visit)
+    map(lambda key: setattr(visit, key, req_metadata.get(key)), 
+        fields_to_update)
 
-    visit.links['by'] = [subject_id]
+    if fields_to_update:
+        visit.links['by'] = [subject_id]
 
-    if visit.is_valid():
-        success = visit.save()
-        raise ValueError('Saving visit %s failed.' % visit_num)
-    else:
-        raise ValueError('Visit validation failed: %s' % visit.validate())
+        if visit.is_valid():
+            success = visit.save()
+            if not success:
+                raise ValueError('Saving visit %s failed.' % visit_num)
+        else:
+            raise ValueError('Visit validation failed: %s' % visit.validate())
 
     return visit
 
 
-def _create_or_update_sample_attribute(sample_id, metadata, conf):
+def _create_or_update_sample_attribute(sample, metadata, conf):
     """Creates an iHMP OSDF Sample Attribute object if it does not exist or
     updates an already existing object with the provided metadata.
 
     Args:
-        sample_id (string): The sample ID that this Sample Attribute object
-            should be linked too.
+        sample (cutlass.Sample): The Sample object that this Sample Attribute 
+            object should be linked too.
         metadata (pandas.Series): A collection of metadata that will be used 
             to instantiate or update the Sample Attribute Object
         conf (dict): Python representation of YAML configuration file that 
@@ -376,25 +420,28 @@ def _create_or_update_sample_attribute(sample_id, metadata, conf):
         
     req_metadata = {}
     req_metadata['study'] = conf.get('study')
-    req_metadata['fecalcal'] = metadata['FecalCal Result:']
+    req_metadata['fecalcal'] = metadata['FecalCal Result:'].iloc[0]
     
+    fields_to_update = get_fields_to_update(req_metadata, sample_attr)
     map(lambda key: setattr(sample_attr, key, req_metadata.get(key)),
-        get_fields_to_update(req_metadata, sample_attr))
+        fields_to_update)
 
-    sample_attribute.links['associated_with'] = [sample_id]
+    if fields_to_update:
+        sample_attr.links['associated_with'] = [sample.id]
 
-    if sample_attribute.is_valid():
-        success = sample_attribute.save()
-        raise ValueError('Saving sample attribute for sample %s failed.', 
-                         sample_id) if not success
-    else:
-        raise ValueError('Sample attribute validationg failed: %s' % 
-                         sample_attr.validate())                   
+        if sample_attr.is_valid():
+            success = sample_attr.save()
+            if not success: 
+                raise ValueError('Saving sample attribute for sample %s failed.', 
+                                  sample.id)
+        else:
+            raise ValueError('Sample attribute validationg failed: %s' % 
+                             sample_attr.validate())                   
 
     return sample_attr
 
 
-def create_or_update_sample(samples, sample_id, visit_id, metadata):
+def create_or_update_sample(samples, sample_id, visit_id, conf, metadata):
     """Creates an iHMP OSDF Sample object if it doesn't exist or updates 
     an already exisiting Sample object with the provided metadata.
 
@@ -404,6 +451,8 @@ def create_or_update_sample(samples, sample_id, visit_id, metadata):
             Sample object for.
         visit_id (string): Visit ID that this sample is/should be associated
             with.
+        conf (dict): Python representation of YAML configuration file that 
+            contains 
         metadata (pandas.Series): Metadata that is assocaited with this 
             Sample.
 
@@ -411,7 +460,7 @@ def create_or_update_sample(samples, sample_id, visit_id, metadata):
         None
 
     Returns:
-        cutlass.Subject: The create or updated OSDF Subject object.
+        cutlass.Subject: The created or updated OSDF Subject object.
     """
     sample = samples.get(sample_id)
 
@@ -427,20 +476,84 @@ def create_or_update_sample(samples, sample_id, visit_id, metadata):
     req_metadata['fma_body_site'] = conf.get('fma_body_site')
     req_metadata['mixs'].update(conf.get('mixs'))
 
+    fields_to_update = get_fields_to_update(req_metadata, sample)
     map(lambda key: setattr(sample, key, req_metadata.get(key)),
-        get_fields_to_upgrade(req_metadata, sample))
+        fields_to_update)
 
-    sample.links['collected_during'] = [visit_id]
+    if fields_to_update:
+        sample.links['collected_during'] = [visit_id]
 
-    if sample.is_valid():
-        success = sample.save()
-        raise ValueError('Saving sample % failed.' % sample_id)
+        if sample.is_valid():
+            success = sample.save()
+            if not success:
+                raise ValueError('Saving sample % failed.' % sample_id)
 
-        ## If we successfully create a Sample we need to attach a 
-        ## SampleAttribute to it.
-        sample_attr = _create_or_update_sample_attribute(sample.id, metadata)
-    else:
-        raise ValueError('Sample validation failed; %s' % sample.validate())
-   
+            ## If we successfully create a Sample we need to attach a 
+            ## SampleAttribute to it.
+            sample_attr = _create_or_update_sample_attribute(sample.id, metadata)
+        else:
+            raise ValueError('Sample validation failed; %s' % sample.validate())
+       
     return sample
-        
+
+
+def create_or_update_microbiome_prep(sample, conf, metadata):
+    """Creates an iHMP OSDF Microbiome Assay Prep object if it doesn't exist or 
+    updates an already existing Prep object with the provided metadata. 
+
+    Args:
+        sample (cutlass.Sample): The Sample object that the Prep should be 
+            associated with.
+        conf (dict): Python dictionary representation of the project YAML
+            configuration containing project metadata.
+        metadata (pandas.Series): The metadata that is assocaited with this 
+            Sample/Prep.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.MicrobiomeAssayPrep: The created or updated OSDF 
+            MicrobiomeAssayPrep object.
+    """
+    microbiome_preps = group_osdf_objects(sample.microbiomeAssayPrep(),
+                                               'prep_id')
+    microbiome_prep = microbiome_preps.get(metadata['GSSR IDs'].iloc[0])
+
+    if not microbiome_prep:
+        microbiome_prep = cutlass.MicrobiomeAssayPrep()
+    else:
+        microbiome_prep = microbiome_prep[0]
+    
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+    req_metadata.update(conf)
+
+    ## Fill in the remaining pieces of metadata needed from other sources
+    req_metadata['prep_id'] = metadata['GSSR IDs'].iloc[0]
+    req_metadata['pride_id'] = 'PRIDE ID'
+    req_metadata['sample_name'] = sample.name
+
+    map(lambda key: setattr(microbiome_prep, key, req_metadata.get(key)),
+        get_fields_to_update(req_metadata, microbiome_prep))
+
+    microbiome_prep.links['prepared_form'] = sample.id
+
+    if microbiome_prep.is_valid():
+        success = microbiome_prep.save()
+        if not success:
+            raise ValueError('Saving microbiome prep %s failed.' % 
+                             req_metadata.get('prep_id'))
+        else:
+            raise ValueError('Microbiome assay prep validation failed: %s' % 
+                             microbiome_prep.validate())
+    
+    return microbiome_prep
+
+
+def create_or_update_wgs_dna_prep(sample, conf, metadata):
+    pass
+
+
+def create_or_update_16s_dna_prep(sample, conf, metadata):
+    pass

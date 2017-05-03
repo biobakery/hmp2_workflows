@@ -31,8 +31,15 @@ furnished to do so, subject to the following conditions:
 import cutlass
 
 
-def upload_data_files(dcc_obj, dcc_parms):
-    """Transfers the provided 
+def upload_data_files(workflow, sample, data_type, data_file):
+    """Transfers the provided iHMP OSDF object to the DCC using the cutlass
+    API and aspera. This task is meant to upload in parallel to the DCC to
+    account for the large amount of files that are present in the IBDMDB 
+    datasets.
+
+    Args:
+        workflow (anadama2.Workflow): The AnADAMA2 workflow object.
+        sample (cutlass.Sample): The sample 
 
     """
     pass
