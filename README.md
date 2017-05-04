@@ -12,33 +12,33 @@ execution locally and in a grid compute environment.
 
 ----
 
-### Requirements
+## Requirements
 
 The following Python modules are required for the project:
 
-* anadama2 HEAD
-* biobakery\_workflows HEAD
-* pandas 0.19.2
-* pyyaml 3.12
-* biom-format 2.1.5
+* [anadama2](https://bitbucket.org/biobakery/anadama2) *HEAD*
+* [biobakery\_workflows](https://bitbucket.org/biobakery/biobakery_workflows/wiki/Home) *HEAD*
+* [pandas](http://pandas.pydata.org/) *0.19.2*
+* [pyyaml](http://pyyaml.org/) *3.12*
+* [biom-format](http://biom-format.org/) *2.1.5*
 
 Additionally the following software should be installed to launch a production
 copy of the website:
 
-* kneaddata
-* HUMAnN2
-* MetaPHlAn2
-* samtools
-* USEARCH
-* PICRUSt v1.1.
-* Clustal Omega
+* [kneaddata] (https://bitbucket.org/biobakery/kneaddata)
+* [HUMAnN2] (https://bitbucket.org/biobakery/humann2)
+* [MetaPHlAn2] (https://bitbucket.org/biobakery/metaphlan2)
+* [samtools] (http://www.htslib.org/)
+* [USEARCH] (http://www.drive5.com/usearch/)
+* [PICRUSt](http://picrust.github.io/picrust/) *1.1*
+* [Clustal Omega](http://www.ebi.ac.uk/Tools/msa/clustalo/)
 
 Installing all python modules in a python virtualenv is recommended to create 
 an isolated environment free of any python or python module version mismatching.
 
-* virtualenv >= 1.10.1
+* virtualenv >= *1.10.1*
 
-### Installation
+## Installation
 
 Currently installation of the HMP2 workflows is only available through 
 download/clone from the bitbucket repository.
@@ -52,3 +52,20 @@ clone repository: `git clone git@bitbucket.org:biobakery/hmp2_workflows.git`
         1. Activate vritualenv before installing any modules: `source /home/carze/.venvs/hmp2_biobaker_workflows/bin/activate`
 3. Install software required by biobakery_workflows needed for analysis
     a. Instructions for each piece of software should be available with their distributions.
+
+## Workflows
+
+### Metagenomics
+
+### Metatranscriptomics
+
+### 16S
+
+### Proteomics
+
+### DCC Upload
+
+### SRA Upload
+
+### Metadata Refresh
+    
