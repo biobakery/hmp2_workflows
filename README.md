@@ -124,7 +124,25 @@ Executes several steps from the biobakery\_workflows [16S workflow](https://bitb
 
 ### Proteomics
 
-This workflow handles processing any proteomics data submitted to the IBDMDB. 
+This workflow handles processing any proteomics data submitted to the IBDMDB. Proteomics data suubmitted 
+to the IBDMDB is received process and with accompanying output files so this workflow works to verify
+the integrity of the uploaded files and disseminates them to the proper locations to make them 
+available on the IBDMDB website.
+
+#### Inputs
+1. Manifest file
+    a. Containing proteomics data files to upload
+2. Metadata file containing metadata associated with data files in the manifest file.
+3. Proteomics peptide roll-up output files assocaited with each spectra file.
+
+#### Outputs
+*None*
+
+#### Example Run
+```
+python proteomics.py --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml 
+                     --config-file config/analysis.yaml
+```
 
 ### DCC Upload
 
@@ -139,18 +157,18 @@ larger data files.
 2. Metadata file containing metadata assocaited with data files in manifest file.
 
 #### Outputs
-**None**
+*None*
 
-#### Example run
+#### Example Run
 ```
 python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv 
-                        --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv 
-                        --config-file analysis.yaml 
-                        --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml
+                     --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv 
+                     --config-file analysis.yaml 
+                     --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml
 ```
 
 ### SRA Upload
 *TODO*
 
 ### Metadata Refresh
-    
+*TODO*
