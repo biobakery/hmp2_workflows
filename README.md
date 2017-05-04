@@ -130,17 +130,22 @@ This workflow handles uploading data files and their accompanying metadata to th
 The upload procedure is handled using the iHMP's cutlass tool which leverages the Aspera file transfer protocol to transfer the 
 larger data files.
 
-__Inputs__
+*Inputs*
 1. Manifest file
     a. Containing data files to upload OR 
     b. Data files associated with updated metadata
 2. Metadata file containing metadata assocaited with data files in manifest file.
 
-__Outputs__
+*Outputs*
 **None**
 
-__Example run__
-`python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv --config-file analysis.yaml --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml`
+*Example run*
+```
+python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv 
+                        --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv 
+                        --config-file analysis.yaml 
+                        --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml
+```
 
 ### SRA Upload
 
