@@ -4,9 +4,11 @@ HMP2 workflows is a collection of workflows that handle processing several
 different data types assocaited with the IBDMDB project. 
 
 These workflows are built using AnADAMA2 which allows for parallel task 
-execution locally and in a grid compute environment.  
+execution locally and in a grid compute environment.     
 
 [TOC]
+
+* * * 
 
 ### Requirements
 
