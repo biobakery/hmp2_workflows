@@ -7,7 +7,9 @@ These workflows are built using AnADAMA2 which allows for parallel task
 execution locally and in a grid compute environment.     
 
 ##
+
 [TOC]
+
 ----
 
 ### Requirements
