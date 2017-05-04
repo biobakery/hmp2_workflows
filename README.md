@@ -58,6 +58,9 @@ clone repository: `git clone git@bitbucket.org:biobakery/hmp2_workflows.git`
 
 ## How to Run
 
+## Configuration
+
+
 ## Manifest files
 
 Each of the workflows primarily relies on a manifest file that describes the files that are to be processed. An example
