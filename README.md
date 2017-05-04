@@ -124,22 +124,24 @@ Executes several steps from the biobakery\_workflows [16S workflow](https://bitb
 
 ### Proteomics
 
+This workflow handles processing any proteomics data submitted to the IBDMDB. 
+
 ### DCC Upload
 
 This workflow handles uploading data files and their accompanying metadata to the iHMP Data Coordinating Center (DCC) OSDF instance. 
 The upload procedure is handled using the iHMP's cutlass tool which leverages the Aspera file transfer protocol to transfer the 
 larger data files.
 
-*Inputs*
+#### Inputs
 1. Manifest file
     a. Containing data files to upload OR 
     b. Data files associated with updated metadata
 2. Metadata file containing metadata assocaited with data files in manifest file.
 
-*Outputs*
+#### Outputs
 **None**
 
-*Example run*
+#### Example run
 ```
 python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv 
                         --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv 
@@ -148,6 +150,7 @@ python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv
 ```
 
 ### SRA Upload
+*TODO*
 
 ### Metadata Refresh
     
