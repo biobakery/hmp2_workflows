@@ -21,6 +21,7 @@ The following Python modules are required for the project:
 * [pandas](http://pandas.pydata.org/) *0.19.2*
 * [pyyaml](http://pyyaml.org/) *3.12*
 * [biom-format](http://biom-format.org/) *2.1.5*
+* [cutlass](https://github.com/ihmpdcc/cutlass)
 
 Additionally the following software should be installed to launch a production
 copy of the website:
@@ -74,9 +75,9 @@ manifest file can be found below:
 ################
 
 # First some information about who generated/submitted this data
-origin_institute: Broad Insititute
-origin_contact: Tiffany Poon
-origin_contact_email: tpoon@broadinstitute.org
+origin_institute: PNNL
+origin_contact: Richard White
+origin_contact_email: richard.white@pnnl.gov
 
 project: HMP2
 date_of_creation: 2017-04-17T17:07:00
@@ -90,12 +91,18 @@ date_of_submission: 2017-04-17T17:30:00
 # the appropriate AnADAMA2 pipelines.
 submitted_files:
     proteomics:
-        md5sums_file: /seq/ibdmdb/carze_test/upload/test/test.md5sums.txt
+        md5sums_file: /data/ibdmdb/upload/HMP2/Proteomics/test.md5sums.txt
         input:
-            - /seq/ibdmdb/data_deposition/HMP2/Proteomics/1633/rschwager/160626-SM-A62DJ-47.raw
-            - /seq/ibdmdb/data_deposition/HMP2/Proteomics/1633/rschwager/160618-SM-AIG7A-51.raw
-            - /seq/ibdmdb/data_deposition/HMP2/Proteomics/1633/rschwager/160624-SM-73BO3-149.raw
+            - /data/ibdmdb/upload/HMP2/Proteomics/160626-SM-A62DJ-47.raw
+            - /data/ibdmdb/upload/HMP2/Proteomics/160618-SM-AIG7A-51.raw
+            - /data/ibdmdb/upload/HMP2/Proteomics/160624-SM-73BO3-149.raw
 ```
+
+The **METADATA** section provides several pieces of metadata that inform each workflow the source 
+of data files, which project the files belong too and when the files were created and submitted.
+
+The **DATA** section provides paths to the actual files broken up into sections for each data type as well as 
+whether or not an accompanying file containing md5 checksums for all submitted files is available.
 
 ## Workflows
 
@@ -109,11 +116,31 @@ Executes several steps from the biobakery\_workflows [Whole Metagenome Shotgun w
 
 ### Metatranscriptomics
 
+Executes several steps from the biobakery\_workflows [Metatranscriptomics workflow](https://bitbucket.org/biobakery/biobakery_workflows/wiki/Home#!whole-metagenome-and-metatranscriptome-shotgun-wmgx_wmtx).
+
 ### 16S
+
+Executes several steps from the biobakery\_workflows [16S workflow](https://bitbucket.org/biobakery/biobakery_workflows/wiki/Home#!16s-rrna-16s)
 
 ### Proteomics
 
 ### DCC Upload
+
+This workflow handles uploading data files and their accompanying metadata to the iHMP Data Coordinating Center (DCC) OSDF instance. 
+The upload procedure is handled using the iHMP's cutlass tool which leverages the Aspera file transfer protocol to transfer the 
+larger data files.
+
+__Inputs__
+1. Manifest file
+    a. Containing data files to upload OR 
+    b. Data files associated with updated metadata
+2. Metadata file containing metadata assocaited with data files in manifest file.
+
+__Outputs__
+**None**
+
+__Example run__
+`python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv --config-file analysis.yaml --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml`
 
 ### SRA Upload
 
