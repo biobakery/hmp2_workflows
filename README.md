@@ -5,11 +5,10 @@ different data types assocaited with the IBDMDB project.
 
 These workflows are built using AnADAMA2 which allows for parallel task 
 execution locally and in a grid compute environment.     
+    
 
 [TOC]
-
 * * * 
-
 ### Requirements
 
 The following Python modules are required for the project:
