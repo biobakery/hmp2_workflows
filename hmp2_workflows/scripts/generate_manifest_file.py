@@ -29,7 +29,6 @@ furnished to do so, subject to the following conditions:
 """
 
 import argparse
-import os
 
 import pandas as pd
 import yaml
@@ -56,11 +55,23 @@ def parse_cli_arguments():
                         'processed.')
     parser.add_argument('-o', '--output-manifest', required=True,
                         help='Path to desired output manifest file.')
+    parser.add_argument('-oi', '--origin-institute', required=True,
+                        help='Name of institute submitting new files '
+                        'to be processed.')
+    parser.add_argument('-oc', '--origin-contact', required=True,
+                        help='Contact person for corresponding origin '
+                        'institute.')
+    parser.add_argument('-oe', '--origin-contact-email', required=True,
+                        help='Contact email for contact person.')
+    parser.add_argument('-p', '--project-name', dest='project', 
+                        required=True,
+                        help='Project that sequence files belong too.')
 
-    return parser
+    return parser.parse_args()
 
 
-def generate_yaml_dict(data_df):
+def generate_yaml_dict(data_df, origin_institute, origin_contact, 
+                       origin_contact_email, project_name):
     """Generates a YAML-dictionary representation that will compose a project 
     MANIFEST file. An example MANIFEST file is shown below:
 
@@ -101,6 +112,10 @@ def generate_yaml_dict(data_df):
     Args: 
         data_df (pandas.DataFrame): DataFrame containing Broad data product 
             tracking information.
+        origin_institute (string): Name of institute where these files 
+            originated            
+        origin_contact (string): Name of contact person for origin institute.
+        origin_contact_email (string): Email for origin contact person.
 
     Requires:
         None
@@ -111,35 +126,32 @@ def generate_yaml_dict(data_df):
     data_dict = {}
 
     ## TODO: These shouldn't be hard-coded here.
-    data_dict['origin_institute'] = "Broad Institute"
-    data_dict['origin_contact'] = "Tiffany Poon"
-    data_dict['origin_contact_email'] = "tpoon@broadinstitute.org"
+    data_dict['origin_institute'] = origin_institute
+    data_dict['origin_contact'] = origin_contact
+    data_dict['origin_contact_email'] = origin_contact_email
     
-    data_dict['project'] = "HMP2"
-    data_dict['date_of_creation'] = ''
+    data_dict['project'] = project_name
 
     data_dict['submitted_files'] = {}
-
-    for (data_format, data_rows) in data_df.groupby('Format')
-        if data_format   == "MGX":
-            manifest_dtype = "wgs"
-        elif data_format == "MTX":
-            manifest_dtype = "mtx"
-        else:
-            manifest_dtype = "16s"                
-            
-        data_dict[manifest_data_type] = {}            
+    for (data_format, data_rows) in data_df.groupby('Format'):
+        input_files = [row[0] for row in data_rows.values]
+        data_dict['submitted_files'][data_format] = {}
+        data_dict['submitted_files'][data_format]['input_files'] = input_files
 
     return data_dict
 
+
 def main(args):
     broad_data_df = pd.read_csv(args.broad_data_sheet)
-    yaml_file = genreate_yaml_dict(broad_data_df)
+    yaml_file = generate_yaml_dict(broad_data_df, 
+                                   args.origin_institute,
+                                   args.origin_contact,
+                                   args.origin_contact_email,
+                                   args.project)
 
-    yaml.dump(broad_data_yaml, 
+    yaml.dump(yaml_file, 
               open(args.output_manifest, 'w'), 
               default_flow_style=False)
-
 
 
 if __name__ == "__main__":
