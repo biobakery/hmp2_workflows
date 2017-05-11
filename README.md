@@ -143,7 +143,7 @@ available on the IBDMDB website.
 
 #### Example Run
 ```
-python proteomics.py --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml 
+python proteomics.py --manifest-file /data/ibdmdb/upload/MANIFEST.hmp2-proteomics.yaml 
                      --config-file config/analysis.yaml
 ```
 
@@ -167,11 +167,32 @@ larger data files.
 python upload_dcc.py --metadata-file hmp2_project_metadata_2016-10-15.hr.csv 
                      --broad-data-sheet IBDMDB_AliquotsAsOf_8.24.2016_updatestatus_1.17.2017_newsamplestatus.csv 
                      --config-file analysis.yaml 
-                     --manifest-file /seq/ibdmdb/carze_test/upload/test/MANIFEST.hmp2-proteomics.yaml
+                     --manifest-file /data/ibdmdb/upload/MANIFEST.hmp2-proteomics.yaml
 ```
 
 ### SRA Upload
 *TODO*
 
 ### Metadata Refresh
-*TODO*
+
+This workflow refreshes the master metadata file using clinical metadata from the StudyTrax database, a data file tracking spreadsheet from the Broad Institute, 
+a Broad LabOps data generation status file and auxillary metadata files for specific data types (i.e. Proteomics). These files coupled with a set of data files 
+that have corresponding new or updated metadata can be used to trigger a metadata refresh
+
+#### Inputs
+1. Manifest file
+2. StudyTrax metadata table
+3. Broad sample tracking spreadsheet
+4. Broad LabOps data generation status file
+5. OPTIONAL: Auxillary metadata tables
+
+#### Outputs
+1. Refreshed project metadata table
+
+#### Example Run
+```
+python metadata.py --studytrax-metadata /data/ibdmdb/metadata/studytrax.csv
+                   --broad-data-sheet /data/ibdmdb/metadata/broad_sample_tracking.csv
+                   --tableau-data-status /data/ibdmdb/metadata/labsop_status.csv
+                   --config-file /data/ibdmdbd/config/analysis.yaml
+```

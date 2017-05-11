@@ -12,7 +12,8 @@ base: &base
 
     # Next comes up the directories where our AnADAMA2 pipelines will pull and
     # deposit files to.        
-    deposition_dir: /seq/ibdmdb/carze_test/data_deposition
+    #deposition_dir: /seq/ibdmdb/carze_test/data_deposition
+    deposition_dir: /seq/ibdmdb/data_deposition
     processing_dir: /seq/ibdmdb/carze_test/processing
     public_dir: /seq/ibdmdb/carze_test/public/
 
@@ -67,11 +68,73 @@ metadata: &metadata
 
     ## The list below defines the allowable data types that the metadata 
     ## pipeline should accept.
-    data_types:
-        - amplicon
-        - proteomics
-        - metagenomics
-        - metatranscriptomics
+    input_extensions:
+        - .bam
+        - .raw
+
+    drop_cols:
+        - Status
+        - Receipt Status
+        - Actual Date of Receipt
+        - Parent Sample A
+        - Parent Sample B
+        - DNA/RNA
+        - DNA/RNA mass
+        - DNA/RNA status
+        - MbX
+        - MBX mass
+        - MBX status
+        - MBX leak?
+        - MBX Volume Recorded Viromics
+        - Viromics mass
+        - Viromics status
+        - Viromics Selection
+        - Storage Storage mass
+        - Storage status
+        - Storage Sample Selection
+        - Fecal Calprotectin
+        - Fecal Cal mass
+        - Fecal Cal status
+        - Proteomics_x
+        - Proteomics mass
+        - Proteomics status
+        - Prot. Sample Selection
+        - Site
+        - sample_ids
+        - Dataset
+        - Proteomics_y
+        - Proteomics
+        - State
+        - Job
+        - Tool
+        - Parameter_File
+        - Settings_File
+        - Instrument
+        - Experiment
+        - Campaign
+        - Organism
+        - Organism DB
+        - Protein Collection List
+        - Protein Options
+        - Comment
+        - Results Folder
+        - Folder
+        - Dataset_Created
+        - Job_Finish
+        - Dataset_Rating
+        - Separation_Type
+        - Dataset_Type
+        - Request_ID
+
+    col_order:
+        #- Project
+        - External ID
+        - Participant ID
+        - Site/Sub/Coll ID
+        - data_type
+        - week_num
+        - interval_days
+        - visit_num
 
     ## The cutplace CID files to use against our metadata files.
     validators:

@@ -32,12 +32,13 @@ THE SOFTWARE.
 import os
 import tempfile
 
+import pandas as pd 
+
 from anadama2 import Workflow
 
-from hmp2_workflows.tasks.metadata import (validate_metadata_file)
-from hmp2_workflows.tasks.common import (stage_files, 
-                                         make_files_web_visible)
-from hmp2_workflows.utils import parse_cfg_file
+from hmp2_workflows.tasks.commons import (validate_csv_files)
+
+from hmp2_workflows.utils.misc import parse_cfg_file
 
 
 def parse_cli_arguments():
@@ -54,40 +55,60 @@ def parse_cli_arguments():
     workflow = Workflow(version='0.1', description='A workflow to handle '
                         'refreshing and disseminating HMP2 metadata.',
                         remove_options=['input', 'output'])
-    workflow.add_argument('--studytrax-metadata', desc='Metadata file '
-                          'containing studytrax clinical metadata.')
-    workflow.add_argument('--broad-data-sheet', desc='Metadata file '
-                          'containing Broad data file information.')
+    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+                          'files to process in this workflow run.')
     workflow.add_argument('--config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
-    workflow.add_argument('--tableau-metadata', desc='Metadata file '
-                          'generated from the Broad Institute\'s Tableau '
-                          'server. Contains data files and metadata required '
-                          'to link the studytrax and other Broad metadata.')
 
     return (workflow, workflow.parse_args())
 
 
+def normalize_data_status_external_id(external_id):
+    """Takes an External ID derived from the Broad data status tracking
+    spreadsheet and "normalizes" it to match the format present in the two
+    other primary sources of metadata (studytrax spreadsheet and the Broad 
+    sample status spreadsheet).
+
+    External ID's are in format "MSMXXXXX" and the corresponding ID's in
+    the Studytrax and Sample Status sheets are SM-XXXXX
+    """
+
+
+    return normed_external_id
+
 def main(workflow, args):
-    config = parse_cfg_file(args.config_file, 'metadata')
+    config = parse_cfg_file(args.config_file, section='metadata')
+    manifest = parse_cfg_file(args.manifest_file)
+
+    studytrax_metadata = manifest.get('studytrax')
+    broad_samples_status = manifest.get('broad_sample_status')
+    broad_data_status = manifest.get('broad_data_status')
 
     ## Validate our metadata files
-    validate_metadata_file(workflow, args.studytrax_metadata, 
-                           config.get('validators').get('studytrax'))
-    validate_metadata_file(workflow, args.broad_data_sheet,
-                           config.get('validators').get('broad_datasheet'))
-    validate_metadata_file(workflow, args.tableau_metadata,
-                           config.get('validators').get('tableau'))
+    validate_csv_file(workflow, studytrax_metadata,
+                      config.get('validators').get('studytrax'))
+    validate_csv_file(workflow, broad_samples,
+                      config.get('validators').get('broad_sample_status'))
+    validate_csv_file(workflow, data_status,
+                      config.get('validators').get('broad_data_status'))
     
-    ## We're going to want to merge our file in a temporary directory and 
-    ## then move it over to the proper location when all finished.
+    studytrax_df = pd.read_csv(manifest.get('studytrax'))
+    sample_status_df = pd.read_csv(manifest.get('broad_sample_status'))
+    data_status_df = pd.read_csv(manifest.get('broad_data_status'))
+    
+    ## The ID we will use to link together all our samples 
+    data_status_df['External ID'] = data_status_df['Externawl ID'].apply(lambda extern_id: 
+                                                                           extern_id[1:].replace('SM', 'SM-'))
 
 
     ## Copy to the public area on the website
     ## TODO: Figure out better dir/file organizaiton here for all our files
-    metadata_dir = os.path.join(config.public_dir, 'HMP2', 'Metadata')
+    metadata_dir = os.path.join(config.get('public_dir'), 
+                                config.get('project'), 
+                                'Metadata')
     public_metadata_file = stage_files(workflow, merged_metadata_file,
                                        metadata_dir)
     
+
 if __name__ == "__main__":
     main(parse_cli_arguments())

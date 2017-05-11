@@ -30,6 +30,7 @@ furnished to do so, subject to the following conditions:
 
 import datetime
 import os
+import re
 
 import yaml
 
@@ -205,4 +206,47 @@ def create_project_dirs(directories, project, data_type):
 
     return project_dirs
 
+
+def get_sample_id_from_fname(filename):
+    """Given a sequence file extract the sample ID that is mappable to one of 
+    the metadata sources associated with the HMP2 workflows.
+    
+    Extracting the sample ID from a given filename is going to vary based 
+    off of the source of the file. 
+
+    Broad-sourced:
+
+        * ESM5MEBP.bam -> SM-5MEBP
+        * CSM5MCVZ.bam -> SM-5MCVZ
+        * MSM5LLE3.bam -> SM-5LLE3
+
+    PNNL-sourced:
+        
+        * 160916_SM-9W3BK_307.raw -> SM-9W3BK
+        * 160626-SM-A2J3A-52.raw  -> SM-A2J3A
+        * 160923_SM-71T45_394.raw -> SM-71T45
+
+    Args:
+        filename (string): The input filename to parse a sample ID out of
+
+    Requires:
+        None
+
+    Returns:
+        string: A sample ID that is mappable to HMP2 workflow metadata 
+            sources.
+    """
+    ## Just in-case we don't have a basename here; get our basename
+    filename = os.path.basename(filename)
+
+    pattern = re.compile('.*[-|_]?(SM-?[0-9a-zA-Z]{5})[-|_]?.*')
+    matches = re.match(pattern, filename)
+    if matches:
+        sample_id = matches.group(1)
+        sample_id = (sample_id.replace('SM', 'SM-') if '-' not in sample_id 
+                     else sample_id)
+    else: 
+        sample_id = os.path.splitext(filename)[0]
+
+    return sample_id
 

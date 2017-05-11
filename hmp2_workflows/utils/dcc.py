@@ -517,7 +517,7 @@ def create_or_update_microbiome_prep(sample, conf, metadata):
             MicrobiomeAssayPrep object.
     """
     microbiome_preps = group_osdf_objects(sample.microbiomeAssayPrep(),
-                                               'prep_id')
+                                          'prep_id')
     microbiome_prep = microbiome_preps.get(metadata['GSSR IDs'].iloc[0])
 
     if not microbiome_prep:
