@@ -73,8 +73,11 @@ metadata: &metadata
         - .raw
 
     drop_cols:
+        - Sheet Name
+        - Subject
         - Status
         - Receipt Status
+        - "Collection #"
         - Actual Date of Receipt
         - Parent Sample A
         - Parent Sample B
@@ -85,25 +88,26 @@ metadata: &metadata
         - MBX mass
         - MBX status
         - MBX leak?
-        - MBX Volume Recorded Viromics
+        - MBX Volume Recorded
+        - Viromics
         - Viromics mass
         - Viromics status
         - Viromics Selection
-        - Storage Storage mass
+        - Storage 
+        - Storage mass
         - Storage status
         - Storage Sample Selection
+        - Fecal Cal Selection
         - Fecal Calprotectin
         - Fecal Cal mass
         - Fecal Cal status
-        - Proteomics_x
+        - Proteomics
         - Proteomics mass
         - Proteomics status
         - Prot. Sample Selection
         - Site
         - sample_ids
         - Dataset
-        - Proteomics_y
-        - Proteomics
         - State
         - Job
         - Tool
@@ -119,15 +123,17 @@ metadata: &metadata
         - Comment
         - Results Folder
         - Folder
+        - Dataset_ID
         - Dataset_Created
         - Job_Finish
         - Dataset_Rating
         - Separation_Type
         - Dataset_Type
         - Request_ID
+        - Site/Sub/Coll
 
     col_order:
-        #- Project
+        - Project
         - External ID
         - Participant ID
         - Site/Sub/Coll ID
@@ -135,6 +141,15 @@ metadata: &metadata
         - week_num
         - interval_days
         - visit_num
+        - Research Project
+        - PDO Number
+        - GSSR IDs
+        - Product
+        - LCSET
+        - Aggregated Lanes
+        - WR ID
+        - "# Lanes in Aggregation"
+        - Total Reads
 
     ## The cutplace CID files to use against our metadata files.
     validators:

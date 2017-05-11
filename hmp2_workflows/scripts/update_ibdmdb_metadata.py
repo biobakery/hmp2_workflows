@@ -45,6 +45,7 @@ furnished to do so, subject to the following conditions:
 """
 
 import argparse
+import itertools
 import os
 
 import glob2
@@ -76,6 +77,9 @@ def parse_cli_arguments():
     parser.add_argument('-m', '--metadata-file',
                         help='OPTIONAL: An existing metadata file if '
                         'available.')
+    parser.add_argument('-o', '--output-file',
+                        help='Desired output file to write updated metadata '
+                        'file too.')
     parser.add_argument('-f', '--manifest-file',
                         help='Manifest file detailing new or updated data '
                         'files from which metadata should be generated.')
@@ -181,7 +185,7 @@ def get_project_id(row):
 
     ## This specific case is applicable to Proteomics data only but the 
     ## function can be expanded to handle other scenarios in the future
-    if row['Project'] is None and row['Job'] is not None:
+    if project_id is None and row.get('Job') is not None:
         project_id = row['Job']
 
     return project_id
@@ -203,7 +207,7 @@ def get_data_type(row):
     """
     data_type = None
 
-    if row['Job'] is not None:
+    if not pd.isnull(row.get('Job')):
         data_type = 'proteomics'
 
     return data_type
@@ -253,11 +257,11 @@ def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
                                                left_on='Proteomics',
                                                right_on='sample_ids',
                                                how='right')
+        proteomics_df = proteomics_df.drop('Proteomics', 1)
 
         metadata_df = metadata_df.merge(proteomics_df,
                                         on='Parent Sample A',
                                         how='left')
-        metadata_df.drop('sample_ids', 1)
         
     return metadata_df
     
@@ -275,7 +279,7 @@ def remove_columns(metadata_df, drop_cols):
     Returns:
         pandas.DataFrame: DataFrame with specified columns removed.
     """
-    return metadata_df.drop(drop_cols, axis=1)
+    return metadata_df.drop(drop_cols, 1)
 
 
 def generate_external_id(row):
@@ -393,7 +397,6 @@ def main(args):
     ## dates
     collection_dates_dict = get_collection_dates(broad_sample_df)
 
-    
     if args.proteomics_metadata:
         proteomics_df = pd.read_table(args.proteomics_metadata)
 
@@ -412,8 +415,9 @@ def main(args):
         submitted_files = manifest.get('submitted_files')
     
         if submitted_files:
-            sequence_files.extend([submitted_files[dtype]['input_files'] for dtype 
-                                   in submitted_files])
+            new_seq_files = itertools.chain(*[submitted_files[dtype]['input_files'] 
+                                              for dtype in submitted_files])
+            sequence_files.extend(new_seq_files)
 
     if sequence_files:
         new_metadata_df = get_metadata_rows(study_trax_df, 
@@ -425,11 +429,7 @@ def main(args):
         ## final state.
         new_metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
 
-        ## In order to do our DCC uploads I need to populate this column with a unique value. 
-        ## Choosing this for the time being to act as a dummy sample prep ID.
-        new_metadata_df['GSSR ID'] = new_metadata_df['External ID']
-
-        new_metadata_df['Site/Sub/Coll'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid)[1:])
+        new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid)[1:])
         new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
         new_metadata_df['visit_num'] = new_metadata_df['Collection #']
         new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
@@ -438,17 +438,16 @@ def main(args):
         new_metadata_df = generate_collection_statistics(new_metadata_df, 
                                                          collection_dates_dict)
 
-        new_metadata_df = remove_columns(new_metadata_df, config.get('cols_to_drop'))
-        new_metadata_df = reorder_columns(new_metadata_df, 
-                                          config.get('col_order'))
+        new_metadata_df = remove_columns(new_metadata_df, config.get('drop_cols'))
 
         if args.metadata_file:
             ## TODO: Figure out how to find duplicates here
             metadata_df = pd.read_csv(args.metadata_file)
-            metadata_df = pd.concat(metadata_df, new_metadata_df)
+            metadata_df = pd.concat([metadata_df, new_metadata_df])
         else:
             metadata_df = new_metadata_df
 
+        metadata_df = reorder_columns(metadata_df, config.get('col_order'))
         metadata_df.to_csv(args.output_file, index=False)
 
 
