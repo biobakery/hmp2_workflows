@@ -117,21 +117,28 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
         ## ['/tmp/metadata/sampleA.csv', '/tmp/metadata/sampleB.csv']
     """
     metadata_df = pd.read_csv(metadata_file)
+    
+    output_metadata_files = bb_utils.name_files(samples, 
+                                                output_dir, 
+                                                extension = 'csv',
+                                                subfolder = 'metadata',
+                                                create_folder = True)
+    sample_metadata_dict = dict(zip(samples, output_metadata_files))
 
-    sample_metadata_dict = dict(zip(samples,
-                                    bb_utils.name_files(samples, output_dir,
-                                                        extension = 'csv')))
-   
     def _workflow_gen_metadata(task):
         metadata_subset = metadata_df.loc[(metadata_df[id_column].isin(samples)) &
                                           (metadata_df['data_type'] == data_type)]
+    
+        if metadata_subset.empty:
+            raise ValueError('Could not find metadata associated with samples.',
+                             ",".join(samples))
 
-        for (_index, row) in metadata_subset.iterrows():
+        for (sample_id, row) in metadata_subset.iterrows():
             sample_metadata_file = sample_metadata_dict.get(row[id_column])
-            metadata_subset.xs(_index).to_csv(sample_metadata_file, index=False)
-
+            metadata_subset.xs(sample_id).to_csv(sample_metadata_file, index=False)
+    
     workflow.add_task(_workflow_gen_metadata,
-                      targets = sample_metadata_dict.values(),
+                      targets = output_metadata_files,  
                       depends = [metadata_file],
                       name = 'Generate sample metadata')
 

@@ -1,0 +1,48 @@
+[//]: # Pweave pandoc markdown template which will generate HTML and 
+[//]: # accompanying visualizations to display quality control information 
+[//]: # for each sample.
+
+<<echo=False>>=
+import os
+import numpy
+
+from biobakery_workflows import utilities
+
+from anadama2 import PweaveDocument
+
+
+document = PweaveDocument()
+vars = document.get_vars()
+
+sample_name = vars['Sample Name']
+@
+
+## Functional Profiling
+
+This report section contains preliminary exploratory figures that summarize 
+HUMAnN2 functional profiling of all samples. HUMAnN2 performs species-specific and species-agnostic 
+quantification of gene families, EC enzyme modules, and pathways, using the UniRef and MetaCyc databases.
+For more information on functional profiling and the databases used, see websites for 
+[HUMAnN2](http://huttenhower.sph.harvard.edu/humann2), 
+[UniRef](http://www.uniprot.org/help/uniref), 
+and [MetaCyc](https://metacyc.org/). 
+
+### Pathway Abundance
+
+Hierarchical clustering using top <%= vars['max_sets'] %> pathways 
+with highest mean relative abundance among samples. The "average linkage" 
+clustering on the Euclidean distance metric was used to cluster samples.
+The pathway dendrogram is based on pairwise (Spearman) correlation between pathways.
+Samples are columns and pathway are rows. The heatmaps were generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
+
+### Features
+
+Feature detection as a function of sequencing depth. Effect of sample sequencing depth on the ability to detect 
+microbiome functional features in metagenomic sequence data. HUMAnN2 functional profiling of 
+DNA quality filtered reads was performed on individual samples in species-specific mode (blue), i.e. nucleotide 
+alignment against pangenomes of species identified in the sample with MetaPhlAn2, and in combined species-specific 
+and -agnostic (orange) mode, in which reads not matching any pangenome reference sequences were subjected to translated 
+searching against the UniRef90 database. Each profiled sample is represented by a orange and blue point in each plot. 
+Linear regression fit is represented by straight lines in each plot.
+
+

@@ -1,0 +1,45 @@
+[//]: # Pweave pandoc markdown template which will generate the HTML header 
+[//]: # template for any of the static web pages generated to display 
+[//]: # visulization output from our HMP2 analysis pipelines
+
+<<echo=False>>=
+from anadama2 import PweaveDocument
+
+
+document = PweaveDocument()
+vars = document.get_vars()
+@
+
+---
+title: <%= vars['sample_page_title'] %>
+header-includes:
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/static/css/bootstrap.css" />
+    <link rel="stylesheet" href="/static/css/carousel.css" />
+    <link rel="stylesheet" href="/static/css/mezzanine.css" />
+    <link rel="stylesheet" href="/static/css/bootstrap-theme.css" />
+    <script src="/static/mezzanine/js/jquery-1.7.1.min.js"></script>
+    <script src="/static/js/bootstrap.js"></script>
+---
+
+<body id="body">
+  <div class="container">
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+      <div class="container-fluid">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="/" style="padding: 0px 10px;">
+        <img src="/static/img/gut_cartoon.png" alt="IBDMDB.org" height="50" width="50">
+      </a>
+    </div>
+
+    <ul class="nav navbar-nav">
+      <li id="dropdown-menu-home"><a href="/">Home</a></li>
+      <li class="active" id="-results"><a href="/results">Download Data</a></li>
+      <li class="" id="-cb-browser"><a href="/cb/browser">Protocols</a></li>
+      <li class="" id="project"><a href="/project/">Team</a></li>
+      <li class="" id="https:--qiita.ibdmdb.org"><a href="https://qiita.ibdmdb.org">Explore Data</a></li>
+      <li class="" id="-participant"><a href="/participant">Participant Interface</a></li>
+    </ul>
+      </div>
+    </div>

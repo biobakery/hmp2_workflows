@@ -1,0 +1,32 @@
+[//]: # Pweave pandoc markdown template which will generate HTML and 
+[//]: # accompanying visualizations to display quality control information 
+[//]: # for each sample.
+
+<<echo=False>>=
+import os
+import numpy
+
+from biobakery_workflows import utilities
+
+from anadama2 import PweaveDocument
+
+
+document = PweaveDocument()
+vars = document.get_vars()
+
+sample_name = vars['Sample Name']
+@
+
+## Taxonomic Profiling
+
+Taxonomic profiling for sample <%= sample_name %> was generated 
+using [MetaPhlAn2](http://huttenhower.sph.harvard.edu/metaphlan2).
+
+Species abundances are passed through a basic filter requiring each species
+to have at least <%= vars['min_abundance'] %> % abundance.
+
+### Ordination
+
+### Heatmap
+
+### Barplot

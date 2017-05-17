@@ -158,7 +158,7 @@ def parse_checksums_file(checksums_file):
     return md5_map            
 
 
-def create_project_dirs(directories, project, data_type):
+def create_project_dirs(directories, project, submit_date, data_type):
     """Creates project directories that are required for raw, intermediate
     and output files produced by HMP2 workflows. The template for directories
     created is in the following format:
@@ -197,7 +197,7 @@ def create_project_dirs(directories, project, data_type):
             '/tmp/baz/HMP/2017-04-17/16S']
     """
     project_dirs = []
-    date_stamp = str(datetime.date.today())
+    date_stamp = str(submit_date)
 
     for directory in directories:
         target_dir = os.path.join(directory, project, date_stamp, data_type)

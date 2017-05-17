@@ -50,9 +50,10 @@ from hmp2_workflows.tasks.common import (verify_files,
 from hmp2_workflows.tasks.file_conv import (bam_to_fastq,
                                             batch_convert_tsv_to_biom)
 from hmp2_workflows.tasks.metadata import generate_sample_metadata
-from hmp2_workflows.utils import (parse_cfg_file, 
-                                  create_project_dirs,
-                                  create_merged_md5sum_file)
+from hmp2_workflows.utils.misc import (parse_cfg_file, 
+                                       create_project_dirs,
+                                       #get_template,
+                                       create_merged_md5sum_file)
 
 
 def parse_cli_arguments():
@@ -82,47 +83,40 @@ def parse_cli_arguments():
 
 def main(workflow):
     args = workflow.parse_args()
-    conf = parse_cfg_file(args.config_file, section='wgs')
+    conf = parse_cfg_file(args.config_file, section='mgx')
 
     contaminate_db = conf.get('databases').get('knead_dna')
 
     manifest = parse_cfg_file(args.manifest_file)
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
+    creation_date = manifest.get('submission_date')
 
-    if data_files and data_files.get('WGS'):
-        input_files = data_files.get('WGS').get('input')
+    if data_files and data_files.get('mgx'):
+        input_files = data_files.get('mgx').get('input')
 
-        ## Create all the project directories we will need in the following 
-        ## steps. These will be in the layout of:
-        ##
-        ##      <BASE DIRECTORY>/<PROJECT>/<TIME STAMP>/<DATE TYPE>
-        ##
-        ##      e.x. /tmp/data_deposition/HMP2/2017-04-14/WGS/
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
                                             conf.get('processing_dir'),
                                             conf.get('public_dir')],
-                                           project,
-                                           'WGS')
+                                            project,
+                                            creation_date,
+                                            'WGS')
         (deposition_dir, processing_dir, public_dir) = project_dirs
-
-        ## We'll want the base deposition directory as well to drop our 
-        ## MANIFEST file into for book-keeping purposes.
         base_depo_dir = os.path.abspath(os.path.join(deposition_dir, '..'))
 
         ## Our md5sums are going to be in the directories with their 
         ## respective files so we'll want to collate them somehow.
-        input_dirs = [group[0] for group in itertools.groupby(input_files, 
-                                                              os.path.dirname)]
-        md5sum_files = chain.from_iterable([find_files(input_dir, '.md5') for 
-                                            input_dir in input_dirs])
-        merged_md5sum_file = tempfile.mktemp('.md5')
-        checksums_file = create_merged_md5sum_file(md5sum_files, 
-                                                   merged_md5sum_file)
+        # input_dirs = [group[0] for group in itertools.groupby(input_files, 
+        #                                                      os.path.dirname)]
+        #md5sum_files = chain.from_iterable([find_files(input_dir, '.md5') for 
+        #                                    input_dir in input_dirs])
+        #merged_md5sum_file = tempfile.mktemp('.md5')
+        #checksums_file = create_merged_md5sum_file(md5sum_files, 
+        #                                           merged_md5sum_file)
 
         ## Validate files to ensure file integrity via md5 checksums
-        validated_files = verify_files(workflow, input_files, 
-                                       checksums_file)
+        #validated_files = verify_files(workflow, input_files, 
+        #                              checksums_file)
 
         manifest_file = stage_files(workflow,
                                     [args.manifest_file],
@@ -132,12 +126,12 @@ def main(workflow):
         ## the /seq/picard_aggregation directory so we'll want to symlink
         ## them over to our data deposition directory.
         deposited_files = stage_files(workflow,
-                                      validated_files,
+                                      input_files,
                                       deposition_dir,
                                       symlink=True)
 
-        #fastq_files = bam_to_fastq(workflow, deposited_files, 
-        #                           processing_dir, args.threads)
+        fastq_files = bam_to_fastq(workflow, deposited_files, 
+                                   processing_dir, args.threads)
         fastq_files = deposited_files
 
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
@@ -183,8 +177,8 @@ def main(workflow):
         pub_raw_dir = os.path.join(public_dir, 'raw')
         create_folders(pub_raw_dir)
 
-        pub_metadata_dir = os.path.join(public_dir, 'metadata')
-        create_folders(pub_metadata_dir)
+        #pub_metadata_dir = os.path.join(public_dir, 'metadata')
+        #create_folders(pub_metadata_dir)
 
         pub_tax_profile_dir = os.path.join(public_dir, 'tax_profile')
         create_folders(pub_tax_profile_dir)
@@ -208,9 +202,8 @@ def main(workflow):
                                      func_profile_outputs,
                                      pub_func_profile_dir)
 
-        ## The functional files are a little trickier. We need to get 
-        ## each of the individual files and package them up into a tarball
-        sample_names = get_sample_names(validated_files)
+        
+        sample_names = get_sample_names(input_files)
         norm_genefamilies = name_files(sample_names, 
                                        processing_dir, 
                                        subfolder = 'genes',
@@ -239,8 +232,6 @@ def main(workflow):
                                       tar_path)
             func_tar_files.append(func_tar_file)
 
-        ## We also want to package together the logs from kneaddata that 
-        ## are generated during the QC/clean-up process
         kneaddata_log_files = name_files(sample_names,
                                          processing_dir,
                                          subfolder = 'kneaddata',
@@ -249,16 +240,45 @@ def main(workflow):
                                     kneaddata_log_files,
                                     pub_raw_dir)
 
-        ## One of the last steps in the pipeline will be generating the 
-        ## individual metadata files for any type of product where 
-        ## metadata is available
         pub_metadata_files = generate_sample_metadata(workflow,
                                                       'metagenomics',
                                                       sample_names,
                                                       args.metadata_file,
-                                                      pub_metadata_dir)
+                                                      public_dir)
 
-        ## TODO: Add static webpage visualization generation in here
+        ## Handle generating all the templates we need here
+        #template_files = name_files(sample_names,
+        #                            public_dir,
+        #                            subfolder='templates',
+        #                            extension='html')
+        
+        #for elts in zip(sample_names, template_file, pub_metadata_files,
+        #                pub_tax_profiles, norm_genefamiles, norm_path_files):
+        #    sample_name = elts[0]
+        #    template_file = elts[1]
+        #    metadata_file = elts[2]
+        #    tax_profile = elts[3]
+        #    features = elts[4]
+        #    path_abund = elts[5]
+
+        #    templates = [get_template('header'), 
+        #                 get_template('quality_control_single_dna'),
+        #                 get_template('taxonomy'),
+        #                 get_template('functional_dna')]
+
+        #    doc_task = workflow.add_document(
+        #        templates=templates,
+        #        depends=[read_counts, metadata_file, tax_profile, features, path_abund],
+        #        targets=[template_file],
+        #        vars={"sample_name": sample_name,
+        #              "dna_read_counts": sample_read_counts,
+        #              "taxonomic_profile": tax_profile,
+        #              "path_abund": path_abund,
+        #              "feature_counts": features,
+        #              "contaminate_database": contaminate_db,
+        #        }
+        #    )
+
         make_files_web_visible(workflow, 
                                [pub_cleaned_fastqs,
                                 pub_log_files,
@@ -269,8 +289,6 @@ def main(workflow):
                                 pub_func_files,
                                 func_tar_files])
 
-        ## TODO: Add code/tasks to handle generating all the metadata that 
-        ## we need.
         workflow.go()
 
 

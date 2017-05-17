@@ -1,0 +1,18 @@
+# Pweave pandoc markdown template which will generate the HTML header 
+# template for any of the static web pages generated to display 
+# visulization output from our HMP2 analysis pipelines
+
+<<echo=False>>=
+from anadama2 import PweaveDocument
+
+
+vars = document.get_vars()
+@
+
+<footer>
+  <div class="row">
+<div class="col-md-4 col-md-offset-4">
+  <p style="text-align: justify;">We are grateful for IBDMDB funding from the NIH Human Microbiome Project NIDDK U54DE023798.</p>
+</div>
+  </div>
+</footer>

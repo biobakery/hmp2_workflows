@@ -12,8 +12,7 @@ base: &base
 
     # Next comes up the directories where our AnADAMA2 pipelines will pull and
     # deposit files to.        
-    #deposition_dir: /seq/ibdmdb/carze_test/data_deposition
-    deposition_dir: /seq/ibdmdb/data_deposition
+    deposition_dir: /seq/ibdmdb/carze_test/data_deposition
     processing_dir: /seq/ibdmdb/carze_test/processing
     public_dir: /seq/ibdmdb/carze_test/public/
 
@@ -42,7 +41,7 @@ proteomics: &proteomics
         - _rollup.txt
         - .png        
 
-wgs: &wgs
+mgx: &mgx
     <<: *base
 
     output_ftypes:
