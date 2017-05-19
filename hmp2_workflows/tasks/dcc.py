@@ -31,7 +31,7 @@ furnished to do so, subject to the following conditions:
 import cutlass
 
 
-def upload_data_files(workflow, sample, data_type, data_file):
+def upload_data_files(workflow, metadata, dcc_objects):
     """Transfers the provided iHMP OSDF object to the DCC using the cutlass
     API and aspera. This task is meant to upload in parallel to the DCC to
     account for the large amount of files that are present in the IBDMDB 
@@ -39,7 +39,27 @@ def upload_data_files(workflow, sample, data_type, data_file):
 
     Args:
         workflow (anadama2.Workflow): The AnADAMA2 workflow object.
-        sample (cutlass.Sample): The sample 
+        metadata (pandas.DataFrame): Dataframe containing accompanying metadata
+            for all files being submitted to the DCC
+        dcc_objects (list): A list of lists containing all the DCC objects 
+            that have been submitted and the sequence file (and accompanying 
+            cutlass object) that will be submitted.
 
+    Requires:
+        None
+
+    Returns:
+        list: A list of the final sequence files submitted to the DCC.
     """
-    pass
+    
+    def _dcc_upload(workflow):
+        """Invokes upload of sequencing product(s) to the DCC
+        making using of Cutlass' aspera transfer functionality.
+
+        Args: 
+            workflow: 
+        """
+
+    workflow.add_task_group(_dcc_upload,
+                            depends = [metadata['seq_files'], dcc_objects])
+                            

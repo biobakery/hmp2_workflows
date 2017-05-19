@@ -201,15 +201,16 @@ dcc: &dcc
             - "bioproject:PRJNA306874"
 
     sample:
-        water: "ENVO:5792"
-        ethanol: ethanol
-        biome: "ENVO:00009003"
-        feature: "ENVO:00002003"
-        geo_loc_name: USA
-        body_product: stool
-        env_package: "Human-associated"
-        fma_body_site: "FMA:64183"
         body_site: stool
+        fma_body_site: "FMA:64183"
+        mixs:            
+            biome: "ENVO:00009003"
+            body_product: stool
+            material: "ENVO:5792"
+            feature: "ENVO:00002003"
+            lat_lon: "+42.363664 -71.069230"
+            geo_loc_name: United States of America
+            env_package: "Human-associated"
     
     16s:
         prep_id: 1
@@ -271,20 +272,31 @@ dcc: &dcc
         sequencer_model: Illumina HiSeq 2000
 
     proteomics:
-        prep_id: 4
-        center: PNNL
-        contact: "White, Richard A <richard.white@pnnl.gov"
-        storage_duration: 365
-        experiment_type: Shotgun Proteomics
-        analyzer: QExactive
-        detector: QExactive
-        instrument_name: QExactive
-        pepid_format: List
-        processing_method: MSGF+
-        protid_format: List
-        protmod_format: NA
-        protocol_name: NA
-        search_engine: MSGF+
-        software: MSGF+
-        source: MSGF+
-        spectra_format: .raw
+        assay:
+            center: PNNL
+            contact: "White, Richard A <richard.white@pnnl.gov"
+            storage_duration: 365
+            experiment_type: "PRIDE:0000429, Shotgun proteomics"
+            protocol_steps: ""
+            species: ""
+            tissue: ""
+            title: ""
+        proteome:                
+            analyzer: QExactive
+            detector: QExactive
+            instrument_name: QExactive
+            pepid_format: List
+            processing_method: MSGF+
+            protid_format: List
+            protmod_format: NA
+            protocol_name: NA
+            search_engine: MSGF+
+            software: MSGF+
+            source: MSGF+
+            spectra_format: .raw
+            study: ibd
+            subtype: host
+            comment: IBDMDB
+            title: IBDMDB
+            short_label: NA
+            
