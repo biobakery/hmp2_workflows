@@ -33,6 +33,7 @@ import os
 import tempfile
 
 import cutlass
+import numpy as np
 import pandas as pd
 
 from anadama2 import Workflow
@@ -129,11 +130,18 @@ def main(workflow):
             sample_metadata_df = metadata_df[(metadata_df[id_col].isin(sample_ids)) &
                                              (metadata_df['data_type'] == data_type)]
 
+            ## In our proteomics dataset we occasionally see two datasets tied to the same
+            ## sample so we need to do a little extra work to figure out which dataset
+            ## we are working with.
+            is_proteomics = True if data_type == "proteomics" else False
+
             ## Add an extra column to our sample metadata with the corresponding sequence file 
             ## for easy access later on.
-            sample_metadata_df['seq_file'] = sample_metadata_df.apply(dcc.map_sample_id_to_seq_file,
-                                                                      args=(id_col, seq_fname_map),
-                                                                      axis=1)
+            sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_seq_file,
+                                                          args=(id_col, seq_fname_map, 
+                                                                is_proteomics),
+                                                          axis=1)
+            sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
 
             ## Once we've mapped to our samples to our metadata we need to 
             ## grab another set of ID's so we can map to the Broad sample 
@@ -203,12 +211,14 @@ def main(workflow):
                                                                          conf,
                                                                          row)
 
-                        dcc_objs.extend([dcc_project, dcc_study, dcc_subject,
+                        dcc_objs.append([dcc_project, dcc_study, dcc_subject,
                                          dcc_visit, dcc_sample, dcc_prep, 
                                          dcc_seq_obj])
      
-            dcc_files = upload_data_files(workflow, dtype_metadata, dcc_objs)
-        
+            dcc_files = upload_data_files(workflow, sample_metadata_df, dcc_objs)
+     
+    workflow.go()
+
 
 if __name__ == "__main__":
     main(parse_cli_arguments())

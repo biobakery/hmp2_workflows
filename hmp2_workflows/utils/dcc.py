@@ -130,7 +130,7 @@ def create_seq_fname_map(data_type, data_files):
     return sample_id_map
     
 
-def map_sample_id_to_seq_file(row, id_col, seq_fname_map):
+def map_sample_id_to_seq_file(row, id_col, seq_fname_map, is_proteomics):
     """Given a a row from a pandas DataFrame, map the sample identifier 
     in the metadata to the sequence file map and return the corresponding
     sequence file for the given row.
@@ -142,6 +142,9 @@ def map_sample_id_to_seq_file(row, id_col, seq_fname_map):
             from.
         seq_fname_map (dict): The dictionary map used to map metadata sample 
             identifiers to their corresponding sequence files.
+        is_proteomics (boolean): Whether or not we are dealing with proteomics
+            data and if we need to account for multiple sequence files 
+            attached to the same sample
 
     Requires:
         None
@@ -150,9 +153,17 @@ def map_sample_id_to_seq_file(row, id_col, seq_fname_map):
         string: The path to the corresponding sequence file assocaited
             with a given metadata row.
     """
-    sample_id = row.get(id_col)
 
-    return seq_fname_map.get(sample_id)
+    sample_id = row.get(id_col)
+    seq_file = seq_fname_map.get(sample_id)
+    pdo_number = row.get('PDO Number')
+
+    if is_proteomics and str(pdo_number) in seq_file:
+        row['seq_file'] = seq_fname_map.get(sample_id)
+    else:
+        row['seq_file'] = None
+
+    return row
 
 
 def get_fields_to_update(new_metadata, osdf_object):
@@ -642,7 +653,7 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     ## PRIDE ID.
     proteomes = group_osdf_objects(prep.proteomes(),
                                    'raw_url')
-    proteomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+    proteomes = dict((os.path.splitext(os.path.basename(k))[1], v) for (k,v) 
                       in proteomes.items())
     
     proteome = proteomes.get(raw_file_name)
@@ -665,6 +676,8 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     ## TODO: Talk to Rick about these dummy files and how we might replace them
     ## with real files.
     req_metadata['local_protmod_file'] = tempfile.NamedTemporaryFile(delete=False).name
+    req_metadata['local_pepid_file'] = tempfile.NamedTemporaryFile(delete=False).name
+    req_metadata['local_protid_file'] = tempfile.NamedTemporaryFile(delete=False).name
 
     fields_to_update = get_fields_to_update(req_metadata, proteome)
 

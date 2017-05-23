@@ -253,6 +253,8 @@ def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
         sample_filter_df = sample_filter_df[['Parent Sample A', 'Proteomics']]
 
         proteomics_df['sample_ids'] = proteomics_df['Dataset'].replace(sample_mapping)
+        proteomics_df['PDO Number'] = proteomics_df['Dataset'].map(lambda did: did.replace('-', '_')
+                                                                                  .split('_')[0])
         proteomics_df = sample_filter_df.merge(proteomics_df,
                                                left_on='Proteomics',
                                                right_on='sample_ids',
@@ -434,7 +436,6 @@ def main(args):
         new_metadata_df['visit_num'] = new_metadata_df['Collection #']
         new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
         new_metadata_df['data_type'] = new_metadata_df.apply(get_data_type, axis=1)    
-
         new_metadata_df = generate_collection_statistics(new_metadata_df, 
                                                          collection_dates_dict)
 

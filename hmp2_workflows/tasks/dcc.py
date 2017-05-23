@@ -28,8 +28,6 @@ furnished to do so, subject to the following conditions:
     THE SOFTWARE.
 """
 
-import cutlass
-
 
 def upload_data_files(workflow, metadata, dcc_objects):
     """Transfers the provided iHMP OSDF object to the DCC using the cutlass
@@ -51,15 +49,41 @@ def upload_data_files(workflow, metadata, dcc_objects):
     Returns:
         list: A list of the final sequence files submitted to the DCC.
     """
-    
-    def _dcc_upload(workflow):
+    uploaded_files = []
+
+   # def _dcc_upload(task):
+    def _dcc_upload(dcc_object):
         """Invokes upload of sequencing product(s) to the DCC
         making using of Cutlass' aspera transfer functionality.
 
         Args: 
-            workflow: 
-        """
+            task (anadama2.Task): AnADAMA2 Task object.
 
-    workflow.add_task_group(_dcc_upload,
-                            depends = [metadata['seq_files'], dcc_objects])
-                            
+        Requires: 
+            None
+
+        Returns:
+            None
+        """
+        #seq = task.depends[0].fn
+        seq = dcc_object[-1]
+
+        success = seq.save()
+        if not success:
+            raise ValueError('Saving sequence to DCC failed: %s' % seq.sample_name)
+            
+            ## TODO: Here we would probably want to roll back and delete all
+            ## our other DCC objects?
+        else:
+            uploaded_files.append(seq.sample_name)
+    
+    for dcc_object in dcc_objects:
+        _dcc_upload(dcc_object)
+        #workflow.add_task_gridable(_dcc_upload,
+        #                           depends = dcc_object[-1],
+        #                           args = [dcc_object],
+        #                           time = 2*60,
+        #                           mem = 1024,
+        #                           cores = 1)
+
+    return uploaded_files
