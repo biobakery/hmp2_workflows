@@ -92,15 +92,7 @@ def main(workflow, args):
     validate_csv_file(workflow, data_status,
                       config.get('validators').get('broad_data_status'))
     
-    studytrax_df = pd.read_csv(manifest.get('studytrax'))
-    sample_status_df = pd.read_csv(manifest.get('broad_sample_status'))
-    data_status_df = pd.read_csv(manifest.get('broad_data_status'))
     
-    ## The ID we will use to link together all our samples 
-    data_status_df['External ID'] = data_status_df['Externawl ID'].apply(lambda extern_id: 
-                                                                           extern_id[1:].replace('SM', 'SM-'))
-
-
     ## Copy to the public area on the website
     ## TODO: Figure out better dir/file organizaiton here for all our files
     metadata_dir = os.path.join(config.get('public_dir'), 

@@ -158,55 +158,6 @@ def parse_checksums_file(checksums_file):
     return md5_map            
 
 
-def create_project_dirs(directories, project, submit_date, data_type):
-    """Creates project directories that are required for raw, intermediate
-    and output files produced by HMP2 workflows. The template for directories
-    created is in the following format:
-
-            <BASE DIR>/<PROJECT>/<TIME STAMP>/<DATA TYPE>
-
-    Returns a list containing all created directories.
-
-    Args:
-        directories (list): A list containing all directories which will 
-            have the above template applied to create a project directory.
-        project (string): The project to use when creating project 
-            directories.
-        data_type (string): The data type for these project directories.
-
-    Requires:
-        None
-
-    Returns:
-        list: A list containing create project directories.
-
-    Example:
-        from hmp2_workflows import utils
-
-        base_dirs = ['/tmp/foo', '/tmp/bar', '/tmp/baz']
-        project = 'HMP'
-        data_type = '16S'
-
-        project_dirs = utils.create_project_directories(base_dirs, 
-                                                        project, 
-                                                        data_type)
-
-        print project_dirs
-        ## ['/tmp/foo/HMP/2017-04-17/16S',
-            '/tmp/bar/HMP/2017-04-17/16S',
-            '/tmp/baz/HMP/2017-04-17/16S']
-    """
-    project_dirs = []
-    date_stamp = str(submit_date)
-
-    for directory in directories:
-        target_dir = os.path.join(directory, project, date_stamp, data_type)
-        bb_utils.create_folders(target_dir)
-        project_dirs.append(target_dir)
-
-    return project_dirs
-
-
 def get_sample_id_from_fname(filename):
     """Given a sequence file extract the sample ID that is mappable to one of 
     the metadata sources associated with the HMP2 workflows.
@@ -249,4 +200,6 @@ def get_sample_id_from_fname(filename):
         sample_id = os.path.splitext(filename)[0]
 
     return sample_id
+
+
 

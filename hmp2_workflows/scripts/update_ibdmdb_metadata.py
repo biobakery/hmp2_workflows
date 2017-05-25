@@ -421,6 +421,9 @@ def main(args):
                                               for dtype in submitted_files])
             sequence_files.extend(new_seq_files)
 
+    ## TODO: How do we account for any updates to metadata here? Should we overwrite rows
+    ## if they come from a new file?
+
     if sequence_files:
         new_metadata_df = get_metadata_rows(study_trax_df, 
                                             broad_sample_df, 
