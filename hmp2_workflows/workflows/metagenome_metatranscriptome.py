@@ -223,7 +223,6 @@ def main(workflow, args):
                                                      matched_files_out[1])
 
         ## TODO: Handle files that do not have a matching WGS taxonomic profile
-        
         norm_ratio_outputs = norm_ratio(workflow,
                                         func_profile_outputs_wgs[3],
                                         func_profile_outputs_wgs[4],
@@ -232,6 +231,86 @@ def main(workflow, args):
                                         func_profile_outputs_mtx[-1],
                                         project_dirs_mtx[-1],
                                         mapping_file)
+
+        pub_mtx_raw_dir = os.path.join(public_dir, 'raw')
+        pub_mtx_tax_profile_dir = os.path.join(public_dir, 'tax_profile')
+        pub_mtx_func_profile_dir = os.path.join(public_dir, 'func_profile')
+        map(create_folders, [pub_mtx_raw_dir, pub_mtx_tax_profile_dir, 
+                             pub_mtx_func_profile_dir])
+
+        pub_wgs_raw_dir = os.path.join(public_dir, 'raw')
+        pub_wgs_tax_profile_dir = os.path.join(public_dir, 'tax_profile')
+        pub_wgs_func_profile_dir = os.path.join(public_dir, 'func_profile')
+        map(create_folders, [pub_wgs_raw_dir, pub_wgs_tax_profile_dir, 
+                             pub_wgs_func_profile_dir])
+
+
+        pub_mtx_metadata_files = generate_sample_metadata(workflow,
+                                                          'metatranscriptomics',
+                                                          sample_names_mtx,
+                                                          args.metadata_file,
+                                                          pub_mtx_raw_dir)
+        pub_wgs_metadata_files = generate_sample_metadata(workflow,
+                                                          'metagenomics',
+                                                          sample_names_wgs,
+                                                          args.metadata_file,
+                                                          pub_wgs_raw_dir)
+
+        norm_genefamilies_mtx = name_files(sample_names, 
+                                           project_dirs_mtx[1], 
+                                           subfolder = 'genes',
+                                           tag = 'genefamilies_relab',
+                                           extension = 'tsv')
+        norm_ecs_files_mtx = name_files(sample_names,
+                                        project_dirs_mtx[1],
+                                        subfolder = 'ecs',
+                                        tag = 'genefamilies_ecs_relab',
+                                        extension = 'tsv')
+        norm_path_files_mtx = name_files(sample_names,
+                                         project_dirs_mtx[1],
+                                         subfolder = 'pathways',
+                                         tag = 'pathabundance_relab',
+                                         extension = 'tsv')
+
+        func_tar_files_mtx = []
+        for (sample, gene_file, ecs_file, path_file) in zip(sample_names_mtx,
+                                                            norm_genefamilies_mtx,
+                                                            norm_ecs_files_mtx,
+                                                            norm_path_files_mtx):
+            tar_path = os.path.join(pub_mtx_func_profile_dir, 
+                                    "%s_humann2.tgz" % sample)
+            func_tar_file = tar_files(workflow, 
+                                      [gene_file, ecs_file, path_file],
+                                      tar_path)
+            func_tar_files_mtx.append(func_tar_file)
+
+        norm_genefamilies_wgs = name_files(sample_names, 
+                                           project_dirs_wgs[1], 
+                                           subfolder = 'genes',
+                                           tag = 'genefamilies_relab',
+                                           extension = 'tsv')
+        norm_ecs_files_wgs = name_files(sample_names,
+                                        project_dirs_wgs[1],
+                                        subfolder = 'ecs',
+                                        tag = 'genefamilies_ecs_relab',
+                                        extension = 'tsv')
+        norm_path_files_wgs = name_files(sample_names,
+                                         project_dirs_wgs[1],
+                                         subfolder = 'pathways',
+                                         tag = 'pathabundance_relab',
+                                         extension = 'tsv')
+
+        func_tar_files_wgs = []
+        for (sample, gene_file, ecs_file, path_file) in zip(sample_names_mtx,
+                                                            norm_genefamilies_mtx,
+                                                            norm_ecs_files_mtx,
+                                                            norm_path_files_mtx):
+            tar_path = os.path.join(pub_wgs_func_profile_dir, 
+                                    "%s_humann2.tgz" % sample)
+            func_tar_file = tar_files(workflow, 
+                                      [gene_file, ecs_file, path_file],
+                                      tar_path)
+            func_tar_files_wgs.append(func_tar_file)
 
         workflow.go()
 
