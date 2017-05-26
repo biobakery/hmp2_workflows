@@ -25,8 +25,8 @@ base: &base
         chimera: /seq/ibdmdb/centos6/var/lib/uchime/gold.fa
         copy_num: /seq/ibdmdb/centos6/picrust-1.0.0/picrust/data/16S_13_5_precalculated.tab.gz        
         knead_dna: /seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1
-        knead_rna: /seq/ibdmdb/centos6/var/lib/mrna
-        knead_six: /seq/ibdmdb/centos6/var/lib/silva-119-1_SSURef_nr99
+        knead_mtx: /seq/ibdmdb/centos6/var/lib/mrna
+        knead_rrna: /seq/ibdmdb/centos6/var/lib/silva-119-1_SSURef_nr99
         humann2_nt: /seq/ibdmdb/centos6/var/lib/humann2/chocophlan
         humann2_p: /seq/ibdmdb/centos6/var/lib/humann2/uniref
 
