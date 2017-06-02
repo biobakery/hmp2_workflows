@@ -29,6 +29,8 @@ furnished to do so, subject to the following conditions:
 """
 
 import os
+import shutil
+import tempfile
 
 import pandas as pd
 
@@ -144,3 +146,96 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
 
     return sample_metadata_dict.values()
 
+
+def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
+                        id_col, target_cols=[]):
+    """Adds metadata to the top of a tab-delimited file. This function is
+    meant to be called on analysis files to append relevant metadata to the 
+    analysis output found in the file. An example can be seen below:
+
+        
+        sample  Sample1 Sample2 Sample3 Sample4 Sample5 Sample6 Sample7 Sample8
+        Age 87  78  3   2   32  10  39  96
+        Cohort  Healthy Healthy Healthy Healthy IBD IBD IBD IBD
+        Favorite_color  Yellow  Blue    Green   Yellow  Green   Blue    Green 
+        Height  60  72  63  67  71  65  61  64
+        Sex 0   1   0   1   1   0   1   0
+        Smoking 0   0   1   0   1   1   1   0
+        Star_Trek_Fan   1   1   0   0   1   0   0   1
+        Weight  151 258 195 172 202 210 139 140
+        Bacteria    1   1   1   1   1   1   1   1
+        Bacteria|Actinobacteria|Actinobacteria  0.0507585   0.252153    0.161725   
+
+    Args:
+        workflow (anadama2.Workflow): The AnADAMA2 workflow object.
+        analysis_files (list): Target TSV's to add metadata too
+        metadata_file (string): The path to the metadata file to pull from.
+        id_col (string): The column name in the supplied metadata file to 
+            attempt to subset on using ID's from the analysis file.
+        target_cols (list): A list of columns to filter the metadata file on.
+
+    Requires:
+        None
+
+    Returns: 
+        list: A list containing the path to all modified files.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import metadata
+
+        workflow = anadama2.Workflow()
+    
+        target_cols = ['age', 'sex', 'smoking']
+        out_files = metadata.add_metadata_to_tsv(workflow, ['/tmp/metaphlan2.out'], 
+                                                 'External ID', '/tmp/metadata.tsv',
+                                                 target_cols)
+
+        print out_files
+        ## ['/tmp/metaphlan2.out']
+    """
+    metadata_df = pd.read_csv(metadata_file, index=1, dtype='str')
+    
+    def _workflow_add_metadata_to_tsv(task):
+        analysis_file = task.depends[0].fn
+
+        # These analysis files can be on the rather large side so maybe don't
+        # not load them all into memory at once. 
+        analysis_df = pd.read_table(analysis_file, dtype='str')
+     
+        # Big assumption that our sample IDs are in the first line of our 
+        # tab delimited analysis file. Could end poorly. Need a better
+        # way to handle this.
+        sample_ids = analysis_df.columns.tolist()[1:]
+        if sample_ids == 1:
+            # Something went wrong here.
+            raise ValueError('Could not parse sample ID\'s:', 
+                             sample_ids)
+        
+        subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
+
+        if target_cols:
+            subset_metadata_df = subset_metadata_df.filter(target_cols)
+
+        subset_metadata_df = subset_metadata_df.T
+        subset_metadata_df.rename(columns=subset_metadata_df.iloc[0])
+        subset_metadata_df.drop(subset_metadata_df.index[0])
+
+        # Because we are prepending the sample metadata to our analysis files 
+        # we need a temporary file created first which we will rename.
+        (_fd, temp_analysis_out) = tempfile.mkstemp()
+        temp_analysis_fh = open(temp_analysis_out, 'a')
+
+        subset_metadata_df.to_table(temp_analysis_fh)
+        analysis_df.to_table(temp_analysis_fh, index=False, na_rep="NA")
+
+        temp_analysis_fh.close()
+        
+        shutil.move(analysis_file, "%s.old" % analysis_file)
+        shutil.move(temp_analysis_out, analysis_file)
+
+    workflow.add_task_gridable(_workflow_add_metadata_to_tsv,
+                               depends = analysis_files,
+                               name =  "Generate analysis output with metadata")
+
+    return analysis_files

@@ -84,7 +84,7 @@ def create_seq_mapping_file(mtx_seqs, wgs_seqs, output_dir):
     Args:
         mtx_seqs (list):  A list of metatranscriptome sample files
         wgs_seqs (list): A list of metagenome sample files
-        output_file (string): The directory to write the sequence mapping
+        output_dir (string): The directory to write the sequence mapping
             file too.
 
     Requires:

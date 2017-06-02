@@ -107,20 +107,6 @@ def main(workflow):
 
         base_depo_dir = os.path.abspath(os.path.join(deposition_dir, '..'))
 
-        ## Our md5sums are going to be in the directories with their 
-        ## respective files so we'll want to collate them somehow.
-        input_dirs = [group[0] for group in itertools.groupby(input_files, 
-                                                              os.path.dirname)]
-        md5sum_files = chain.from_iterable([find_files(input_dir, '.md5') for 
-                                            input_dir in input_dirs])
-        merged_md5sum_file = tempfile.mktemp('.md5')
-        checksums_file = create_merged_md5sum_file(md5sum_files, 
-                                                   merged_md5sum_file)
-
-        ## Validate files to ensure file integrity via md5 checksums
-        validated_files = verify_files(workflow, input_files, 
-                                       checksums_file)
-
         manifest_file = stage_files(workflow,
                                     [args.manifest_file],
                                     base_depo_dir)
@@ -130,7 +116,7 @@ def main(workflow):
         ## them over to our data deposition directory.
         deposited_files = stage_files(workflow,
                                       validated_files,
-                                      deposition_dir,
+                                      input_files,
                                       symlink=True)
 
         fastq_files = bam_to_fastq(workflow, deposited_files, 
@@ -142,8 +128,8 @@ def main(workflow):
                                         fastq_files,
                                         processing_dir,
                                         args.threads,
-                                        1,
-                                        150)
+                                        conf.get('maxee'),
+                                        conf.get('min_trunc_len_max'))
 
         closed_ref_tsv = taxonomic_profile(workflow,
                                            qc_fasta_outs[0],
@@ -151,30 +137,26 @@ def main(workflow):
                                            qc_fasta_outs[2],
                                            processing_dir,
                                            args.threads,
-                                           '0.97',
+                                           conf.get('percent_identity'),
                                            gg_usearch,
                                            gg_fasta,
                                            gg_tax,
-                                           2)
+                                           conf.get('min_size'))
         
         predict_metagenomes_tsv = functional_profile(workflow, 
                                                      closed_ref_tsv, 
                                                      processing_dir)
 
-
         ## Generate metadata for all raw files/product files when available.
         pub_metadata_dir = os.path.join(public_dir, 'metadata')
         create_folders(pub_metadata_dir)
         
-        ## TODO: We'll likely need to merge our metadata here
         pub_metadata_files = generate_sample_metadata(workflow,
                                                       'amplicon',
                                                       sample_names,
                                                       args.metadata_file,
                                                       pub_metadata_dir)
 
-        ## TODO: This is really ugly. Need to figure out a way to not end up
-        ## wrapping our lists in lists so that stuff doesn't break
         make_files_web_visible(workflow, 
                                [qc_fasta_outs,
                                 [closed_ref_tsv],

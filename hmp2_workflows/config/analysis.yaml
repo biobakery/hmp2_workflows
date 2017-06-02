@@ -54,6 +54,13 @@ mgx: &mgx
 16S: &16S
     <<: *base
 
+    # Some analysis parameters            
+    min_pred_qc_score: 2
+    maxee: 1
+    trunc_len_max: 150
+    min_size: 2
+    percent_identity: 0.97        
+
 mtx: &mtx
     <<: *base
 
@@ -164,7 +171,7 @@ metadata: &metadata
 dcc: &dcc
     <<: *base
 
-    username: carze
+    username: cesar.arze
     password: fishnet-socket-dolphin-can
 
     namespace: ihmp
