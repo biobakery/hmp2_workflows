@@ -37,6 +37,13 @@ base: &base
 proteomics: &proteomics
     <<: *base
     
+    metadata_id_col: Job
+    target_metadata_cols:
+        - State   
+        - Dataset_Type
+        - Request_ID
+        - Protein
+
     output_ftypes:
         - _rollup.txt
         - .png        

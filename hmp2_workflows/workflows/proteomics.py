@@ -38,6 +38,7 @@ from biobakery_workflows.utilities import find_files, create_folders
 
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                         make_files_web_visible)
+from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.utils import parse_cfg_file
 
 
@@ -60,6 +61,9 @@ def parse_cli_arguments():
                           'containing parameters required by the workflow.')
     workflow.add_argument('checksums-file', desc='MD5 checksums for files '
                           'found in the supplied input directory.')
+    workflow.add_argument('data_specific_metadata', desc='A collection of '
+                          'dataset specific metadata that should be integrated '
+                          'with any analysis output (creating a PCL file).')
 
     return workflow
 
@@ -126,6 +130,15 @@ def main(workflow):
                                        symlink=True)
 
         output_files = output_files if output_files else []         
+
+        ## We have a dataset specific metadata file that we can incorporate
+        ## into the analysis output.
+        if output_files and args.data_specific_metadata:
+            output_files = add_metadata_to_tsv(workflow, 
+                                               output_files, 
+                                               args.data_specific_metadata, 
+                                               conf.get('metadata_id_col'),
+                                               conf.get('target_metadata_cols', []))
 
         ## Step #4 - Stage output files to public folder
         public_files = stage_files(workflow, output_files, 

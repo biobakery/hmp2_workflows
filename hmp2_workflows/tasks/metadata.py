@@ -236,6 +236,6 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
 
     workflow.add_task_gridable(_workflow_add_metadata_to_tsv,
                                depends = analysis_files,
-                               name =  "Generate analysis output with metadata")
+                               name =  "Generate analysis PCL output file.")
 
     return analysis_files
