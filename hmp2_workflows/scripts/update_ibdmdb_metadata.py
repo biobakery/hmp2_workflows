@@ -45,10 +45,10 @@ furnished to do so, subject to the following conditions:
 """
 
 import argparse
-import itertools
 import os
 
 import glob2
+import numpy as np
 import pandas as pd
 
 import biobakery_workflows.utilities as bbutils
@@ -191,6 +191,35 @@ def get_project_id(row):
     return project_id
 
 
+def get_pdo_number(row):
+    """Populates the PDO number when it can be obtained from other pieces of 
+    metadata.
+
+    Args:
+        row (pandas.Series): Row of metadata from an HMP2 metadata table
+
+    Requires:
+        None
+
+    Returns:
+        string: The corresponding PDO number for the given metadata row
+    """
+    pdo_num = row.get('PDO Number')
+    gid = row.get('Project')
+
+    ## This specific case is applicable to Proteomics data only but the 
+    ## function can be expanded to handle other scenarios in the future
+    if (not isinstance(gid, float) and '.raw' in gid 
+        and row.get('data_type') == 'proteomics'):
+        filename = os.path.basename(gid).replace('_', '-')
+        batch_num = filename.split('-')[0]
+        
+        if batch_num.isdigit():
+            pdo_num = batch_num
+
+    return pdo_num
+
+
 def get_data_type(row):
     """Populates the 'data_type' column in the HMP2 metadata table. Attempts
     guess what kind of data type the row of metadata is referencing based off 
@@ -213,14 +242,17 @@ def get_data_type(row):
     return data_type
 
 
-def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
+def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df, 
+                      data_type, sequence_files):
     """Extracts metadata from the supplied sources of metadata for the
     provided sequence files. 
 
     Args:
+        config (dict): Configuration parameters for metadata
         studytrax_df (pandas.DataFrame): StudyTrax clinical metadata
         sample_df (pandas.DataFrame): Broad sample status metadata
         proteomics_df (pandas.DataFrame): Proteomics metadata.
+        data_type (string): Data type of the provided sequence files
         sequence_files (list): A list of sequence files that metadata
             should be pulled for if available.
 
@@ -234,6 +266,7 @@ def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
     sample_mapping = dict(zip(bbutils.sample_names(sequence_files),
                               map(get_sample_id_from_fname, sequence_files)))
     sample_ids = sample_mapping.values()                          
+    data_type_mapping = config.get('dtype_mapping')
 
     ## Grab subset of Broad sample tracking spreadsheet
     sample_subset_df = sample_df[(sample_df['Parent Sample A'].isin(sample_ids)) |
@@ -244,6 +277,11 @@ def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
                                          right_on='st_q4',
                                          how='left')
 
+    ## We sometimes get a situation where our studytrax metadata is missing 
+    ## some of the proteomics sample ID's so we need to make sure we 
+    ## replicate them.
+    metadata_df.loc[metadata_df['st_q17'].isnull(), 'st_q17'] = metadata_df['Proteomics']
+    
     if proteomics_df is not None:   
         ## In order to merge our proteomics data properly we'll need to 
         ## first create a subset of our Broad sample tracking sheet 
@@ -264,7 +302,9 @@ def get_metadata_rows(studytrax_df, sample_df, proteomics_df, sequence_files):
         metadata_df = metadata_df.merge(proteomics_df,
                                         on='Parent Sample A',
                                         how='left')
-        
+    
+    metadata_df['data_type'] = data_type_mapping.get(data_type)
+
     return metadata_df
     
 
@@ -305,6 +345,29 @@ def generate_external_id(row):
 
     site_sub_coll = row['Site/Sub/Coll']
     return site_sub_coll[0] + stool_id.replace('-', '')
+
+
+def fix_site_sub_coll_id(row, site_mapping):
+    """Adds the SiteName abbreviation to the Site/Sub/Coll ID in the instances
+    where it is not present. This abbreviation is necessary to de-dupe rows.
+
+    Args:
+        row (pandas.Series): A row of metadata from our metadata table.
+        site_mapping (dict): The mapping of Site Name to Site abbreviation
+
+    Requires:
+        None
+
+    Returns:
+        string: The completed Site/Sub/Coll ID
+    """
+    site_sub_coll_id = row['Site/Sub/Coll ID']
+    site_abbrev = site_sub_coll_id[0]
+
+    if site_abbrev.isdigit():
+        site_sub_coll_id = site_mapping.get(row['SiteName']) + site_sub_coll_id
+
+    return site_sub_coll_id
 
 
 def generate_collection_statistics(metadata_df, collection_dict):
@@ -402,57 +465,60 @@ def main(args):
     if args.proteomics_metadata:
         proteomics_df = pd.read_table(args.proteomics_metadata)
 
-    sequence_files = []
+    #sequence_files = []
 
     ## The update procedure either assumes that we have an exisitng metadata
     ## file that we are going to be appending too/updating or that we are 
     ## creating a fresh metadata sheet and will be adding the files in the 
     ## manifest file too it.
-    if not args.metadata_file or args.refresh_all:
-        sequence_files.extend(get_all_sequence_files(config.get('deposition_dir'),
-                                                     config.get('input_extensions')))
+    ## TODO: This needs to be re-worked to account for snagging datatypes as as well.
+    #if not args.metadata_file or args.refresh_all:
+    #    sequence_files.extend(get_all_sequence_files(config.get('deposition_dir'),
+    #                                                 config.get('input_extensions')))
 
     if args.manifest_file:
         manifest = parse_cfg_file(args.manifest_file)
         submitted_files = manifest.get('submitted_files')
     
         if submitted_files:
-            new_seq_files = itertools.chain(*[submitted_files[dtype]['input_files'] 
-                                              for dtype in submitted_files])
-            sequence_files.extend(new_seq_files)
+            new_metadata = []
+            for (dtype, items) in submitted_files.iteritems():
+                new_metadata.append(get_metadata_rows(config,
+                                                      study_trax_df, 
+                                                      broad_sample_df, 
+                                                      proteomics_df,
+                                                      dtype,
+                                                      items.get('input_files')))
+ 
+            new_metadata_df = pd.concat(new_metadata)
+            new_metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
 
-    ## TODO: How do we account for any updates to metadata here? Should we overwrite rows
-    ## if they come from a new file?
-
-    if sequence_files:
-        new_metadata_df = get_metadata_rows(study_trax_df, 
-                                            broad_sample_df, 
-                                            proteomics_df,
-                                            sequence_files)
-
-        ## Going to do a lot of transformations on our data to get it in its 
-        ## final state.
-        new_metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
-
-        new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid)[1:])
-        new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
-        new_metadata_df['visit_num'] = new_metadata_df['Collection #']
-        new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
-        new_metadata_df['data_type'] = new_metadata_df.apply(get_data_type, axis=1)    
-        new_metadata_df = generate_collection_statistics(new_metadata_df, 
+            new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
+            new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
+            new_metadata_df['visit_num'] = new_metadata_df['Collection #']
+            new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
+            new_metadata_df = generate_collection_statistics(new_metadata_df, 
                                                          collection_dates_dict)
 
-        new_metadata_df = remove_columns(new_metadata_df, config.get('drop_cols'))
+            new_metadata_df = remove_columns(new_metadata_df, config.get('drop_cols'))
 
-        if args.metadata_file:
-            ## TODO: Figure out how to find duplicates here
-            metadata_df = pd.read_csv(args.metadata_file)
+    if args.metadata_file:
+        metadata_df = pd.read_csv(args.metadata_file)
+    
+        site_mapping = config.get('site_map')
+        metadata_df['Site/Sub/Coll ID'] = metadata_df.apply(fix_site_sub_coll_id, 
+                                                            args=(site_mapping,),
+                                                            axis=1)
+        metadata_df['PDO Number'] = metadata_df.apply(get_pdo_number, axis=1)
+
+        if not new_metadata_df.empty:
             metadata_df = pd.concat([metadata_df, new_metadata_df])
-        else:
-            metadata_df = new_metadata_df
+            metadata_df = metadata_df.drop_duplicates(subset=['Site/Sub/Coll ID', 'data_type'])
+    else:
+        metadata_df = new_metadata_df
 
-        metadata_df = reorder_columns(metadata_df, config.get('col_order'))
-        metadata_df.to_csv(args.output_file, index=False)
+    metadata_df = reorder_columns(metadata_df, config.get('col_order'))
+    metadata_df.to_csv(args.output_file, index=False)
 
 
 if __name__ == "__main__":

@@ -51,6 +51,21 @@ proteomics: &proteomics
 mgx: &mgx
     <<: *base
 
+    metadata_id_col: External ID
+    target_metadata_cols:
+        - Site/Sub/Coll ID
+        - Site
+        - Age at diagnosis
+        - Sex
+        - visit_num
+        - week_num
+        - Diagnosis 
+        - Was SCCAI completed?
+        - SCCAI Total
+        - Was HBI completed?
+        - HBI Total
+        - "FecalCal Result:"
+
     output_ftypes:
         - _tax.txt
         - .png
@@ -84,6 +99,18 @@ metadata: &metadata
     input_extensions:
         - .bam
         - .raw
+
+    site_map:
+        "Massachusetts General Hospital": M
+        "Cedars-Sinai": C
+        Cincinnati: H
+        "MGH Pediatrics": P
+        Emory: E
+
+    dtype_mapping:
+        mgx: metagenomics
+        mtx: metatranscriptomics
+        proteomics: proteomics
 
     drop_cols:
         - Sheet Name
@@ -201,7 +228,25 @@ dcc: &dcc
         Other: ethnic_other
         "More than one race": ethnic_other
         "Black or African American": african_american
+        "American Indian or Alaska Native": american_indian_or_alaska_native
         White: caucasian
+
+    education_map:
+        0: 7th grade or less
+        1: Some high school
+        2: High school graduate or GED
+        3: "Some college, no degree"
+        4: Associate degree
+        5: "Bachelor's degree"
+        6: "Master's degree"
+        7: "Professional/Doctoral degree"
+        999: "Unknown/Not Reported"
+
+    disease_map:
+        0: "Crohn's Disease"
+        1: "Ulcerative colitis"
+        2: "Healthy control"
+        3: Other
 
     study:
         name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
@@ -299,15 +344,17 @@ dcc: &dcc
             analyzer: QExactive
             detector: QExactive
             instrument_name: QExactive
-            pepid_format: List
+            exp_description: ""
+            data_processing_protocol: ""
+            #pepid_format: List
             processing_method: MSGF+
-            protid_format: List
-            protmod_format: NA
+            #protid_format: List
+            #protmod_format: NA
             protocol_name: NA
             search_engine: MSGF+
             software: MSGF+
             source: MSGF+
-            spectra_format: .raw
+            #spectra_format: .raw
             study: ibd
             subtype: host
             comment: IBDMDB

@@ -43,8 +43,7 @@ def populate_value_lookup(row, lookup):
     lookup.setdefault(code_col, {})
     for value in values:
         (code_val, _null, human_val) = value.split(',', 2)
-        lookup[code_col][str(float(code_val))] = human_val
-        lookup[code_col][code_val] = human_val
+        lookup[code_col][str(float(code_val))] = human_val.replace(':', '').strip()
 
 
 def main(args):
@@ -60,14 +59,18 @@ def main(args):
     value_field_lookup = {}
     dictionary_df[dictionary_df['Pick Lists  (Value, Missing, Name)'].notnull()].apply(populate_value_lookup, axis=1, args=(value_field_lookup,))
 
+    ## Need to account for one pesky case here
+    value_field_lookup['diagnosis'] = dict((key.replace('.0', ''), val) for (key, val) in value_field_lookup['diagnosis'].iteritems())
+
     ## Replace coded values
     metadata_df.replace(value_field_lookup, inplace=True)
 
     ## Replace some other left-over yes/no fields
-    replace_yes_no = {'0': 'No', '1': 'Yes'}
+    replace_yes_no = {'0': 'No', '1': 'Yes', '0.0': 'No', '1.0': 'Yes'}
     replace_cols = ['bx_q31', 'bx_q33', 'bx_q35', 'i_q3', 'i_q4',
                     'i_q5', 'i_q6', 'i_q7', 'i_q8', 'i_q9', 'i_q10',
-                    'i_q11', 'i_q12', 'i_q13', 'i_q14', 'i_q15',
+                    'i_q11', 'i_q12', 'i_q13', 'i_q14', 'i_q15', 
+                    'ic_q1', 'ic_q5', 'ic_q6',
                     'i_q16', 'i_q17', 'i_q18', 'i_q19', 'i_q20', 'i_q21',
                     'i_q22', 'i_q23', 'i_q24', 'i_q25', 'i_q26', 'i_q27',
                     'i_q28', 'i_q29', 'i_q30', 'i_q31', 'i_q32', 'i_q33',
@@ -85,7 +88,6 @@ def main(args):
                     
     ## Rename and write out new CSV file
     metadata_df.rename(columns=col_name_lookup, inplace=True)
-
     metadata_df.to_csv(args.output_file, index=False)
 
 

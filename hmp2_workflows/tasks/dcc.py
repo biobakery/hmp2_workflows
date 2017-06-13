@@ -29,7 +29,7 @@ furnished to do so, subject to the following conditions:
 """
 
 
-def upload_data_files(workflow, metadata, dcc_objects):
+def upload_data_files(workflow, metadata, dcc_coll):
     """Transfers the provided iHMP OSDF object to the DCC using the cutlass
     API and aspera. This task is meant to upload in parallel to the DCC to
     account for the large amount of files that are present in the IBDMDB 
@@ -39,7 +39,7 @@ def upload_data_files(workflow, metadata, dcc_objects):
         workflow (anadama2.Workflow): The AnADAMA2 workflow object.
         metadata (pandas.DataFrame): Dataframe containing accompanying metadata
             for all files being submitted to the DCC
-        dcc_objects (list): A list of lists containing all the DCC objects 
+        dcc_coll (list): A list of lists containing all the DCC objects 
             that have been submitted and the sequence file (and accompanying 
             cutlass object) that will be submitted.
 
@@ -51,8 +51,8 @@ def upload_data_files(workflow, metadata, dcc_objects):
     """
     uploaded_files = []
 
-   # def _dcc_upload(task):
-    def _dcc_upload(dcc_object):
+    def _dcc_upload(task):
+    #def _dcc_upload(dcc_object):
         """Invokes upload of sequencing product(s) to the DCC
         making using of Cutlass' aspera transfer functionality.
 
@@ -65,25 +65,23 @@ def upload_data_files(workflow, metadata, dcc_objects):
         Returns:
             None
         """
-        #seq = task.depends[0].fn
-        seq = dcc_object[-1]
-
-        success = seq.save()
-        if not success:
-            raise ValueError('Saving sequence to DCC failed: %s' % seq.sample_name)
-            
-            ## TODO: Here we would probably want to roll back and delete all
-            ## our other DCC objects?
-        else:
-            uploaded_files.append(seq.sample_name)
+        seq = dcc_objects[-1]
+        
+        if seq:
+            success = seq.save()
+            if not success:
+                raise ValueError('Saving sequence to DCC failed: %s' % seq.sample_name)
+            else:
+                uploaded_files.append(seq.sample_name)
     
-    for dcc_object in dcc_objects:
-        _dcc_upload(dcc_object)
-        #workflow.add_task_gridable(_dcc_upload,
-        #                           depends = dcc_object[-1],
-        #                           args = [dcc_object],
-        #                           time = 2*60,
-        #                           mem = 1024,
-        #                           cores = 1)
+    for dcc_objects in dcc_coll:
+        if not dcc_objects[-1]:
+            continue
+
+        workflow.add_task_gridable(_dcc_upload,
+                                   depends = dcc_objects[-1].local_raw_file,
+                                   time = 2*60,
+                                   mem = 1024,
+                                   cores = 1)
 
     return uploaded_files

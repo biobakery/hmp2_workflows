@@ -148,7 +148,7 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
 
 
 def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
-                        id_col, target_cols=[]):
+                        id_col, col_replace, target_cols=[]):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -172,7 +172,11 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         metadata_file (string): The path to the metadata file to pull from.
         id_col (string): The column name in the supplied metadata file to 
             attempt to subset on using ID's from the analysis file.
+        col_replace (list): A list of string fragments that should be searched 
+            for and replaced in either of the column headers of the analysis 
+            or metadata files.
         target_cols (list): A list of columns to filter the metadata file on.
+        
 
     Requires:
         None
@@ -187,55 +191,75 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         workflow = anadama2.Workflow()
     
         target_cols = ['age', 'sex', 'smoking']
+        col_replace = ['_taxonomic_profile', '_functional_profile']
         out_files = metadata.add_metadata_to_tsv(workflow, ['/tmp/metaphlan2.out'], 
-                                                 'External ID', '/tmp/metadata.tsv',
+                                                 'External ID',
+                                                 col_replace,
+                                                 '/tmp/metadata.tsv',
                                                  target_cols)
 
         print out_files
         ## ['/tmp/metaphlan2.out']
     """
-    metadata_df = pd.read_csv(metadata_file, index=1, dtype='str')
+    metadata_df = pd.read_csv(metadata_file, dtype='str')
     
-    def _workflow_add_metadata_to_tsv(task):
-        analysis_file = task.depends[0].fn
+    #def _workflow_add_metadata_to_tsv(task):
+    def _workflow_add_metadata_to_tsv(analysis_file, pcl_out):
+        #analysis_file = task.depends[0].name
+        #pcl_out = task.targets[0].name
 
-        # These analysis files can be on the rather large side so maybe don't
-        # not load them all into memory at once. 
-        analysis_df = pd.read_table(analysis_file, dtype='str')
+        analysis_df = pd.read_table(analysis_file, dtype='str', index_col=0)
      
         # Big assumption that our sample IDs are in the first line of our 
         # tab delimited analysis file. Could end poorly. Need a better
         # way to handle this.
-        sample_ids = analysis_df.columns.tolist()[1:]
+        sample_ids = analysis_df.columns.tolist()
         if sample_ids == 1:
             # Something went wrong here.
             raise ValueError('Could not parse sample ID\'s:', 
                              sample_ids)
-        
+        if col_replace:
+            new_ids = sample_ids
+            for replace_str in col_replace:
+                new_ids = [sid.replace(replace_str, '') for sid in new_ids]
+
+            if new_ids != sample_ids:
+                sample_ids_map = dict(zip(sample_ids, new_ids))
+                sample_ids = new_ids
+
+                analysis_df.rename(columns=sample_ids_map, inplace=True)
+
         subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
 
         if target_cols:
+            target_cols.insert(0, id_col)
             subset_metadata_df = subset_metadata_df.filter(target_cols)
 
         subset_metadata_df = subset_metadata_df.T
-        subset_metadata_df.rename(columns=subset_metadata_df.iloc[0])
-        subset_metadata_df.drop(subset_metadata_df.index[0])
+        subset_metadata_df.rename(columns=subset_metadata_df.iloc[0], inplace=True)
+        subset_metadata_df.drop(subset_metadata_df.index[0], inplace=True)
 
-        # Because we are prepending the sample metadata to our analysis files 
-        # we need a temporary file created first which we will rename.
-        (_fd, temp_analysis_out) = tempfile.mkstemp()
-        temp_analysis_fh = open(temp_analysis_out, 'a')
+        row_order = subset_metadata_df.index.tolist() + analysis_df.index.tolist()
+        analysis_metadata_df = pd.concat([analysis_df, subset_metadata_df], 
+                                         axis=0)
+        analysis_metadata_df = analysis_metadata_df.reindex(row_order)
+    
+        analysis_metadata_df.to_csv(pcl_out, sep='\t', na_rep="NA")
 
-        subset_metadata_df.to_table(temp_analysis_fh)
-        analysis_df.to_table(temp_analysis_fh, index=False, na_rep="NA")
+    output_folder = os.path.dirname(analysis_files[0])
+    pcl_files = bb_utils.name_files(analysis_files, 
+                                    output_folder, 
+                                    extension="pcl")
 
-        temp_analysis_fh.close()
-        
-        shutil.move(analysis_file, "%s.old" % analysis_file)
-        shutil.move(temp_analysis_out, analysis_file)
+    #workflow.add_task_group_gridable(_workflow_add_metadata_to_tsv,
+    #                                 depends = analysis_files,
+    #                                 targets = pcl_files,
+    #                                time = 1*60,
+    #                                 mem = 1024,
+    #                                  cores = 1,
+    #                                  name =  "Generate analysis PCL output file")
+    for (a_file, p_file) in zip(analysis_files, pcl_files):
+        _workflow_add_metadata_to_tsv(a_file, p_file)
 
-    workflow.add_task_gridable(_workflow_add_metadata_to_tsv,
-                               depends = analysis_files,
-                               name =  "Generate analysis PCL output file.")
 
-    return analysis_files
+    return pcl_files

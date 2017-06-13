@@ -156,6 +156,11 @@ def main(workflow):
             samples_coll_df.index.names = [None]
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
+                print "Uploading metadata and sequence data for subject: %s" % subject_id
+                print "DEBUG: %s - %s - %s" % (metadata.iloc[0]['External ID'], 
+                                               metadata.iloc[0]['seq_file'],
+                                               metadata.iloc[0]['Tube B:Proteomics'])
+
                 dcc_subject = dcc.create_or_update_subject(dcc_subjects,
                                                            subject_id.replace('C', ''),
                                                            dcc_study.id,
@@ -186,6 +191,10 @@ def main(workflow):
                     if data_file:
                         data_filename = os.path.basename(data_file)
                         file_md5sum = md5sums_map.get(data_filename)
+                        
+                        if not file_md5sum:
+                            raise ValueError("Could not find md5sum for file %s" % data_filename)
+
                         (dcc_prep, dcc_seq_obj) = (None, None)
 
                         if   data_type == "proteomics": 

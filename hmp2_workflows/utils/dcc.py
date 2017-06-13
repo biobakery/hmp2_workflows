@@ -76,7 +76,15 @@ def group_osdf_objects(osdf_collection, group_by_field):
     """
     grouped_objs = itertools.groupby(osdf_collection, 
                                      operator.attrgetter(group_by_field))
-    return dict((k, list(g)) for k, g in grouped_objs)
+
+    grouped_dict = {}
+    for (key, group) in grouped_objs:
+        if hasattr(key, "__iter__"):
+            key = key[0]
+
+        grouped_dict[key] = list(group)            
+
+    return grouped_dict
 
 
 def create_seq_fname_map(data_type, data_files):
@@ -208,7 +216,29 @@ def get_fields_to_update(new_metadata, osdf_object):
             if mixs_new != mixs_curr: 
                 updated_fields.append('mixs')
 
-    updated_fields.extend([key for key in new_metadata.keys() 
+    if 'checksums' in required_fields:
+        local_files = [(k,v) for (k,v) in new_metadata.iteritems()
+                       if 'local_' in k and 'tmp' not in v]
+
+        ## This is super ugly but going to operate under the assumption that 
+        ## we only have on raw file per DCC object.
+        if len(local_files) > 1:
+            raise ValueError('More than one file associated with this object: %s' 
+                             % ",".join([lfile for (k, lfile) in local_files]))
+
+        (local_file_field, local_file) = local_files[0]
+        required_fields.remove('checksums')
+        required_fields.remove(local_file_field)
+
+        ## Most of the objects we deal with will be single files so we only
+        ## need to check a single checksum
+        new_checksum = new_metadata['checksums']['md5']
+        osdf_checksum = osdf_object.checksums.get('md5')
+
+        if new_checksum != osdf_checksum:
+            updated_fields.extend(['checksums', local_file_field])
+
+    updated_fields.extend([key for key in required_fields
                            if new_metadata.get(key) != getattr(osdf_object, key)])
 
     return np.unique(updated_fields).tolist()
@@ -353,26 +383,37 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
         subject = subject[0]
  
     race_map = conf.get('race_map')
+    edu_map = conf.get('education_map')
+    disease_map = conf.get('disease_map')
 
     req_metadata = {}
     req_metadata['rand_subject_id'] = metadata_subject_id
     req_metadata['gender'] = metadata['Sex'].iloc[0].lower().strip()
-    req_metadata['race'] = race_map.get(metadata['Race'].iloc[0].strip()
-                                                        .replace(' ', '_'))
+
+    race = metadata['Race'].iloc[0].strip()
+    req_metadata['race'] = race_map.get(race, race.replace(' ', '_'))
 
     req_metadata['tags'] = []
-    req_metadata['tags'].append('diagnosis:%s' 
-                                % metadata['Diagnosis'].iloc[0]
-                                                       .strip()
-                                                       .lower()
-                                                       .replace('\'', '')
-                                                       .replace(' ', '_'))
     age_at_dx = metadata['Age at diagnosis'].iloc[0]
     if not np.isnan(age_at_dx):  
        req_metadata['tags'].append('age_at_dx:%s' % age_at_dx)
 
-    req_metadata['tags'].append('highest_education:%s' 
-                                % metadata['Education Level'].iloc[0].strip())
+    edu_level = metadata['Education Level'].iloc[0]
+    if isinstance(edu_level, str):
+        if edu_level.isdigit():
+            edu_level = edu_map.get(edu_level)
+        else: 
+            edu_level = edu_level.strip()
+
+        req_metadata['tags'].append('highest_education:%s' % edu_level)
+
+    disease_state = (metadata['Diagnosis'].iloc[0].strip().lower()
+                                                          .replace('\'', '')
+                                                          .replace(' ', '_'))
+    if disease_state.isdigit():
+        disease_state = disease_map.get(int(disease_state))
+
+    req_metadata['tags'].append('diagnosis:%s' % disease_state)
 
     fields_to_update = get_fields_to_update(req_metadata, subject)
     map(lambda key: setattr(subject, key, req_metadata.get(key)),
@@ -648,44 +689,39 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     """
     raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
 
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
     ## For the time being we are going to group our Proteom objects on 
     ## filename but in the future we will want to transition this to by
     ## PRIDE ID.
     proteomes = group_osdf_objects(prep.proteomes(),
                                    'raw_url')
-    proteomes = dict((os.path.splitext(os.path.basename(k))[1], v) for (k,v) 
+    proteomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                       in proteomes.items())
     
     proteome = proteomes.get(raw_file_name)
 
     if not proteome:
         proteome = cutlass.Proteome()
+
+        ## TODO: Talk to Rick about these dummy files and how we might replace them
+        ## with real files.
+        req_metadata['local_peak_file'] = tempfile.NamedTemporaryFile(delete=False).name
+        req_metadata['local_result_file'] = tempfile.NamedTemporaryFile(delete=False).name
+        req_metadata['local_other_file'] = tempfile.NamedTemporaryFile(delete=False).name
     else:
         proteome = proteome[0]
 
-    ## Setup our 'static' metadata pulled from our YAML config
-    req_metadata = {}
     req_metadata.update(conf.get('proteome'))
 
     req_metadata['pride_id'] = "NA"
     req_metadata['sample_name'] = sample_id
     req_metadata['checksums'] = { "md5": md5sum }
 
-    req_metadata['local_spectra_file'] = metadata.get('seq_file')
-
-    ## TODO: Talk to Rick about these dummy files and how we might replace them
-    ## with real files.
-    req_metadata['local_protmod_file'] = tempfile.NamedTemporaryFile(delete=False).name
-    req_metadata['local_pepid_file'] = tempfile.NamedTemporaryFile(delete=False).name
-    req_metadata['local_protid_file'] = tempfile.NamedTemporaryFile(delete=False).name
+    req_metadata['local_raw_file'] = metadata.get('seq_file')
 
     fields_to_update = get_fields_to_update(req_metadata, proteome)
-
-    ## Sometimes our filepath won't change but the md5sum is different so 
-    ## we will still want to upload the file again.
-    if ('checksums' in fields_to_update 
-        and 'local_spectra_file' not in fields_to_update):
-        fields_to_update.append('local_spectra_file')
 
     map(lambda key: setattr(proteome, key, req_metadata.get(key)),
         fields_to_update)
@@ -696,6 +732,10 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
         if not proteome.is_valid():
             raise ValueError('Proteome validation failed: %s' % 
                              proteome.validate())
+    else:
+        ## Really if there are no changes we don't want to save this object so 
+        ## we return None to be handled downstream.
+        proteome = None            
 
     return proteome        
 
