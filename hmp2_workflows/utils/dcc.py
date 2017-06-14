@@ -465,7 +465,8 @@ def create_or_update_visit(visits, visit_num, subject_id, metadata):
     req_metadata['visit_number'] = visit_num
     req_metadata['visit_id'] = "%s_%s" % (metadata.get('ProjectSpecificID'), 
                                           visit_num)
-    req_metadata['interval'] = int(metadata['interval_days'])
+    req_metadata['interval'] = (int(metadata['interval_days']) 
+                                if not np.isnan(metadata['interval_days']) else 0)
     ## This is hard-coded to meet HIPAA compliance.
     req_metadata['date'] = "2000-01-01"     
 

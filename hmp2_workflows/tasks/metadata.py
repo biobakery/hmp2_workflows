@@ -203,10 +203,9 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
     """
     metadata_df = pd.read_csv(metadata_file, dtype='str')
     
-    #def _workflow_add_metadata_to_tsv(task):
-    def _workflow_add_metadata_to_tsv(analysis_file, pcl_out):
-        #analysis_file = task.depends[0].name
-        #pcl_out = task.targets[0].name
+    def _workflow_add_metadata_to_tsv(task):
+        analysis_file = task.depends[0].name
+        pcl_out = task.targets[0].name
 
         analysis_df = pd.read_table(analysis_file, dtype='str', index_col=0)
      
@@ -251,15 +250,13 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
                                     output_folder, 
                                     extension="pcl")
 
-    #workflow.add_task_group_gridable(_workflow_add_metadata_to_tsv,
-    #                                 depends = analysis_files,
-    #                                 targets = pcl_files,
-    #                                time = 1*60,
-    #                                 mem = 1024,
-    #                                  cores = 1,
-    #                                  name =  "Generate analysis PCL output file")
-    for (a_file, p_file) in zip(analysis_files, pcl_files):
-        _workflow_add_metadata_to_tsv(a_file, p_file)
+    workflow.add_task_group(_workflow_add_metadata_to_tsv,
+                            depends = analysis_files,
+                            targets = pcl_files,
+                            time = 1*60,
+                            mem = 1024,
+                            cores = 1,
+                            name =  "Generate analysis PCL output file")
 
 
     return pcl_files

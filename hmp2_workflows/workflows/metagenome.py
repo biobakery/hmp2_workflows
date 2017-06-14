@@ -129,19 +129,10 @@ def main(workflow):
         ##      * Merged taxonomic profile 
         ##      * Individual taxonomic files
         ##      * metaphlan2 SAM files 
-        #tax_profile_outputs = taxonomic_profile(workflow,
-        #                                        cleaned_fastqs,
-        #                                        processing_dir,
-        #                                        args.threads)
-        tax_profile_outputs = ('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/taxonomic_profiles.tsv', [], [])
-        tax_profile_outputs[1].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDK_taxonomic_profile.tsv')
-        tax_profile_outputs[1].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDM_taxonomic_profile.tsv')
-        tax_profile_outputs[1].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDI_taxonomic_profile.tsv')
-        tax_profile_outputs[1].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDU_taxonomic_profile.tsv')
-        tax_profile_outputs[1].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDQ_taxonomic_profile.tsv')
-    
-        tax_profile_outputs[2].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDM_bowtie2.sam')
-        tax_profile_outputs[2].append('/seq/ibdmdb/carze_test/processing/HMP2/2017-05-15/WGS/metaphlan2/MSM5LLDM_bowtie2.sam')
+        tax_profile_outputs = taxonomic_profile(workflow,
+                                                cleaned_fastqs,
+                                                processing_dir,
+                                                args.threads)
 
         ## Generate functional profile output using humann2. Outputs are the 
         ## the following:
@@ -177,6 +168,12 @@ def main(workflow):
                                               conf.get('metadata_id_col'),
                                               ['_taxonomic_profile', '_functional_profile'],
                                               conf.get('target_metadata_cols'))
+        func_profile_pcl = add_metadata_to_tsv(workflow,
+                                               [func_profile_outputs[0]],
+                                               args.metadata_file,
+                                               conf.get('metadata_id_col'),
+                                               ['_taxonomic_profile', '_functional_profile'],
+                                               conf.get('target_metadata_cols'))
 
         pub_files = [stage_files(workflow, files, target_dir) for (files, target_dir) 
                      in [(cleaned_fastqs, pub_raw_dir), 

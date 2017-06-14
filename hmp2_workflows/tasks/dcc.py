@@ -51,8 +51,8 @@ def upload_data_files(workflow, metadata, dcc_coll):
     """
     uploaded_files = []
 
-    def _dcc_upload(task):
-    #def _dcc_upload(dcc_object):
+    #def _dcc_upload(task):
+    def _dcc_upload(dcc_objects):
         """Invokes upload of sequencing product(s) to the DCC
         making using of Cutlass' aspera transfer functionality.
 
@@ -77,11 +77,13 @@ def upload_data_files(workflow, metadata, dcc_coll):
     for dcc_objects in dcc_coll:
         if not dcc_objects[-1]:
             continue
-
-        workflow.add_task_gridable(_dcc_upload,
-                                   depends = dcc_objects[-1].local_raw_file,
-                                   time = 2*60,
-                                   mem = 1024,
-                                   cores = 1)
+     
+        _dcc_upload(dcc_objects)
+        # workflow.add_task(_dcc_upload,
+        #                  depends = seq_files,
+        #                  name = "DCC Upload %s" % dcc_objects[-1].sample_name,
+        #                  time = 2*60,
+        #                  mem = 1024,
+        #                  cores = 1)
 
     return uploaded_files

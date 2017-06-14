@@ -157,9 +157,6 @@ def main(workflow):
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 print "Uploading metadata and sequence data for subject: %s" % subject_id
-                print "DEBUG: %s - %s - %s" % (metadata.iloc[0]['External ID'], 
-                                               metadata.iloc[0]['seq_file'],
-                                               metadata.iloc[0]['Tube B:Proteomics'])
 
                 dcc_subject = dcc.create_or_update_subject(dcc_subjects,
                                                            subject_id.replace('C', ''),
@@ -170,6 +167,9 @@ def main(workflow):
                                                     'visit_number')
                 
                 for (idx, row) in metadata.iterrows():
+                    print "DEBUG: %s - %s - %s" % (row['External ID'], 
+                                                   row['seq_file'],
+                                                   row['Tube B:Proteomics'])
                     sample_coll_row = samples_coll_df.xs(row.get(tracking_map_col))
 
                     dcc_visit = dcc.create_or_update_visit(dcc_visits, 
@@ -215,6 +215,12 @@ def main(workflow):
                             dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
                                                                          conf,
                                                                          row)
+                            dcc_seq_obj = dcc.create_or_update_wgs_raw_seq_set(dcc_prep,
+                                                                               file_md5sum,
+                                                                               dcc_sample.name,
+                                                                               conf.get(data_type),
+                                                                               row)
+
                         elif data_type == "16S":
                             dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
                                                                          conf,

@@ -370,6 +370,31 @@ def fix_site_sub_coll_id(row, site_mapping):
     return site_sub_coll_id
 
 
+def fill_visit_nums(row):
+    """In the case of a missing visit number in a metadata row will attempt
+    to parse the visit number from the Site/Sub/Coll ID. This ID should 
+    encapsulate the visit number in the following format: XXXXC<VISIT_NUM>
+    
+    Example: C3010C9
+
+    Args:
+        row (pandas.Series): A row of metadata from our metadata table.
+
+    Requires:
+        None
+
+    Returns:
+        string: The corresponding visit number for the given row.
+    """
+    site_sub_coll_id = row['Site/Sub/Coll ID']
+    visit_num = row['visit_num']
+
+    if np.isnan(visit_num):
+        visit_num = site_sub_coll_id.split('C')[-1]
+    
+    return visit_num
+
+
 def generate_collection_statistics(metadata_df, collection_dict):
     """Generates the week_num and interval_days columns which contain
     the number of weeks between the past collection date and days between 
@@ -517,6 +542,7 @@ def main(args):
     else:
         metadata_df = new_metadata_df
 
+    metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.to_csv(args.output_file, index=False)
 
