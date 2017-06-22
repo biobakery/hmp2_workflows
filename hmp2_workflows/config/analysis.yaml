@@ -12,9 +12,9 @@ base: &base
 
     # Next comes up the directories where our AnADAMA2 pipelines will pull and
     # deposit files to.        
-    deposition_dir: /seq/ibdmdb/carze_test/data_deposition
-    processing_dir: /seq/ibdmdb/carze_test/processing
-    public_dir: /seq/ibdmdb/carze_test/public/
+    deposition_dir: /seq/ibdmdb/data_deposition
+    processing_dir: /seq/ibdmdb/processing
+    public_dir: /seq/ibdmdb/public/
 
     # Databases used by the various different workflows. 
     # TODO: Move these to a centralized location
@@ -65,6 +65,7 @@ mgx: &mgx
         - Was HBI completed?
         - HBI Total
         - "FecalCal Result:"
+        - "final single"
 
     output_ftypes:
         - _tax.txt
@@ -73,6 +74,11 @@ mgx: &mgx
         - .tar.bz2
         - .biom          
 
+    analysis_col_patterns:
+        - _taxonomic_profile
+        - _functional_profile
+        - _Abundance-RPKs
+    
 16S: &16S
     <<: *base
 
@@ -99,18 +105,6 @@ metadata: &metadata
     input_extensions:
         - .bam
         - .raw
-
-    site_map:
-        "Massachusetts General Hospital": M
-        "Cedars-Sinai": C
-        Cincinnati: H
-        "MGH Pediatrics": P
-        Emory: E
-
-    dtype_mapping:
-        mgx: metagenomics
-        mtx: metatranscriptomics
-        proteomics: proteomics
 
     drop_cols:
         - Sheet Name
@@ -228,25 +222,7 @@ dcc: &dcc
         Other: ethnic_other
         "More than one race": ethnic_other
         "Black or African American": african_american
-        "American Indian or Alaska Native": american_indian_or_alaska_native
         White: caucasian
-
-    education_map:
-        0: 7th grade or less
-        1: Some high school
-        2: High school graduate or GED
-        3: "Some college, no degree"
-        4: Associate degree
-        5: "Bachelor's degree"
-        6: "Master's degree"
-        7: "Professional/Doctoral degree"
-        999: "Unknown/Not Reported"
-
-    disease_map:
-        0: "Crohn's Disease"
-        1: "Ulcerative colitis"
-        2: "Healthy control"
-        3: Other
 
     study:
         name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
@@ -356,7 +332,7 @@ dcc: &dcc
             source: MSGF+
             #spectra_format: .raw
             study: ibd
-            subtype: host
+            #subtype: host
             comment: IBDMDB
             title: IBDMDB
             short_label: NA

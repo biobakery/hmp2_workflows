@@ -29,7 +29,7 @@ furnished to do so, subject to the following conditions:
 
 import os
 
-from biobakery_workflows import utilities as bbutils
+from biobakery_workflows import utilities as bb_utils
 from biobakery_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
 
 
@@ -62,9 +62,9 @@ def bam_to_fastq(workflow, input_files, output_dir, threads=1):
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/seq/ibdmdbd/out_dir'])
     """
-    output_files = bbutils.name_files(map(os.path.basename, input_files),
-                                      output_dir, 
-                                      extension='fastq')
+    output_files = bb_utils.name_files(map(os.path.basename, input_files),
+                                       output_dir, 
+                                       extension='fastq')
 
     workflow.add_task_group_gridable('samtools bam2fq [depends[0]] > [targets[0]]',
                                      depends=input_files,
@@ -106,15 +106,17 @@ def batch_convert_tsv_to_biom(workflow, tsv_files):
     """
     biom_files = []
 
-    tsv_fnames = bbutils.sample_names(tsv_files)
+    tsv_fnames = bb_utils.sample_names(tsv_files)
     tsv_dir = os.path.dirname(tsv_files[0])
 
-    biom_files = [os.path.join(tsv_dir, biom_fname) for biom_fname in 
-                  bbutils.name_files(tsv_fnames, tsv_dir, extension='biom')]
+    biom_dir = os.path.join(tsv_dir, 'biom')
+    bb_utils.create_folders(biom_dir)
+
+    biom_files = [os.path.join(biom_dir, biom_fname) for biom_fname in 
+                  bb_utils.name_files(tsv_fnames, biom_dir, extension='biom')]
 
     for (tsv_file, biom_file) in zip(tsv_files, biom_files):
-        convert_to_biom_from_tsv(workflow, tsv_file, biom_file, 
-                                 obs_metadata=None)
+        convert_to_biom_from_tsv(workflow, tsv_file, biom_file)
 
     return biom_files
 

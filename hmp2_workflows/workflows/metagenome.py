@@ -114,11 +114,8 @@ def main(workflow):
                                       deposition_dir,
                                       symlink=True)
 
-        fastq_files = bam_to_fastq(workflow, deposited_files, 
-                                   processing_dir, args.threads)
-
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
-                                                        fastq_files, 
+                                                        deposited_files, 
                                                         processing_dir,
                                                         args.threads,
                                                         contaminate_db)
@@ -161,26 +158,33 @@ def main(workflow):
         pub_func_profile_dir = os.path.join(public_dir, 'func_profile')
         map(create_folders, [pub_raw_dir, pub_tax_profile_dir, 
                              pub_func_profile_dir])
-    
+ 
+        knead_read_counts = os.path.join(processing_dir, 
+                                         'counts', 
+                                         'kneaddata_read_count_table.tsv') 
         tax_profile_pcl = add_metadata_to_tsv(workflow,
                                               [tax_profile_outputs[0]],
                                               args.metadata_file,
                                               conf.get('metadata_id_col'),
-                                              ['_taxonomic_profile', '_functional_profile'],
-                                              conf.get('target_metadata_cols'))
+                                              conf.get('analysis_col_patterns'),
+                                              conf.get('target_metadata_cols'),
+                                              supplement=[knead_read_counts])
         func_profile_pcl = add_metadata_to_tsv(workflow,
                                                [func_profile_outputs[0]],
                                                args.metadata_file,
                                                conf.get('metadata_id_col'),
-                                               ['_taxonomic_profile', '_functional_profile'],
-                                               conf.get('target_metadata_cols'))
+                                               conf.get('analysis_col_patterns'),
+                                               conf.get('target_metadata_cols'),
+                                               supplement=[knead_read_counts])
 
         pub_files = [stage_files(workflow, files, target_dir) for (files, target_dir) 
                      in [(cleaned_fastqs, pub_raw_dir), 
                          ([tax_profile_outputs[0]], pub_tax_profile_dir),
+                         (tax_profile_outputs[1], pub_tax_profile_dir),
                          (tax_biom_files, pub_tax_profile_dir),
                          (tax_profile_pcl, pub_tax_profile_dir),
                          (func_profile_outputs, pub_func_profile_dir),
+                         (func_profile_pcl, pub_func_profile_dir),
                          (kneaddata_log_files, pub_raw_dir)]]
 
         pub_metadata_files = generate_sample_metadata(workflow,
@@ -197,7 +201,7 @@ def main(workflow):
         norm_ecs_files = name_files(sample_names,
                                     processing_dir,
                                     subfolder = 'ecs',
-                                    tag = 'genefamilies_ecs_relab',
+                                    tag = 'ecs_relab',
                                     extension = 'tsv')
         norm_path_files = name_files(sample_names,
                                      processing_dir,
@@ -214,7 +218,8 @@ def main(workflow):
                                     "%s_humann2.tgz" % sample)
             func_tar_file = tar_files(workflow, 
                                       [gene_file, ecs_file, path_file],
-                                      tar_path)
+                                      tar_path,
+                                      depends=func_profile_outputs)
             func_tar_files.append(func_tar_file)
 
 

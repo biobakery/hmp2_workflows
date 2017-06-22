@@ -30,6 +30,7 @@ furnished to do so, subject to the following conditions:
 
 import itertools
 import os
+import shutil
 import tempfile
 
 from biobakery_workflows import utilities as bb_utils
@@ -134,14 +135,14 @@ def stage_files(workflow, input_files, target_dir, delete=False,
 
     ## TODO: Figure out a better way to handle this rather than creating 
     ## N rsync calls.
-    stage_cmd = "rsync -avz [depends[0]] [targets[0]]"
+    stage_cmd = "remove_if_exists.py [targets[0]] ; rsync -avz [depends[0]] [targets[0]]"
     
     if preserve:
         stage_cmd = stage_cmd.replace('-avz', 
                                       '--rsync-path=\"mkdir -p `dirname '
                                       '[depends[0]]`\" -avz')
     if symlink:
-        stage_cmd = "ln -s [depends[0]] [targets[0]]"
+        stage_cmd = "remove_if_exists.py [targets[0]] ; ln -s [depends[0]] [targets[0]]"
 
     workflow.add_task_group(stage_cmd,
                             depends = input_files,
@@ -193,7 +194,7 @@ def make_files_web_visible(workflow, files):
     return files
 
 
-def tar_files(workflow, files, output_tarball):
+def tar_files(workflow, files, output_tarball, depends):
     """Creates a tarball package of the provided files with the given output
     tarball file path.
 
@@ -201,6 +202,9 @@ def tar_files(workflow, files, output_tarball):
         workflow (anadama2.Workflow): The workflow object.
         files (list): A list of files to package together into a tarball.
         output_tarball (string): The desired output tarball file.
+        depends (list): A list of files that can be tied to the files to 
+            be tar'd. These dependencies are not tar'd but needed to make 
+            sure that this step in the workflow is not run out of order.
 
     Requires:
         None
@@ -222,16 +226,20 @@ def tar_files(workflow, files, output_tarball):
     ## Though there may be a cleaner way of doing this we need to create 
     ## a temporary folder to symlink all the files we want to package into 
     ## a tarball to get rid of tar'ing the directory structure as well.
-    symlink_files = []
     tmp_dir = tempfile.mkdtemp()
     
     for target_file in files:
         symlink_path = os.path.join(tmp_dir, os.path.basename(target_file))
-        symlink_files.append(symlink_path)
         os.symlink(target_file, symlink_path)
+    
+    depend_files = []
+    if depends:
+        depend_files.extend(depends)
+    else:
+        depend_files.extend(files)
 
-    workflow.add_task('tar cvzf [targets[0]] -C [args[0]] .',
-                      depends = files,
+    workflow.add_task('tar -hcvzf [targets[0]] -C [args[0]] .; rm -rf [args[0]]',
+                      depends = depend_files,
                       targets = [output_tarball],
                       args = [tmp_dir])
 

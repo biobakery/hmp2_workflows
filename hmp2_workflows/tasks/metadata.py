@@ -148,7 +148,8 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
 
 
 def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
-                        id_col, col_replace, target_cols=[]):
+                        id_col, col_replace, target_cols=[],
+                        supplement=[]):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -176,7 +177,8 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
             for and replaced in either of the column headers of the analysis 
             or metadata files.
         target_cols (list): A list of columns to filter the metadata file on.
-        
+        supplement (list): Any additional metadata files to integrate into 
+            analysis files. 
 
     Requires:
         None
@@ -208,7 +210,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         pcl_out = task.targets[0].name
 
         analysis_df = pd.read_table(analysis_file, dtype='str', index_col=0)
-     
+
         # Big assumption that our sample IDs are in the first line of our 
         # tab delimited analysis file. Could end poorly. Need a better
         # way to handle this.
@@ -225,10 +227,16 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
             if new_ids != sample_ids:
                 sample_ids_map = dict(zip(sample_ids, new_ids))
                 sample_ids = new_ids
-
+    
                 analysis_df.rename(columns=sample_ids_map, inplace=True)
 
         subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
+
+        for supp_file in supplement:
+            supp_df = pd.read_table(supp_file, dtype='str')
+            subset_metadata_df = pd.merge(subset_metadata_df, supp_df, how='left',
+                                          left_on='External ID', right_on='Sample')
+            subset_metadata_df.to_csv('/tmp/test.txt', sep='\t', na_rep='NA')
 
         if target_cols:
             target_cols.insert(0, id_col)
