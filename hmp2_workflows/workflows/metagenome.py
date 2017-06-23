@@ -77,7 +77,15 @@ def parse_cli_arguments():
                            'for the provided data files.', default=None)
     workflow.add_argument('threads', desc='number of threads/cores for each '
                           'task to use', default=1)
-
+    workflow.add_argument('threads-kneaddata', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the '
+                          'kneaddata task.', default=None)
+    workflow.add_argument('threads-metaphlan2', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the '
+                          'metaphlan2 task.', default=None)
+    workflow.add_argument('threads-humann2', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the humann2 '
+                          'task.', default=None)
     return workflow
 
 
@@ -114,11 +122,13 @@ def main(workflow):
                                       deposition_dir,
                                       symlink=True)
 
+        qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         deposited_files, 
                                                         processing_dir,
-                                                        args.threads,
-                                                        contaminate_db)
+                                                        qc_threads,
+                                                        contaminate_db,
+                                                        remove_intermediate_output=True)
         
         ## Generate taxonomic profile output. Output are stored in a list 
         ## and are the following:   
@@ -126,10 +136,11 @@ def main(workflow):
         ##      * Merged taxonomic profile 
         ##      * Individual taxonomic files
         ##      * metaphlan2 SAM files 
+        tax_threads = args.threads_metaphlan2 if args.threads_metaphlan2 else args.threads
         tax_profile_outputs = taxonomic_profile(workflow,
                                                 cleaned_fastqs,
                                                 processing_dir,
-                                                args.threads)
+                                                tax_threads)
 
         ## Generate functional profile output using humann2. Outputs are the 
         ## the following:
@@ -137,11 +148,13 @@ def main(workflow):
         ##      * Merged gene families
         ##      * Merged relative abundances
         ##      * Merged pathway abundances
+        func_threads = args.threads_humann2 if args.threads_humann2 else args.threads
         func_profile_outputs = functional_profile(workflow,
                                                   cleaned_fastqs,
                                                   processing_dir,
-                                                  args.threads,
-                                                  tax_profile_outputs[1])
+                                                  func_threads,
+                                                  tax_profile_outputs[1],
+                                                  remove_intermediate_output=True)
 
         biom_files = batch_convert_tsv_to_biom(workflow, tax_profile_outputs[1])
         tax_biom_files = stage_files(workflow,

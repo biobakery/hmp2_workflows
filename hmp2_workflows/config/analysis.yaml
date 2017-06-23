@@ -12,9 +12,9 @@ base: &base
 
     # Next comes up the directories where our AnADAMA2 pipelines will pull and
     # deposit files to.        
-    deposition_dir: /seq/ibdmdb/data_deposition
-    processing_dir: /seq/ibdmdb/processing
-    public_dir: /seq/ibdmdb/public/
+    deposition_dir: /seq/ibdmdb/carze_test/data_deposition
+    processing_dir: /seq/ibdmdb/carze_test/processing
+    public_dir: /seq/ibdmdb/carze_test/public/
 
     # Databases used by the various different workflows. 
     # TODO: Move these to a centralized location
