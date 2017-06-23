@@ -204,3 +204,6 @@ tags
 
 # files from testing
 *sge_files*
+
+# misc
+.nfs*
