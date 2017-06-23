@@ -74,7 +74,7 @@ def validate_metadata_file(workflow, input_file, validation_file):
                                depends=[input_file, validation_file])
 
 
-def generate_sample_metadata(workflow, data_type, samples, metadata_file, 
+def generate_sample_metadata(workflow, data_type, in_files, metadata_file, 
                              output_dir, id_column = 'External ID'):
     """Generates a series of individual metadata files in CSV format 
     from the provided merged metadata file. Each of the provided samples
@@ -85,7 +85,7 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
         workflow (anadama2.Workflow): The workflow object.
         data_type (string): The data type of the provided samples. One of 
             either 'metageonimcs', 'proteomices', 'amplicon'.
-        samples (list): A list of all samples that will have individual 
+        in_files (list): A list of files that should have corresponding 
             metadata files written.
         metadata_file (string): Path to the merged metadata file.
         id_column (string): The ID column to attempt to map sample names to 
@@ -119,7 +119,8 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
         ## ['/tmp/metadata/sampleA.csv', '/tmp/metadata/sampleB.csv']
     """
     metadata_df = pd.read_csv(metadata_file)
-    
+    samples = bb_utils.get_sample_names(in_files)
+
     output_metadata_files = bb_utils.name_files(samples, 
                                                 output_dir, 
                                                 extension = 'csv',
@@ -141,7 +142,7 @@ def generate_sample_metadata(workflow, data_type, samples, metadata_file,
     
     workflow.add_task(_workflow_gen_metadata,
                       targets = output_metadata_files,  
-                      depends = [metadata_file],
+                      depends = [in_files, metadata_file],
                       name = 'Generate sample metadata')
 
     return sample_metadata_dict.values()

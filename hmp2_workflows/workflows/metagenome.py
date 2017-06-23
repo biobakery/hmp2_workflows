@@ -202,7 +202,7 @@ def main(workflow):
 
         pub_metadata_files = generate_sample_metadata(workflow,
                                                       'metagenomics',
-                                                      sample_names,
+                                                      pub_files[2],
                                                       args.metadata_file,
                                                       public_dir)
 
