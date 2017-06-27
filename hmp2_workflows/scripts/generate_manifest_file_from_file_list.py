@@ -42,7 +42,6 @@ furnished to do so, subject to the following conditions:
 
 import argparse
 
-import pandas as pd
 import yaml
 
 
@@ -208,7 +207,7 @@ def generate_yaml_dict(data_files, origin_institute, origin_contact,
 
 
 def main(args):
-    input_files_dict = parse_input_file_list(args.input_files_list,
+    input_files_dict = parse_input_file_list(args.input_file_list,
                                              args.data_type)
     yaml_file = generate_yaml_dict(input_files_dict,
                                    args.origin_institute,
