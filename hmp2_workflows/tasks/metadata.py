@@ -149,8 +149,8 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
 
 
 def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
-                        id_col, col_replace, target_cols=[],
-                        supplement=[]):
+                        id_col, col_replace, idx_col=0, target_cols=None,
+                        supplement=None):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -177,6 +177,9 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         col_replace (list): A list of string fragments that should be searched 
             for and replaced in either of the column headers of the analysis 
             or metadata files.
+        idx_col(list): A sequence corresponding to column numbers to use as an
+            index for the pandas dataframe generated from the analysis tabular
+            data.
         target_cols (list): A list of columns to filter the metadata file on.
         supplement (list): Any additional metadata files to integrate into 
             analysis files. 
@@ -211,11 +214,15 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         pcl_out = task.targets[0].name
 
         analysis_df = pd.read_table(analysis_file, dtype='str', index_col=0)
+        analysis_idx = analysis_df.index
 
-        # Big assumption that our sample IDs are in the first line of our 
-        # tab delimited analysis file. Could end poorly. Need a better
-        # way to handle this.
-        sample_ids = analysis_df.columns.tolist()
+        # With some of the analysis files we are receiving we will have mutiple
+        # columns present prior to the analysis results and these files will 
+        # need to be handled slightly different.
+        if pd.isnull(analysis_idx[0]):
+            
+            
+        
         if sample_ids == 1:
             # Something went wrong here.
             raise ValueError('Could not parse sample ID\'s:', 
@@ -233,11 +240,12 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
 
         subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
 
-        for supp_file in supplement:
-            supp_df = pd.read_table(supp_file, dtype='str')
-            subset_metadata_df = pd.merge(subset_metadata_df, supp_df, how='left',
-                                          left_on='External ID', right_on='Sample')
-            subset_metadata_df.to_csv('/tmp/test.txt', sep='\t', na_rep='NA')
+        if supplement:
+            for supp_file in supplement:
+                supp_df = pd.read_table(supp_file, dtype='str')
+                subset_metadata_df = pd.merge(subset_metadata_df, supp_df, how='left',
+                                            left_on='External ID', right_on='Sample')
+                subset_metadata_df.to_csv('/tmp/test.txt', sep='\t', na_rep='NA')
 
         if target_cols:
             target_cols.insert(0, id_col)

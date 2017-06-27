@@ -29,6 +29,8 @@ furnished to do so, subject to the following conditions:
 
 import os
 
+import pandas as pd
+
 from biobakery_workflows import utilities as bb_utils
 from biobakery_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
 
@@ -74,6 +76,43 @@ def bam_to_fastq(workflow, input_files, output_dir, threads=1):
                                      cores=threads)
 
     return output_files
+
+
+def excel_to_csv(workflow, input_files, output_dir):
+    """Converts an Excel file to a CSV file. Only attempts to convert the 
+    first worksheet in the file and ignores the rest.
+
+    Args:
+        workflow (anadama2.Workflow): The AnADAMA2 workflow object.
+        input_files (list): A list containing all Excel files to be converted.
+        output_dir (string): The output directory to write converted CSV files
+            too.
+
+    Requires:
+        None
+
+    Returns:
+        list: A list of newly-converted CSV files.
+    """
+    output_files = bb_utils.name_files(map(os.path.basename, input_files),
+                                       output_dir,
+                                       extension='csv')
+
+    def _convert_excel_csv(task):
+        """Helper function passed to AnADAMA2 doing the lifting of converting 
+        the supplied Excel file to a CSV file using the pandas python library.
+        """                                      
+        excel_file = task.depends[0].name
+        csv_out_file = task.targets[0].name
+
+        excel_df = pd.read_excel(excel_file)
+        excel_df.to_csv(csv_out_file)
+
+    workflow.add_task_group(_convert_excel_csv,
+                            depends=input_files,
+                            targets=output_files)                                       
+
+    return output_files                            
 
 
 def batch_convert_tsv_to_biom(workflow, tsv_files): 
