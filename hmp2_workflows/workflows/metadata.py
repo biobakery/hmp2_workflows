@@ -36,7 +36,8 @@ import pandas as pd
 
 from anadama2 import Workflow
 
-from hmp2_workflows.tasks.commons import (validate_csv_files)
+from hmp2_workflows.tasks.metadata import (validate_metadata_file)
+from hmp2_workflows.tasks.common import stage_files
 
 from hmp2_workflows.utils.misc import parse_cfg_file
 
@@ -59,47 +60,37 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('--config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('--metadata-file', desc='If an existing metadata '
+                          'file exists it can be supplied here.')                          
 
-    return (workflow, workflow.parse_args())
-
-
-def normalize_data_status_external_id(external_id):
-    """Takes an External ID derived from the Broad data status tracking
-    spreadsheet and "normalizes" it to match the format present in the two
-    other primary sources of metadata (studytrax spreadsheet and the Broad 
-    sample status spreadsheet).
-
-    External ID's are in format "MSMXXXXX" and the corresponding ID's in
-    the Studytrax and Sample Status sheets are SM-XXXXX
-    """
+    return workflow
 
 
-    return normed_external_id
+def main(workflow):
+    args = workflow.parse_args()
 
-def main(workflow, args):
     config = parse_cfg_file(args.config_file, section='metadata')
     manifest = parse_cfg_file(args.manifest_file)
 
     studytrax_metadata = manifest.get('studytrax')
-    broad_samples_status = manifest.get('broad_sample_status')
+    broad_sample_status = manifest.get('broad_sample_status')
     broad_data_status = manifest.get('broad_data_status')
 
     ## Validate our metadata files
-    validate_csv_file(workflow, studytrax_metadata,
+    validate_metadata_file(workflow, studytrax_metadata,
                       config.get('validators').get('studytrax'))
-    validate_csv_file(workflow, broad_samples,
+    validate_metadata_file(workflow, broad_sample_status,
                       config.get('validators').get('broad_sample_status'))
-    validate_csv_file(workflow, data_status,
+    validate_metadata_file(workflow, broad_data_status,
                       config.get('validators').get('broad_data_status'))
     
-    
-    ## Copy to the public area on the website
-    ## TODO: Figure out better dir/file organizaiton here for all our files
     metadata_dir = os.path.join(config.get('public_dir'), 
                                 config.get('project'), 
-                                'Metadata')
-    public_metadata_file = stage_files(workflow, merged_metadata_file,
-                                       metadata_dir)
+                                'metadata')
+
+    final_metadata_file = None
+    pub_metadata_file = stage_files(workflow, final_metadata_file,
+                                    metadata_dir)
     
 
 if __name__ == "__main__":

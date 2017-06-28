@@ -270,7 +270,8 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
 
     ## Grab subset of Broad sample tracking spreadsheet
     sample_subset_df = sample_df[(sample_df['Parent Sample A'].isin(sample_ids)) |
-                                 (sample_df['Proteomics'].isin(sample_ids))]
+                                 (sample_df['Proteomics'].isin(sample_ids)) |
+                                 (sample_df['MbX'].isin(sample_ids))]
 
     metadata_df = sample_subset_df.merge(studytrax_df, 
                                          left_on='Parent Sample A',

@@ -29,8 +29,6 @@ furnished to do so, subject to the following conditions:
 """
 
 import os
-import shutil
-import tempfile
 
 import pandas as pd
 
@@ -149,8 +147,8 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
 
 
 def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
-                        id_col, col_replace, idx_col=0, target_cols=None,
-                        supplement=None):
+                        id_col, col_replace, idx_bound=0, metadata_rows=None,
+                        target_cols=None, aux_files=None):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -177,11 +175,13 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         col_replace (list): A list of string fragments that should be searched 
             for and replaced in either of the column headers of the analysis 
             or metadata files.
-        idx_col(list): A sequence corresponding to column numbers to use as an
-            index for the pandas dataframe generated from the analysis tabular
-            data.
+        idx_col (int): The integer index of the column that should represent 
+            the right most bound of columns prior to analysis results.
+        metadata_rows (int): If our analysis file already contains some 
+            metadata files at the top of the file (in effect already a PCL
+            file) this parameter indicates how many rows of metadata exist.
         target_cols (list): A list of columns to filter the metadata file on.
-        supplement (list): Any additional metadata files to integrate into 
+        aux_files (list): Any additional metadata files to integrate into 
             analysis files. 
 
     Requires:
@@ -213,20 +213,36 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         analysis_file = task.depends[0].name
         pcl_out = task.targets[0].name
 
-        analysis_df = pd.read_table(analysis_file, dtype='str', index_col=0)
+        idx_cols = 0 if not idx_bound else range(0, idx_bound+1)
+        analysis_df = pd.read_table(analysis_file, dtype='str', index_col=idx_cols)
         analysis_idx = analysis_df.index
 
         # With some of the analysis files we are receiving we will have mutiple
         # columns present prior to the analysis results and these files will 
         # need to be handled slightly different.
-        if pd.isnull(analysis_idx[0]):
+        sample_ids = analysis_idx if idx_cols == 0 else analysis_idx[idx_bound:]
             
-            
-        
+        # We also have some instances where our analysis files are already PCL
+        # files so we'll need to account for these when processing our data.   
+        #  
+        # Going to make the assumption that the next row following our PCL 
+        # metadata rows is the row containing the ID's that we will use to merge
+        # the analysis file with our metadata file and we can use these same 
+        # ID's to merge the PCL metadata rows into the larger metadata file.
+        if metadata_rows:
+            pcl_metadata_df = analysis_df[:metadata_rows+1]
+            analysis_df.drop(analysis_idx[range(0,metadata_rows)])
+
+            if idx_bound:
+                pcl_metadata_df.drop(pcl_metadata_df.columns[idx_cols], axis=1)
+
+            pcl_metadata_df = pcl_metadata_df.T.reset_index(drop=True).T
+            pcl_metadata_df.xs(idx_bound)[0] = id_col
+
         if sample_ids == 1:
-            # Something went wrong here.
             raise ValueError('Could not parse sample ID\'s:', 
                              sample_ids)
+
         if col_replace:
             new_ids = sample_ids
             for replace_str in col_replace:
@@ -240,12 +256,18 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
 
         subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
 
-        if supplement:
-            for supp_file in supplement:
-                supp_df = pd.read_table(supp_file, dtype='str')
-                subset_metadata_df = pd.merge(subset_metadata_df, supp_df, how='left',
-                                            left_on='External ID', right_on='Sample')
-                subset_metadata_df.to_csv('/tmp/test.txt', sep='\t', na_rep='NA')
+        if aux_files:
+            for aux_file in aux_files:
+                aux_df = pd.read_table(aux_file, dtype='str')
+
+                # TODO: This is pretty much hard-coded to handle a specific file 
+                # but needs to be way more generic.
+                subset_metadata_df = pd.merge(subset_metadata_df, aux_df, how='left',
+                                            left_on=id_col, right_on='Sample')
+
+        if pcl_metadata_df:
+            subset_metadata_df = pd.merge(subset_metadata_df, pcl_metadata_df,
+                                          how='left', on=id_col)
 
         if target_cols:
             target_cols.insert(0, id_col)

@@ -30,28 +30,6 @@ base: &base
         humann2_nt: /seq/ibdmdb/centos6/var/lib/humann2/chocophlan
         humann2_p: /seq/ibdmdb/centos6/var/lib/humann2/uniref
 
-############################
-# PER-DATATYPE  PARAMETERS #
-############################
-
-proteomics: &proteomics
-    <<: *base
-    
-    metadata_id_col: Job
-    target_metadata_cols:
-        - State   
-        - Dataset_Type
-        - Request_ID
-        - Protein
-
-    output_ftypes:
-        - _rollup.txt
-        - .png        
-
-mgx: &mgx
-    <<: *base
-
-    metadata_id_col: External ID
     target_metadata_cols:
         - Site/Sub/Coll ID
         - Site
@@ -65,7 +43,38 @@ mgx: &mgx
         - Was HBI completed?
         - HBI Total
         - "FecalCal Result:"
-        - "final single"
+
+    analysis_col_patterns:
+        - _taxonomic_profile
+        - _functional_profile
+        - _Abundance-RPKs
+
+############################
+# PER-DATATYPE  PARAMETERS #
+############################
+
+proteomics: &proteomics
+    <<: *base
+    
+    metadata_id_col: Job
+
+    target_metadata_cols:
+        ? State   
+        ? Dataset_Type
+        ? Request_ID
+        ? Protein
+
+    output_ftypes:
+        - _rollup.txt
+        - .png        
+
+mgx: &mgx
+    <<: *base
+
+    metadata_id_col: External ID
+
+    target_metadata_cols:
+        ? "final single"
 
     output_ftypes:
         - _tax.txt
@@ -73,11 +82,6 @@ mgx: &mgx
         - .merged.tsv
         - .tar.bz2
         - .biom          
-
-    analysis_col_patterns:
-        - _taxonomic_profile
-        - _functional_profile
-        - _Abundance-RPKs
     
 16S: &16S
     <<: *base
@@ -92,6 +96,18 @@ mgx: &mgx
 mtx: &mtx
     <<: *base
 
+mbx: &mbx
+    <<: *base
+
+    metadata_id_col: "Tube A: Metabolomics"
+
+    target_metadata_cols:
+        ? Injection Order
+        ? Date extracted
+        ? Date injected 
+        ? Column
+        ? Site.Sub.Coll
+
 ############################
 #        METADATA          #
 ############################
@@ -105,6 +121,12 @@ metadata: &metadata
     input_extensions:
         - .bam
         - .raw
+
+    dtype_mapping:
+        - mbx: "metabolomics"
+        - mgx: "metagenomics"
+        - 16s: "amplicon"
+        - proteomics: "proteomics"
 
     drop_cols:
         - Sheet Name
