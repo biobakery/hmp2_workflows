@@ -123,10 +123,10 @@ metadata: &metadata
         - .raw
 
     dtype_mapping:
-        - mbx: "metabolomics"
-        - mgx: "metagenomics"
-        - 16s: "amplicon"
-        - proteomics: "proteomics"
+        mbx: "metabolomics"
+        mgx: "metagenomics"
+        16s: "amplicon"
+        proteomics: "proteomics"
 
     drop_cols:
         - Sheet Name
