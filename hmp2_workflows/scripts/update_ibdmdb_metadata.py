@@ -282,7 +282,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     ## some of the proteomics sample ID's so we need to make sure we 
     ## replicate them.
     metadata_df.loc[metadata_df['st_q17'].isnull(), 'st_q17'] = metadata_df['Proteomics']
-    metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['Tube A: Metabolomics']
+    metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['MbX']
 
     if proteomics_df is not None:   
         ## In order to merge our proteomics data properly we'll need to 
