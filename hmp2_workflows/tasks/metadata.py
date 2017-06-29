@@ -214,13 +214,10 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         pcl_out = task.targets[0].name
 
         idx_cols = 0 if not idx_bound else range(0, idx_bound+1)
-        analysis_df = pd.read_table(analysis_file, dtype='str', index_col=idx_cols)
-        analysis_idx = analysis_df.index
 
-        # With some of the analysis files we are receiving we will have mutiple
-        # columns present prior to the analysis results and these files will 
-        # need to be handled slightly different.
-        sample_ids = analysis_idx if idx_cols == 0 else analysis_idx[idx_bound:]
+        analysis_df = pd.read_table(analysis_file, dtype='str', 
+                                    index_col=idx_cols, 
+                                    header=None)
             
         # We also have some instances where our analysis files are already PCL
         # files so we'll need to account for these when processing our data.   
@@ -230,15 +227,25 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         # the analysis file with our metadata file and we can use these same 
         # ID's to merge the PCL metadata rows into the larger metadata file.
         if metadata_rows:
+            analysis_idx = analysis_df.index
+
             pcl_metadata_df = analysis_df[:metadata_rows+1]
-            analysis_df.drop(analysis_idx[range(0,metadata_rows)])
+            pcl_metadata_df.reset_index(inplace=True)
 
             if idx_bound:
-                pcl_metadata_df.drop(pcl_metadata_df.columns[idx_cols], axis=1)
+                pcl_metadata_df.drop(pcl_metadata_df.columns[idx_cols[:-1]], 
+                                     axis=1,
+                                     inplace=True)
 
             pcl_metadata_df = pcl_metadata_df.T.reset_index(drop=True).T
             pcl_metadata_df.xs(idx_bound)[0] = id_col
 
+            analysis_df.drop(analysis_idx[range(0,metadata_rows)], inplace=True)
+        
+        analysis_df.columns = analysis_df.iloc[0]
+        analysis_df = analysis_df[1:]
+
+        sample_ids = analysis_df.columns.tolist()
         if sample_ids == 1:
             raise ValueError('Could not parse sample ID\'s:', 
                              sample_ids)
