@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-hmp2_workflows.workflows.metagenome
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hmp2_workflows.workflows.wmgx
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 An AnADAMA2 workflow that handles HMP2 WGS metagenome data and metadata files.
 
@@ -80,10 +80,10 @@ def parse_cli_arguments():
     workflow.add_argument('threads-kneaddata', desc='OPTIONAL. A specific '
                           'number of threads/cores to use just for the '
                           'kneaddata task.', default=None)
-    workflow.add_argument('threads-metaphlan2', desc='OPTIONAL. A specific '
+    workflow.add_argument('threads-metaphlan', desc='OPTIONAL. A specific '
                           'number of threads/cores to use just for the '
                           'metaphlan2 task.', default=None)
-    workflow.add_argument('threads-humann2', desc='OPTIONAL. A specific '
+    workflow.add_argument('threads-humann', desc='OPTIONAL. A specific '
                           'number of threads/cores to use just for the humann2 '
                           'task.', default=None)
     return workflow
@@ -92,7 +92,7 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    conf = parse_cfg_file(args.config_file, section='mgx')
+    conf = parse_cfg_file(args.config_file, section='MGX')
     manifest = parse_cfg_file(args.manifest_file)
 
     data_files = manifest.get('submitted_files')
@@ -100,8 +100,8 @@ def main(workflow):
     creation_date = manifest.get('submission_date')
     contaminate_db = conf.get('databases').get('knead_dna')
 
-    if data_files and data_files.get('mgx'):
-        input_files = data_files.get('mgx').get('input')
+    if data_files and data_files.get('MGX'):
+        input_files = data_files.get('MGX').get('input')
         sample_names = get_sample_names(input_files)
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
@@ -136,7 +136,7 @@ def main(workflow):
         ##      * Merged taxonomic profile 
         ##      * Individual taxonomic files
         ##      * metaphlan2 SAM files 
-        tax_threads = args.threads_metaphlan2 if args.threads_metaphlan2 else args.threads
+        tax_threads = args.threads_metaphlan if args.threads_metaphlan else args.threads
         tax_profile_outputs = taxonomic_profile(workflow,
                                                 cleaned_fastqs,
                                                 processing_dir,
@@ -148,7 +148,7 @@ def main(workflow):
         ##      * Merged gene families
         ##      * Merged relative abundances
         ##      * Merged pathway abundances
-        func_threads = args.threads_humann2 if args.threads_humann2 else args.threads
+        func_threads = args.threads_humann if args.threads_humann else args.threads
         func_profile_outputs = functional_profile(workflow,
                                                   cleaned_fastqs,
                                                   processing_dir,
@@ -178,17 +178,19 @@ def main(workflow):
         tax_profile_pcl = add_metadata_to_tsv(workflow,
                                               [tax_profile_outputs[0]],
                                               args.metadata_file,
+                                              'metagenomics',
                                               conf.get('metadata_id_col'),
                                               conf.get('analysis_col_patterns'),
                                               conf.get('target_metadata_cols'),
-                                              supplement=[knead_read_counts])
+                                              aux_files=[knead_read_counts])
         func_profile_pcl = add_metadata_to_tsv(workflow,
                                                [func_profile_outputs[0]],
                                                args.metadata_file,
+                                               'metagenomics',
                                                conf.get('metadata_id_col'),
                                                conf.get('analysis_col_patterns'),
                                                conf.get('target_metadata_cols'),
-                                               supplement=[knead_read_counts])
+                                               aux_files=[knead_read_counts])
 
         pub_files = [stage_files(workflow, files, target_dir) for (files, target_dir) 
                      in [(cleaned_fastqs, pub_raw_dir), 
@@ -200,14 +202,8 @@ def main(workflow):
                          (func_profile_pcl, pub_func_profile_dir),
                          (kneaddata_log_files, pub_raw_dir)]]
 
-        pub_metadata_files = generate_sample_metadata(workflow,
-                                                      'metagenomics',
-                                                      pub_files[2],
-                                                      args.metadata_file,
-                                                      public_dir)
-
         norm_genefamilies = name_files(sample_names, 
-                                       processing_dir, 
+                                      processing_dir, 
                                        subfolder = 'genes',
                                        tag = 'genefamilies_relab',
                                        extension = 'tsv')

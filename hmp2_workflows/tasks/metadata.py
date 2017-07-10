@@ -33,7 +33,7 @@ import os
 import pandas as pd
 
 from biobakery_workflows import utilities as bb_utils
-
+from hmp2_workflows import utils as hmp2_utils
 
 def validate_metadata_file(workflow, input_file, validation_file):
     """Validates an HMP2 metadata file using the cutplace utility. 
@@ -117,7 +117,7 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
         ## ['/tmp/metadata/sampleA.csv', '/tmp/metadata/sampleB.csv']
     """
     metadata_df = pd.read_csv(metadata_file)
-    samples = bb_utils.get_sample_names(in_files)
+    samples = bb_utils.sample_names(in_files)
 
     output_metadata_files = bb_utils.name_files(samples, 
                                                 output_dir, 
@@ -140,15 +140,15 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
     
     workflow.add_task(_workflow_gen_metadata,
                       targets = output_metadata_files,  
-                      depends = [in_files, metadata_file],
+                      depends = in_files + [metadata_file],
                       name = 'Generate sample metadata')
 
     return sample_metadata_dict.values()
 
 
-def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
-                        id_col, col_replace, idx_bound=0, metadata_rows=None,
-                        target_cols=None, aux_files=None):
+def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
+                        id_col, col_replace, col_offset=-1, metadata_rows=None,
+                        target_cols=None, aux_files=None, na_rep=""):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -170,19 +170,25 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         workflow (anadama2.Workflow): The AnADAMA2 workflow object.
         analysis_files (list): Target TSV's to add metadata too
         metadata_file (string): The path to the metadata file to pull from.
+        dtype (string): Data type of files for which metadata is being refreshed
+            to include.
         id_col (string): The column name in the supplied metadata file to 
             attempt to subset on using ID's from the analysis file.
         col_replace (list): A list of string fragments that should be searched 
             for and replaced in either of the column headers of the analysis 
             or metadata files.
-        idx_col (int): The integer index of the column that should represent 
-            the right most bound of columns prior to analysis results.
+        col_offset (int): In certain situations a series of metadata columns
+            will be present prior to columns containing analysis results.
+            In these cases an offset needs to be provided for proper creation 
+            of PCL files.
         metadata_rows (int): If our analysis file already contains some 
             metadata files at the top of the file (in effect already a PCL
             file) this parameter indicates how many rows of metadata exist.
         target_cols (list): A list of columns to filter the metadata file on.
         aux_files (list): Any additional metadata files to integrate into 
             analysis files. 
+        na_rep (string): String representation for any empty cell in our 
+            PCL file. Defaults to an empty string.
 
     Requires:
         None
@@ -213,39 +219,34 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
         analysis_file = task.depends[0].name
         pcl_out = task.targets[0].name
 
-        idx_cols = 0 if not idx_bound else range(0, idx_bound+1)
-
-        analysis_df = pd.read_table(analysis_file, dtype='str', 
-                                    index_col=idx_cols, 
-                                    header=None)
+        analysis_df = pd.read_csv(analysis_file, dtype='str', header=None)
+        pcl_metadata_df = None
             
-        # We also have some instances where our analysis files are already PCL
-        # files so we'll need to account for these when processing our data.   
-        #  
         # Going to make the assumption that the next row following our PCL 
         # metadata rows is the row containing the ID's that we will use to merge
         # the analysis file with our metadata file and we can use these same 
         # ID's to merge the PCL metadata rows into the larger metadata file.
         if metadata_rows:
-            analysis_idx = analysis_df.index
-
             pcl_metadata_df = analysis_df[:metadata_rows+1]
-            pcl_metadata_df.reset_index(inplace=True)
 
-            if idx_bound:
-                pcl_metadata_df.drop(pcl_metadata_df.columns[idx_cols[:-1]], 
-                                     axis=1,
-                                     inplace=True)
+            offset_cols = range(0, col_offset+1)
+            pcl_metadata_df.drop(pcl_metadata_df.columns[offset_cols:-1], 
+                                    axis=1,
+                                    inplace=True)
 
             pcl_metadata_df = pcl_metadata_df.T.reset_index(drop=True).T
-            pcl_metadata_df.xs(idx_bound)[0] = id_col
+            pcl_metadata_df.xs(metadata_rows)[0] = id_col
+            
+            pcl_metadata_df = pcl_metadata_df.T
+            pcl_metadata_df = hmp2_utils.misc.reset_column_headers(pcl_metadata_df)
 
             analysis_df.drop(analysis_idx[range(0,metadata_rows)], inplace=True)
-        
-        analysis_df.columns = analysis_df.iloc[0]
-        analysis_df = analysis_df[1:]
+            analysis_df.index = analysis_df.index + len(pcl_metadata_df.index)
+            analysis_df.rename(columns=analysis_df.iloc[0], inplace=True)
 
-        sample_ids = analysis_df.columns.tolist()
+        #analysis_df = hmp2_utils.misc.reset_column_headers(analysis_df)
+        sample_ids = analysis_df.columns.tolist()[col_offset:]
+            
         if sample_ids == 1:
             raise ValueError('Could not parse sample ID\'s:', 
                              sample_ids)
@@ -261,7 +262,8 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
     
                 analysis_df.rename(columns=sample_ids_map, inplace=True)
 
-        subset_metadata_df = metadata_df[metadata_df[id_col].isin(sample_ids)]
+        subset_metadata_df = metadata_df[(metadata_df.data_type == dtype) &
+                                         (metadata_df[id_col].isin(sample_ids))]
 
         if aux_files:
             for aux_file in aux_files:
@@ -270,7 +272,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
                 # TODO: This is pretty much hard-coded to handle a specific file 
                 # but needs to be way more generic.
                 subset_metadata_df = pd.merge(subset_metadata_df, aux_df, how='left',
-                                            left_on=id_col, right_on='Sample')
+                                              left_on=id_col, right_on='Sample')
 
         if pcl_metadata_df:
             subset_metadata_df = pd.merge(subset_metadata_df, pcl_metadata_df,
@@ -281,15 +283,23 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file,
             subset_metadata_df = subset_metadata_df.filter(target_cols)
 
         subset_metadata_df = subset_metadata_df.T
-        subset_metadata_df.rename(columns=subset_metadata_df.iloc[0], inplace=True)
-        subset_metadata_df.drop(subset_metadata_df.index[0], inplace=True)
+        subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
+        subset_metadata_df = subset_metadata_df.reset_index()
+
+        col_name = subset_metadata_df.columns[idx_offset]
+        subset_metadata_df.rename(columns={'index': col_name})
 
         row_order = subset_metadata_df.index.tolist() + analysis_df.index.tolist()
-        analysis_metadata_df = pd.concat([analysis_df, subset_metadata_df], 
-                                         axis=0)
+        col_order = analysis_df.columns.tolist()
+
+        analysis_metadata_headers = pd.DataFrame(dict(zip(col_order, col_order), index=[]))
+        analysis_metadata_df = pd.concat([analysis_df, 
+                                          analysis_metadata_headers,
+                                          subset_metadata_df], axis=0)
         analysis_metadata_df = analysis_metadata_df.reindex(row_order)
+        analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
     
-        analysis_metadata_df.to_csv(pcl_out, sep='\t', na_rep="NA")
+        analysis_metadata_df.to_csv(pcl_out, sep='\t', index=False, header=False, na_rep=na_rep)
 
     output_folder = os.path.dirname(analysis_files[0])
     pcl_files = bb_utils.name_files(analysis_files, 

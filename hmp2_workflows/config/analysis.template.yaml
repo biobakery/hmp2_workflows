@@ -6,30 +6,25 @@
 ###################
 
 base: &base
-    # It seems like a lot of the sequences handled by the Broad are dropped
-    # in the following directory.
-    broad_sequence_dir: /seq/picard_aggregation
-
-    # Next comes up the directories where our AnADAMA2 pipelines will pull and
-    # deposit files to.        
-    deposition_dir: /seq/ibdmdb/carze_test/data_deposition
-    processing_dir: /seq/ibdmdb/carze_test/processing
-    public_dir: /seq/ibdmdb/carze_test/public/
+    # Directories where AnADAMA2 pipelines will pull and deposit files to.
+    deposition_dir: /PATH/TO/data_deposition
+    processing_dir: /PATH/TO/processing
+    public_dir: /PATH/TO/public
 
     # Databases used by the various different workflows. 
-    # TODO: Move these to a centralized location
     databases:
-        gg_usearch: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.udb
-        gg_taxonomy: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
-        gg_fasta: /seq/ibdmdb/centos6/var/lib/gg_13_5_otus/rep_set/97_otus.fasta
-        chimera: /seq/ibdmdb/centos6/var/lib/uchime/gold.fa
-        copy_num: /seq/ibdmdb/centos6/picrust-1.0.0/picrust/data/16S_13_5_precalculated.tab.gz        
-        knead_dna: /seq/ibdmdb/centos6/var/lib/Homo_sapiens_Bowtie2_v0.1
-        knead_mtx: /seq/ibdmdb/centos6/var/lib/mrna
-        knead_rrna: /seq/ibdmdb/centos6/var/lib/silva-119-1_SSURef_nr99
-        humann2_nt: /seq/ibdmdb/centos6/var/lib/humann2/chocophlan
-        humann2_p: /seq/ibdmdb/centos6/var/lib/humann2/uniref
+        gg_usearch: /PATH/TO/DATABASES/gg_13_5_otus/rep_set/97_otus.udb
+        gg_taxonomy: /PATH/TO/DATABASES/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
+        gg_fasta: /PATH/TO/DATABASES/gg_13_5_otus/rep_set/97_otus.fasta
+        chimera: /PATH/TO/DATABASES/uchime/gold.fa
+        copy_num: /PATH/TO/DATABASES/picrust/data/16S_13_5_precalculated.tab.gz        
+        knead_dna: /PATH/TO/DATABASES/Homo_sapiens_Bowtie2_v0.1
+        knead_mtx: /PATH/TO/DATABASES/mrna
+        knead_rrna: /PATH/TO/DATABASES/silva-119-1_SSURef_nr99
+        humann2_nt: /PATH/TO/DATABASES/humann2/chocophlan
+        humann2_p: /PATH/TO/DATABASES/humann2/uniref
 
+    # Columns that will be present in our analysis PCL files.
     target_metadata_cols:
         - Site/Sub/Coll ID
         - Site
@@ -43,7 +38,9 @@ base: &base
         - Was HBI completed?
         - HBI Total
         - "FecalCal Result:"
-
+    
+    # Find-and-replace patterns in our analysis files to ensure we can map 
+    # corresponding metadata and create valid PCL files.
     analysis_col_patterns:
         - _taxonomic_profile
         - _functional_profile
@@ -106,7 +103,6 @@ mbx: &mbx
         ? Date extracted
         ? Date injected 
         ? Column
-        ? Site.Sub.Coll
 
 ############################
 #        METADATA          #
@@ -221,8 +217,8 @@ metadata: &metadata
 dcc: &dcc
     <<: *base
 
-    username: cesar.arze
-    password: fishnet-socket-dolphin-can
+    username: DCC_USERNAME
+    password: DCC_PASSWORD
 
     namespace: ihmp
     project_id: iHMP
@@ -358,4 +354,3 @@ dcc: &dcc
             comment: IBDMDB
             title: IBDMDB
             short_label: NA
-            

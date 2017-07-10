@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-hmp2_workflows.metagenome_metatranscriptome
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hmp2_workflows.wmgx_wmtx
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 An AnADAMA2 workflow that handles analysis and dissemination of HMP2 
 metagenome and metatranscriptome data.
@@ -40,7 +40,9 @@ from biobakery_workflows.tasks.shotgun import (quality_control,
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import bam_to_fastq
+from hmp2_workflows.utils.files import find_files
 from hmp2_workflows.utils import (parse_cfg_file, 
+                                  find_files,
                                   create_merged_md5checksum_file)
 from hmp2_workflows.utils.files import create_project_dirs
 
@@ -65,10 +67,22 @@ def parse_cli_arguments():
                           'containing parameters required by the workflow.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
                            'for the provided data files.', default=None)
+    workflow.add_argument('match_wgs_out', desc='Attempt to search our output '
+                          'space for matching WGS output data that corresponds '
+                          'to our MTX files.')                           
     workflow.add_argument('threads', desc='number of threads/cores for each '
                           'task to use', default=1)
+    workflow.add_argument('threads-kneaddata', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the '
+                          'kneaddata task.', default=None)
+    workflow.add_argument('threads-metaphlan', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the '
+                          'metaphlan2 task.', default=None)
+    workflow.add_argument('threads-humann', desc='OPTIONAL. A specific '
+                          'number of threads/cores to use just for the humann2 '
+                          'task.', default=None)                          
 
-    return (workflow, workflow.parse_args())
+    return workflow
 
 
 def create_seq_mapping_file(mtx_seqs, wgs_seqs, output_dir):
@@ -117,10 +131,12 @@ def create_seq_mapping_file(mtx_seqs, wgs_seqs, output_dir):
     return mapping_file
 
 
-def main(workflow, args):
-    conf = parse_cfg_file(args.config_file, section='mtx')
+def main(workflow):
+    args = workflow.parse_args()    
 
+    conf = parse_cfg_file(args.config_file, section='mtx')
     manifest = parse_cfg_file(args.manifest_file)
+
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
@@ -129,11 +145,9 @@ def main(workflow, args):
     mtx_db = conf.get('database').get('knead_mtx')
     rrna_db = conf.get('database').get('knead_rrna')
 
-    if data_files and data_files.get('MTX') and data_files.get('WGS'):
+    if data_files and data_files.get('MTX'):
         input_files_mtx = data_files.get('MTX')
-        input_files_wgs = data_files.get('WGS')
         sample_names_mtx = bb_utils.sample_names(input_files_mtx)
-        sample_names_wgs = bb_utils.sample_names(input_files_wgs)
 
         project_dirs_mtx = create_project_dirs([conf.get('deposition_dir'),
                                                 conf.get('processing_dir'),
@@ -141,86 +155,108 @@ def main(workflow, args):
                                                 project,
                                                 creation_date,
                                                 'MTX')
-        project_dirs_wgs = create_project_dirs([conf.get('deposition_dir'),
-                                                conf.get('processing_dir'),
-                                                conf.get('public_dir')],
-                                                project,
-                                                creation_date,
-                                                'WGS')
 
         deposited_files_mtx = stage_files(workflow,
                                           input_files_mtx,
                                           project_dirs_mtx[0],
                                           symlink=True)
-        deposited_files_wgs = stage_files(workflow,
-                                          input_files_wgs,
-                                          project_dirs_wgs[0],
-                                          symlink=True)
-
-        fastq_files_mtx = bam_to_fastq(workflow, deposited_files_mtx, 
-                                       project_dirs_mtx[1], args.threads)
-        fastq_files_wgs = bam_to_fastq(workflow, deposited_files_wgs, 
-                                       project_dirs_wgs[1], args.threads)
 
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow, 
-                                                                fastq_files_mtx, 
+                                                                input_files_mtx, 
                                                                 project_dirs_mtx[1],
                                                                 args.threads,
                                                                 [contaminate_db, 
                                                                  rrna_db,
                                                                  mtx_db])
-        (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow, 
-                                                                fastq_files_wgs,
-                                                                project_dirs_wgs[1],
-                                                                args.threads,
-                                                                [contaminate_db,
-                                                                 rrna_db])
 
-        ## Generate taxonomic profile output. Output are stored in a list 
-        ## and are the following:   
-        ##
-        ##      * Merged taxonomic profile 
-        ##      * Individual taxonomic files
-        ##      * metaphlan2 SAM files 
-        tax_profile_outputs_mtx = taxonomic_profile(workflow,
-                                                    cleaned_fastqs_mtx,
-                                                    project_dirs_mtx[1],
-                                                    args.threads)
-        tax_profile_outputs_wgs = taxonomic_profile(workflow,
-                                                    cleaned_fastqs_wgs,
-                                                    project_dirs_wgs[1],
-                                                    args.threads)
-        
-        ## Create a mapping file that will eventually be needed by the rna/dna
-        ## norm ratio calculations. 
-        ##
-        ## Outputs from the match_files function are:
-        ##
-        ##      * Filtered MTX fastq files that have matching WGS taxonomic profile
-        ##      * Matching WGS taxonomic profile tsv files
-        mapping_file = create_seq_mapping_file(cleaned_fastqs_mtx, 
-                                               cleaned_fastqs_wgs)  
-        match_files_outs  = bb_utils.match_files(cleaned_fastqs_mtx, 
-                                                 tax_profile_outputs_wgs[1], 
-                                                 mapping_file)
+        # Ideally we would be passed in a set of corresponding metagenome 
+        # sequence(s) to go with our metatranscriptomic files but we also 
+        # have two other scenarios:
+        #
+        #       1.) No accompanying metagenomic sequences exist; in this 
+        #           case we will proceed just using the metatranscriptomic
+        #           data.
+        #       2.) Taxonomic profiles are passed directly in in our MANIFEST
+        #           file; here we remove these from our input files and 
+        #           prevent them from running through the kneaddata ->
+        #           metaphlan2 portions of our pipeline
+        if data_files.get('WGS'):
+            input_files_wgs = data_files.get('WGS')
+            input_tax_profiles = [in_file for in_file in input_files_wgs
+                                  if 'taxonomic_profile.tsv' in in_file]
+            input_files_wgs = set(input_files_wgs) - set(input_tax_profiles)
 
-        ## Generate functional profile output using humann2. Outputs are the 
-        ## the following:
-        ## 
-        ##      * Merged gene families
-        ##      * Merged relative abundances
-        ##      * Merged pathway abundances
-        ##
-        func_profile_outputs_wgs = functional_profile(workflow,
-                                                      cleaned_fastqs_wgs,
-                                                      project_dirs_wgs[1],
-                                                      args.threads,
-                                                      tax_profile_outputs_wgs[1])
-        func_profile_output_mtx = functional_profile(workflow,
-                                                     matched_files_out[0],
-                                                     project_dirs_mtx[1],
-                                                     args.threads,
-                                                     matched_files_out[1])
+            sample_names_wgs = bb_utils.sample_names(input_files_wgs)
+
+            project_dirs_wgs = create_project_dirs([conf.get('deposition_dir'),
+                                                    conf.get('processing_dir'),
+                                                    conf.get('public_dir')],
+                                                    project,
+                                                    creation_date,
+                                                    'WGS')
+
+            deposited_files_wgs = stage_files(workflow,
+                                            input_files_wgs,
+                                            project_dirs_wgs[0],
+                                            symlink=True)
+
+            (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow, 
+                                                                    input_files_wgs,
+                                                                    project_dirs_wgs[1],
+                                                                    args.threads,
+                                                                    [contaminate_db,
+                                                                    rrna_db])
+
+            tax_profile_outputs_wgs = taxonomic_profile(workflow,
+                                                        cleaned_fastqs_wgs,
+                                                        project_dirs_wgs[1],
+                                                        args.threads)
+            tax_profile_outputs_wgs[1].extend(input_tax_profiles)                                                        
+
+            func_profile_outputs_wgs = functional_profile(workflow,
+                                                        cleaned_fastqs_wgs,
+                                                        project_dirs_wgs[1],
+                                                        args.threads,
+                                                        tax_profile_outputs_wgs[1])
+
+        # Here we want to see if we can create a set of matching cleaned 
+        # MTX files to corresponding MGX taxonomic profiles. If these exist 
+        # we want to run functional profiling wit hthe corresponding MGX 
+        # taxonomic profile otherwise we will run a taxonomic profiling 
+        # on the MTX sequences and run functional profiling with the produced 
+        # taxonomic profile.
+        if tax_profile_outputs:
+            (matched_mtx_fq, matched_tax_profile) = match_files(cleaned_fastqs_mtx,
+                                                                tax_profile_outputs_wgs[1],
+                                                                args.metadata_file)
+
+            func_profile_output_mtx = functional_profile(workflow,
+                                                         matched_mtx_fq,
+                                                         project_dirs_mtx[1],
+                                                         args.threads,
+                                                         matched_tax_profile)
+
+            no_match_mtx_fq = set(cleaned_fastqs_mtx) - set(matched_mtx_fq)                                                            
+            if no_match_mtx_fq:
+                tax_outs_nomatch_mtx = taxonomic_profile(workflow,
+                                                         no_match_mtx_fq,
+                                                         project_dirs_mtx[1],
+                                                         args.threads)
+                func_outs_nomatch_mtx = functional_profile(workflow,
+                                                           no_match_mtx_fq,
+                                                           project_dirs_mtx[1],
+                                                           args.threads,
+                                                           tax_outs_nomatch_mtx[1])
+        else:
+            tax_outs_mtx = taxonomic_profile(workflow,
+                                             cleaned_fastqs_mtx,
+                                             project_dirs_mtx[1],
+                                             args.threads)
+            func_profile_output_mtx = functional_profile(workflow,
+                                                         cleaned_fastqs_mtx,
+                                                         project_dirs_mtx[1],
+                                                         args.threads,
+                                                         tax_outs_mtx[1])
 
         ## TODO: Handle files that do not have a matching WGS taxonomic profile
         norm_ratio_outputs = norm_ratio(workflow,
@@ -243,18 +279,6 @@ def main(workflow, args):
         pub_wgs_func_profile_dir = os.path.join(public_dir, 'func_profile')
         map(create_folders, [pub_wgs_raw_dir, pub_wgs_tax_profile_dir, 
                              pub_wgs_func_profile_dir])
-
-
-        pub_mtx_metadata_files = generate_sample_metadata(workflow,
-                                                          'metatranscriptomics',
-                                                          sample_names_mtx,
-                                                          args.metadata_file,
-                                                          pub_mtx_raw_dir)
-        pub_wgs_metadata_files = generate_sample_metadata(workflow,
-                                                          'metagenomics',
-                                                          sample_names_wgs,
-                                                          args.metadata_file,
-                                                          pub_wgs_raw_dir)
 
         norm_genefamilies_mtx = name_files(sample_names, 
                                            project_dirs_mtx[1], 

@@ -31,6 +31,8 @@ furnished to do so, subject to the following conditions:
 import datetime
 import os
 
+from glob2 import glob
+
 from biobakery_workflows import utilities as bb_utils
 
 
@@ -167,10 +169,10 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     broad_gid_dir = os.path.join(broad_storage_path, gid)
     if os.path.exists(broad_gid_dir):
         seq_file_path = os.path.join(broad_gid_dir, "*", "current")
-        seq_files = find_files_recursive(seq_file_path, extension=".bam")
+        seq_files = find_files(seq_file_path, extension=".bam")
         
         if seq_files and len(seq_files) == 1:
-            seq_file = seq_file[0]
+            seq_file = seq_files[0]
         else:
             raise OSError('Multiple sequence files exist for GID', gid)
     

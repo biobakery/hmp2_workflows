@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-hmp2_workflows.workflows.proteomics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hmp2_workflows.workflows.prot
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 An AnADAMA2 workflow that handles HMP2 Proteomics data and metadata files.
 

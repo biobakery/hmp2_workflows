@@ -115,6 +115,7 @@ def main(workflow):
         pcl_files = add_metadata_to_tsv(workflow,
                                         processed_files,
                                         args.data_specific_metadata,
+                                        metabolomics,
                                         conf.get('metadata_id_col'),
                                         conf.get('target_metadata_cols', []))
 
