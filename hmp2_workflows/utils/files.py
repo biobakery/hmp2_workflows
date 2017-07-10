@@ -178,3 +178,5 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     
     return seq_file
 
+def match_files(files_a, files_b, metadata_file=None):
+    pass
