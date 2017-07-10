@@ -118,12 +118,15 @@ metadata: &metadata
         - .bam
         - .raw
 
+    # Coding from abbreviate data-type names to their English-readable version.
     dtype_mapping:
         mbx: "metabolomics"
         mgx: "metagenomics"
         16s: "amplicon"
         proteomics: "proteomics"
-
+    
+    # Once the QC and merge process is completed these columns can safely be
+    # dropped from our final metadata file.
     drop_cols:
         - Sheet Name
         - Subject
@@ -184,6 +187,8 @@ metadata: &metadata
         - Request_ID
         - Site/Sub/Coll
 
+    # In the merging process our columns get shuffled around and the following 
+    # order is provided to re-orient things.
     col_order:
         - Project
         - External ID
@@ -242,6 +247,9 @@ dcc: &dcc
         "Black or African American": african_american
         White: caucasian
 
+    # All of the below information is static-metadata that is used by the 
+    # IDBMDB project to make a successful submission to the DCC. This 
+    # information can and should change when working with a different project.
     study:
         name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
         subtype: ibd
@@ -292,8 +300,8 @@ dcc: &dcc
             library were determined using an Agilent Bioanalyzer DNA 1000
             kit (Agilent Technologies).
         prep_id: 2
-        sequencing_contact: "tpoon@broadintitute.org"
-        sequencing_center: Broad Institute
+        sequencing_contact: "enter@email_here.com"
+        sequencing_center: SEQUENCING CENTER NAME HERE
         ncbi_taxon_id: 408170 
         lib_layout: fragment
         lib_selection: Random
@@ -314,8 +322,8 @@ dcc: &dcc
             strand-specific, quantitative sequencing of full-length
             transcripts in diverse prokaryotic and eukaryotic species.
         prep_id: 3
-        sequencing_contact: "tpoon@broadintitute.org"
-        sequencing_center: Broad Institute
+        sequencing_contact: "enter@email_here.com"
+        sequencing_center: SEQUENCE CENTER NAME HERE
         ncbi_taxon_id: 408170 
         lib_layout: fragment
         lib_selection: Random
@@ -327,7 +335,7 @@ dcc: &dcc
     proteomics:
         assay:
             center: PNNL
-            contact: "White, Richard A <richard.white@pnnl.gov"
+            contact: "proteomics_contact@email_here.com"
             storage_duration: 365
             experiment_type: "PRIDE:0000429, Shotgun proteomics"
             protocol_steps: ""
