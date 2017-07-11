@@ -140,7 +140,8 @@ def main(workflow):
         tax_profile_outputs = taxonomic_profile(workflow,
                                                 cleaned_fastqs,
                                                 processing_dir,
-                                                tax_threads)
+                                                tax_threads,
+                                                input_extension="*.fastq")
 
         ## Generate functional profile output using humann2. Outputs are the 
         ## the following:

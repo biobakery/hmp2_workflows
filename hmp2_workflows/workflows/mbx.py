@@ -37,13 +37,10 @@ from biobakery_workflows.utilities import (find_files,
                                            create_folders,
                                            name_files)
 from hmp2_workflows.tasks.common import (stage_files,
-                                         tar_files,
                                          make_files_web_visible)
-from hmp2_workflows.tasks.metadata import (generate_sample_metadata, 
-                                           add_metadata_to_tsv)
+from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.tasks.file_conv import (excel_to_csv)                                           
-from hmp2_workflows.utils.misc import (parse_cfg_file, 
-                                       create_merged_md5sum_file)
+from hmp2_workflows.utils.misc import parse_cfg_file
 from hmp2_workflows.utils.files import create_project_dirs
 
 
@@ -64,11 +61,11 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
-    workflow.add_argument('checksums-file', desc='MD5 checksums for files '
-                          'found in the supplied input directory.')
-    workflow.add_argument('data_specific_metadata', desc='A collection of '
-                          'dataset specific metadata that should be integrated '
-                          'with any analysis output (creating a PCL file).')
+    workflow.add_argument('metadata-file', desc='Accompanying metadata file '
+                           'for the provided data files.', default=None)
+    workflow.add_argument('aux_metadata', desc='Any additional metadata '
+                          'files that can supply metadata for our ouptut '
+                          'PCL files.')                           
 
     return workflow
 
@@ -82,6 +79,7 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
+    manifest_cfg = manifest.get('config')
 
     if data_files and data_files.get('mbx'):
         input_files = data_files.get('mbx').get('input')
@@ -114,12 +112,14 @@ def main(workflow):
 
         pcl_files = add_metadata_to_tsv(workflow,
                                         processed_files,
-                                        args.data_specific_metadata,
-                                        metabolomics,
+                                        args.metadata_file,
+                                        'metabolomics',
                                         conf.get('metadata_id_col'),
-                                        conf.get('target_metadata_cols', []))
+                                        target_cols=conf.get('target_metadata_cols', None))
 
         public_files = stage_files(workflow, pcl_files, public_dir)
+
+        workflow.go()
 
 
 if __name__ == "__main__":

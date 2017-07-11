@@ -216,6 +216,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
     metadata_df = pd.read_csv(metadata_file, dtype='str')
     
     def _workflow_add_metadata_to_tsv(task):
+    #def _workflow_add_metadata_to_tsv(analysis_file, pcl_out):
         analysis_file = task.depends[0].name
         pcl_out = task.targets[0].name
 
@@ -230,7 +231,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
             pcl_metadata_df = analysis_df[:metadata_rows+1]
 
             offset_cols = range(0, col_offset+1)
-            pcl_metadata_df.drop(pcl_metadata_df.columns[offset_cols:-1], 
+            pcl_metadata_df.drop(pcl_metadata_df.columns[offset_cols[:-1]], 
                                     axis=1,
                                     inplace=True)
 
@@ -240,21 +241,23 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
             pcl_metadata_df = pcl_metadata_df.T
             pcl_metadata_df = hmp2_utils.misc.reset_column_headers(pcl_metadata_df)
 
-            analysis_df.drop(analysis_idx[range(0,metadata_rows)], inplace=True)
-            analysis_df.index = analysis_df.index + len(pcl_metadata_df.index)
+            analysis_df.drop(analysis_df.index[range(0,metadata_rows)], inplace=True)
+            #analysis_df.index = analysis_df.index + len(pcl_metadata_df.index)
             analysis_df.rename(columns=analysis_df.iloc[0], inplace=True)
+        else:
+            analysis_df = hmp2_utils.misc.reset_column_headers(analysis_df)
 
-        #analysis_df = hmp2_utils.misc.reset_column_headers(analysis_df)
-        sample_ids = analysis_df.columns.tolist()[col_offset:]
+        sample_ids = analysis_df.columns.tolist()[col_offset+1:]
             
-        if sample_ids == 1:
+        if len(sample_ids) == 1:
             raise ValueError('Could not parse sample ID\'s:', 
                              sample_ids)
 
         if col_replace:
             new_ids = sample_ids
             for replace_str in col_replace:
-                new_ids = [sid.replace(replace_str, '') for sid in new_ids]
+                new_ids = [sid.replace(replace_str, '') if not pd.isnull(sid) 
+                           else sid for sid in new_ids]
 
             if new_ids != sample_ids:
                 sample_ids_map = dict(zip(sample_ids, new_ids))
@@ -286,25 +289,29 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
         subset_metadata_df = subset_metadata_df.reset_index()
 
-        col_name = subset_metadata_df.columns[idx_offset]
-        subset_metadata_df.rename(columns={'index': col_name})
+        col_offset -= 1 if col_offset != -1 else col_offset
+        col_name = analysis_df.columns[col_offset+1]
 
-        row_order = subset_metadata_df.index.tolist() + analysis_df.index.tolist()
+        col_name = '' if col_name == "index" else col_name
+        subset_metadata_df.rename(columns={'index': col_name}, inplace=True)
+
+        analysis_df.index = analysis_df.index + len(subset_metadata_df.index)
         col_order = analysis_df.columns.tolist()
 
-        analysis_metadata_headers = pd.DataFrame(dict(zip(col_order, col_order), index=[]))
-        analysis_metadata_df = pd.concat([analysis_df, 
-                                          analysis_metadata_headers,
-                                          subset_metadata_df], axis=0)
-        analysis_metadata_df = analysis_metadata_df.reindex(row_order)
+        analysis_metadata_df = pd.concat([subset_metadata_df, 
+                                          analysis_df], axis=0)
         analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
-    
-        analysis_metadata_df.to_csv(pcl_out, sep='\t', index=False, header=False, na_rep=na_rep)
+
+        header = all([col for col in analysis_metadata_df.columns if type(col) == str]) 
+        analysis_metadata_df.to_csv(pcl_out, index=False, header=header, na_rep=na_rep)
 
     output_folder = os.path.dirname(analysis_files[0])
     pcl_files = bb_utils.name_files(analysis_files, 
                                     output_folder, 
-                                    extension="pcl")
+                                    extension="pcl.csv")
+
+    #for (a_file, p_file) in zip(analysis_files, pcl_files):
+    #    _workflow_add_metadata_to_tsv(a_file, p_file)
 
     workflow.add_task_group(_workflow_add_metadata_to_tsv,
                             depends = analysis_files,
