@@ -79,7 +79,7 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
-    manifest_cfg = manifest.get('config')
+    dataset_cfg = manifest.get('config')
 
     if data_files and data_files.get('mbx'):
         input_files = data_files.get('mbx').get('input')
@@ -115,6 +115,8 @@ def main(workflow):
                                         args.metadata_file,
                                         'metabolomics',
                                         conf.get('metadata_id_col'),
+                                        metadata_rows=dataset_cfg.get('metadata_rows'),
+                                        col_offset=dataset_cfg.get('col_offset'),
                                         target_cols=conf.get('target_metadata_cols', None))
 
         public_files = stage_files(workflow, pcl_files, public_dir)

@@ -30,6 +30,7 @@ furnished to do so, subject to the following conditions:
 
 import os
 
+import funcy
 import pandas as pd
 
 from biobakery_workflows import utilities as bb_utils
@@ -147,8 +148,9 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
 
 
 def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
-                        id_col, col_replace, col_offset=-1, metadata_rows=None,
-                        target_cols=None, aux_files=None, na_rep=""):
+                        id_col, col_replace=None, col_offset=-1, 
+                        metadata_rows=None, target_cols=None, 
+                        aux_files=None, na_rep=""):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
     analysis output found in the file. An example can be seen below:
@@ -222,6 +224,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
 
         analysis_df = pd.read_csv(analysis_file, dtype='str', header=None)
         pcl_metadata_df = None
+        header = True
             
         # Going to make the assumption that the next row following our PCL 
         # metadata rows is the row containing the ID's that we will use to merge
@@ -229,6 +232,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         # ID's to merge the PCL metadata rows into the larger metadata file.
         if metadata_rows:
             pcl_metadata_df = analysis_df[:metadata_rows+1]
+            header = None
 
             offset_cols = range(0, col_offset+1)
             pcl_metadata_df.drop(pcl_metadata_df.columns[offset_cols[:-1]], 
@@ -277,7 +281,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
                 subset_metadata_df = pd.merge(subset_metadata_df, aux_df, how='left',
                                               left_on=id_col, right_on='Sample')
 
-        if pcl_metadata_df:
+        if not pcl_metadata_df.empty:
             subset_metadata_df = pd.merge(subset_metadata_df, pcl_metadata_df,
                                           how='left', on=id_col)
 
@@ -289,20 +293,17 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
         subset_metadata_df = subset_metadata_df.reset_index()
 
-        col_offset -= 1 if col_offset != -1 else col_offset
-        col_name = analysis_df.columns[col_offset+1]
+        _col_offset = col_offset-1 if col_offset != -1 else col_offset
+        col_name = analysis_df.columns[_col_offset+1]
 
         col_name = '' if col_name == "index" else col_name
         subset_metadata_df.rename(columns={'index': col_name}, inplace=True)
 
         analysis_df.index = analysis_df.index + len(subset_metadata_df.index)
-        col_order = analysis_df.columns.tolist()
 
-        analysis_metadata_df = pd.concat([subset_metadata_df, 
+        analysis_metadata_df = pd.concat([subset_metadata_df,
                                           analysis_df], axis=0)
         analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
-
-        header = all([col for col in analysis_metadata_df.columns if type(col) == str]) 
         analysis_metadata_df.to_csv(pcl_out, index=False, header=header, na_rep=na_rep)
 
     output_folder = os.path.dirname(analysis_files[0])
@@ -310,16 +311,16 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
                                     output_folder, 
                                     extension="pcl.csv")
 
-    #for (a_file, p_file) in zip(analysis_files, pcl_files):
-    #    _workflow_add_metadata_to_tsv(a_file, p_file)
+    # Because of how YAML inherits lists we'll need to see if we can't 
+    # flatten this list out. 
+    target_cols = funcy.flatten(target_cols)
 
     workflow.add_task_group(_workflow_add_metadata_to_tsv,
-                            depends = analysis_files,
-                            targets = pcl_files,
-                            time = 1*60,
-                            mem = 1024,
-                            cores = 1,
-                            name =  "Generate analysis PCL output file")
-
+                            depends=analysis_files,
+                            targets=pcl_files,
+                            time=1*60,
+                            mem=1024,
+                            cores=1,
+                            name="Generate analysis PCL output file")
 
     return pcl_files
