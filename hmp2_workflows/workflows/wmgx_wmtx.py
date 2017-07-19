@@ -97,7 +97,7 @@ def main(workflow):
     mtx_db = conf.get('databases').get('knead_mtx')
     rrna_db = conf.get('databases').get('knead_rrna')
 
-    if data_files and data_files.get('MTX'):
+    if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX')
         sample_names_mtx = sample_names(input_files_mtx)
 
@@ -137,7 +137,7 @@ def main(workflow):
         #           file; here we remove these from our input files and
         #           prevent them from running through the kneaddata ->
         #           metaphlan2 portions of our pipeline
-        if data_files.get('MGX'):
+        if data_files.get('MGX', {}).get('input'):
             input_files_wgs = data_files.get('MGX')
             input_tax_profiles = [in_file for in_file in input_files_wgs
                                   if 'taxonomic_profile.tsv' in in_file]
@@ -170,7 +170,6 @@ def main(workflow):
                                                         project_dirs_wgs[1],
                                                         args.threads,
                                                         '*.fastq')
-            tax_profile_outputs_wgs[1].extend(input_tax_profiles)                                                   
 
             func_profile_outputs_wgs = functional_profile(workflow,
                                                           cleaned_fastqs_wgs,
@@ -178,6 +177,7 @@ def main(workflow):
                                                           args.threads,
                                                           tax_profile_outputs_wgs[1],
                                                           remove_intermediate_output=True)
+            input_tax_profiles.extend(tax_profile_outputs_wgs[1])
 
             pub_wgs_raw_dir = os.path.join(public_dir_wgs, 'raw')
             pub_wgs_tax_profile_dir = os.path.join(public_dir_wgs, 'tax_profile')
@@ -225,7 +225,7 @@ def main(workflow):
         # on the MTX sequences and run functional profiling with the produced
         # taxonomic profile.
         func_outs_match_mtx = []
-        if tax_profile_outputs_wgs:
+        if input_tax_profiles:
             (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
                                                                      'Site/Sub/Coll ID',
                                                                      tax_profile_outputs_wgs[1],
