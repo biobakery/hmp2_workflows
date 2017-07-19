@@ -31,6 +31,8 @@ furnished to do so, subject to the following conditions:
 import datetime
 import os
 
+import pandas as pd
+
 from glob2 import glob
 
 from biobakery_workflows import utilities as bb_utils
@@ -178,5 +180,63 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     
     return seq_file
 
-def match_files(files_a, files_b, metadata_file=None):
-    pass
+def match_tax_profiles(mtx_fastqs, tax_profiles, mtx_col_id, 
+                       dtype, tax_col_id, metadata_file,
+                       tax_tag='_taxonomic_profile'):
+    """Takes two sets of files and attempts to match them together based on 
+    the supplied HMP2 metadata file. 
+
+    Args:
+        files_a (list): The first set of files to match against.
+        files_a_id (string): Column to search for filename/ID in.
+        files_b (list): The second set of files to match against.
+        files_b_id (string): Column to search for filename/ID in. 
+        data_type (string): Data-type that files "B" are.
+        metadata_file (string): Path to a tab-delimited look-up file that 
+            could provide a way to match any files up.
+        tags (list): Any tags that are attached to files that can be 
+            stripped prior to matching.
+
+    Requires:
+        None
+
+    Returns:
+        list: A list of files in set a that match to files set b; in order
+        list: A list of files in set b that match to files in set a; in order
+
+    Example:
+        from hmp2_workflows.utils import files
+
+        files_a = ['sampleA.fastq', 'sampleC.fastq', 'sampleD.fastq']
+        files_b = ['sampleC_tax.tsv', 'sampleA_tax.tsv', 'sampleD_tax.tsv']
+
+        (matched_files_a, matched_files_b) = files.match_files(files_a, files_b)
+        # matched_files_a
+        # ['sampleA.fastq', 'sampleC.fastq', 'sampleD.fastq']
+        # matched_files_b
+        # ['sampleA_tax.tsv', 'sampleC_tax.tsv', 'sampleD_tax.tsv']
+    """
+    matching_mtx_fastq = []
+    matching_tax_profiles = []
+ 
+    # Making the assumption here that the sample ID we will use for lookup in 
+    # our metadata file is the filename once we remove the extension
+    mtx_sample_names = bb_utils.sample_names(mtx_fastqs)
+    mtx_sample_map = dict(zip(mtx_sample_names, mtx_fastqs))    
+ 
+    tax_profiles_fnames = map(os.path.basename, tax_profiles)
+    tax_profiles_map = dict(zip(tax_profiles_fnames, tax_profiles))
+
+    metadata_df = pd.read_csv(metadata_file)
+    metadata_df_subset = metadata_df[(metadata_df.data_type == "metaranscriptomics") &
+                                     (metadata_df[mtx_col_id].isin(mtx_sample_names))]
+
+    for row in metadata_df_subset.iterrows():
+        mtx_id = row.get(mtx_col_id)
+        tax_profile_fname = row.get(tax_col_id) + tax_tag
+
+        if tax_profile_fname in tax_profiles_fnames:
+            matching_mtx_fastq.append(mtx_sample_map.get(mtx_id))
+            matching_tax_profiles.append(tax_profiles_map.get(tax_profile_fname))
+
+    return (matching_mtx_fastq, matching_tax_profiles)

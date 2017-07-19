@@ -43,13 +43,11 @@ from biobakery_workflows.utilities import (find_files,
                                            create_folders,
                                            sample_names as get_sample_names)
 
-from hmp2_workflows.tasks.common import (verify_files, stage_files,
+from hmp2_workflows.tasks.common import (stage_files,
                                          make_files_web_visible)
-from hmp2_workflows.tasks.metadata import generate_sample_metadata
-from hmp2_workflows.tasks.file_conv import bam_to_fastq
-from hmp2_workflows.utils import (parse_cfg_file, 
-                                  create_project_dirs,
-                                  create_merged_md5sum_file)
+from hmp2_workflows.utils.misc import (parse_cfg_file, 
+                                       create_merged_md5sum_file)
+from hmp2_workflows.utils.files import create_project_dirs                                       
 
 
 def parse_cli_arguments():
@@ -85,6 +83,7 @@ def main(workflow):
     manifest = parse_cfg_file(args.manifest_file)
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
+    creation_date = manifest.get('submission_date')
 
     contaminate_db = conf.get('databases').get('knead_dna')
     metatranscriptome_db = conf.get('databases').get('knead_mtx')
@@ -102,9 +101,9 @@ def main(workflow):
                                             conf.get('processing_dir'),
                                             conf.get('public_dir')],
                                            project,
+                                           creation_date,
                                            '16S')
         (deposition_dir, processing_dir, public_dir) = project_dirs
-
         base_depo_dir = os.path.abspath(os.path.join(deposition_dir, '..'))
 
         manifest_file = stage_files(workflow,
@@ -115,17 +114,14 @@ def main(workflow):
         ## the /seq/picard_aggregation directory so we'll want to symlink
         ## them over to our data deposition directory.
         deposited_files = stage_files(workflow,
-                                      validated_files,
+                                      input_files,
                                       input_files,
                                       symlink=True)
-
-        fastq_files = bam_to_fastq(workflow, deposited_files, 
-                                   processing_dir)
-        
+ 
         ## TODO: Configure some of these hard-coded params to either be 
         ## read from the command-line or from the config file
         qc_fasta_outs = quality_control(workflow,
-                                        fastq_files,
+                                        deposited_files,
                                         processing_dir,
                                         args.threads,
                                         conf.get('maxee'),
@@ -150,17 +146,10 @@ def main(workflow):
         ## Generate metadata for all raw files/product files when available.
         pub_metadata_dir = os.path.join(public_dir, 'metadata')
         create_folders(pub_metadata_dir)
-        
-        pub_metadata_files = generate_sample_metadata(workflow,
-                                                      'amplicon',
-                                                      sample_names,
-                                                      args.metadata_file,
-                                                      pub_metadata_dir)
 
         make_files_web_visible(workflow, 
                                [qc_fasta_outs,
                                 [closed_ref_tsv],
-                                pub_metadata_files,
                                 [predict_metagenomes_tsv]])
 
         workflow.go()

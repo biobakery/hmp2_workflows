@@ -51,7 +51,7 @@ import glob2
 import numpy as np
 import pandas as pd
 
-import biobakery_workflows.utilities as bbutils
+import biobakery_workflows.utilities as bb_utils
 
 from hmp2_workflows.utils.misc import (parse_cfg_file, 
                                        get_sample_id_from_fname)
@@ -92,6 +92,10 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--proteomics-metadata', 
                         help='Any metadata associated with Proteomics data '
                         'supplied by the PNNL.')
+    parser.add_argument('-i', '--pair-identifier', required=False,
+                        default=None,
+                        help='OPTIONAL: Paired identifier if dealing with '
+                        'paired-end input sequences.')                        
     parser.add_argument('-a', '--refresh-all', action="store_true",
                         help='OPTIONAL: Refresh all metadata from scratch '
                         'before adding files specified in accompanying ' 
@@ -243,7 +247,7 @@ def get_data_type(row):
 
 
 def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df, 
-                      data_type, sequence_files):
+                      data_type, sequence_files, pair_identifier):
     """Extracts metadata from the supplied sources of metadata for the
     provided sequence files. 
 
@@ -255,6 +259,8 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
         data_type (string): Data type of the provided sequence files
         sequence_files (list): A list of sequence files that metadata
             should be pulled for if available.
+        pair_identifier (string): If working with paired-end files the 
+            identifier to distinguish the first file from its pair.            
 
     Requires:
         None
@@ -263,16 +269,20 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
         pandas.DataFrame: Slice of metadata for files provided.
     """
     metadata_df = None
-    sample_mapping = dict(zip(bbutils.sample_names(sequence_files),
+    sample_mapping = dict(zip(bb_utils.sample_names(sequence_files, pair_identifier),
                               map(get_sample_id_from_fname, sequence_files)))
-    sample_ids = sample_mapping.values()                          
+    sample_ids = sample_mapping.values()   
+    sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
+
     data_type_mapping = config.get('dtype_mapping')
 
     ## Grab subset of Broad sample tracking spreadsheet
     sample_subset_df = sample_df[(sample_df['Parent Sample A'].isin(sample_ids)) |
                                  (sample_df['Proteomics'].isin(sample_ids)) |
-                                 (sample_df['MbX'].isin(sample_ids))]
+                                 (sample_df['MbX'].isin(sample_ids)) |
+                                 (sample_df['Site/Sub/Coll']).isin(sample_ids)]
 
+    ## TODO: Figure out if we have any samples that did not have aassociated metadata
     metadata_df = sample_subset_df.merge(studytrax_df, 
                                          left_on='Parent Sample A',
                                          right_on='st_q4',
@@ -502,7 +512,6 @@ def main(args):
     #if not args.metadata_file or args.refresh_all:
     #    sequence_files.extend(get_all_sequence_files(config.get('deposition_dir'),
     #                                                 config.get('input_extensions')))
-
     if args.manifest_file:
         manifest = parse_cfg_file(args.manifest_file)
         submitted_files = manifest.get('submitted_files')
@@ -510,19 +519,29 @@ def main(args):
         if submitted_files:
             new_metadata = []
             for (dtype, items) in submitted_files.iteritems():
+                input_files = items.get('input')
+
+                if args.pair_identifier:
+                    (input_pair1, input_pair2) = bb_utils.paired_files(input_files,
+                                                                       args.pair_identifier)
+                    input_files = input_pair1 if input_pair1 else input_files                                                                       
+
                 new_metadata.append(get_metadata_rows(config,
                                                       study_trax_df, 
                                                       broad_sample_df, 
                                                       proteomics_df,
                                                       dtype,
-                                                      items.get('input_files')))
+                                                      input_files,
+                                                      args.pair_identifier))
  
             new_metadata_df = pd.concat(new_metadata)
             new_metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
 
             new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
+            new_metadata_df['Site'] = new_metadata_df['SiteName']
             new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
             new_metadata_df['visit_num'] = new_metadata_df['Collection #']
+            new_metadata_df['Research Project'] = "ibdmdb"
             new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
             new_metadata_df = generate_collection_statistics(new_metadata_df, 
                                                          collection_dates_dict)
@@ -540,7 +559,7 @@ def main(args):
 
         if not new_metadata_df.empty:
             metadata_df = pd.concat([metadata_df, new_metadata_df])
-            metadata_df = metadata_df.drop_duplicates(subset=['Site/Sub/Coll ID', 'data_type'])
+            metadata_df = metadata_df.drop_duplicates(subset=['Site/Sub/Coll ID', 'data_type'], keep='last')
     else:
         metadata_df = new_metadata_df
 

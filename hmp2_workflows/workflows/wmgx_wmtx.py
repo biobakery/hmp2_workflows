@@ -43,7 +43,7 @@ from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                          tar_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import bam_to_fastq
-from hmp2_workflows.utils.files import find_files, match_files
+from hmp2_workflows.utils.files import find_files, match_tax_profiles
 from hmp2_workflows.utils.misc import parse_cfg_file
 from hmp2_workflows.utils.files import create_project_dirs
 
@@ -62,15 +62,12 @@ def parse_cli_arguments():
     workflow = Workflow(version='0.1', description='A workflow to handle '
                         'analysis of metatranscriptomic data.',
                         remove_options=['input', 'output'])
-    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+    workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
-    workflow.add_argument('--config-file', desc='Configuration file '
+    workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
                           'for the provided data files.', default=None)
-    workflow.add_argument('match_wgs_out', desc='Attempt to search our output '
-                          'space for matching WGS output data that corresponds '
-                          'to our MTX files.')
     workflow.add_argument('threads', desc='number of threads/cores for each '
                           'task to use', default=1)
     workflow.add_argument('threads-kneaddata', desc='OPTIONAL. A specific '
@@ -89,16 +86,16 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    conf = parse_cfg_file(args.config_file, section='mtx')
+    conf = parse_cfg_file(args.config_file, section='MTX')
     manifest = parse_cfg_file(args.manifest_file)
 
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
 
-    contaminate_db = conf.get('database').get('knead_dna')
-    mtx_db = conf.get('database').get('knead_mtx')
-    rrna_db = conf.get('database').get('knead_rrna')
+    contaminate_db = conf.get('databases').get('knead_dna')
+    mtx_db = conf.get('databases').get('knead_mtx')
+    rrna_db = conf.get('databases').get('knead_rrna')
 
     if data_files and data_files.get('MTX'):
         input_files_mtx = data_files.get('MTX')
@@ -127,7 +124,7 @@ def main(workflow):
                                                                 remove_intermediate_output=False)
 
         ##########################################
-        #          WGS FILE PROCESSING           #
+        #          MGX FILE PROCESSING           #
         ##########################################
         # Ideally we would be passed in a set of corresponding metagenome
         # sequence(s) to go with our metatranscriptomic files but we also
@@ -140,8 +137,8 @@ def main(workflow):
         #           file; here we remove these from our input files and
         #           prevent them from running through the kneaddata ->
         #           metaphlan2 portions of our pipeline
-        if data_files.get('WGS'):
-            input_files_wgs = data_files.get('WGS')
+        if data_files.get('MGX'):
+            input_files_wgs = data_files.get('MGX')
             input_tax_profiles = [in_file for in_file in input_files_wgs
                                   if 'taxonomic_profile.tsv' in in_file]
             input_files_wgs = set(input_files_wgs) - set(input_tax_profiles)
@@ -229,20 +226,23 @@ def main(workflow):
         # taxonomic profile.
         func_outs_match_mtx = []
         if tax_profile_outputs_wgs:
-            (matched_mtx_fq, matched_tax_profile) = match_files(cleaned_fastqs_mtx,
-                                                                tax_profile_outputs_wgs[1],
-                                                                args.metadata_file)
+            (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
+                                                                     'Site/Sub/Coll ID',
+                                                                     tax_profile_outputs_wgs[1],
+                                                                     'External ID',
+                                                                     args.metadata_file,
+                                                                     ['_taxonomic_profile'])
 
             func_outs_match_mtx = functional_profile(workflow,
-                                                     matched_mtx_fq,
+                                                     matched_fqs,
                                                      project_dirs_mtx[1],
                                                      args.threads,
-                                                     matched_tax_profile,
+                                                     matched_tax_profiles,
                                                      remove_intermediate_output=True)
 
             # Reset the remaining MTX files left over here so that we can run them through
             # the metaphlan2 -> humann2 pipeline.
-            cleaned_fastqs_mtx = set(cleaned_fastqs_mtx) - set(matched_mtx_fq)
+            cleaned_fastqs_mtx = set(cleaned_fastqs_mtx) - set(matched_fqs)
 
         tax_outs_mtx = taxonomic_profile(workflow,
                                          cleaned_fastqs_mtx,

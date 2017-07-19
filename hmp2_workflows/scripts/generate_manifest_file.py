@@ -51,7 +51,7 @@ def parse_cli_arguments():
                                      'HMP2 AnADAMA2 workflows.')
     parser.add_argument('-b', '--broad-data-sheet', required=True,
                         help='Broad data product status spreadsheet. '
-                        'Contains entriest indicating new files to be '
+                        'Contains entries indicating new files to be '
                         'processed.')
     parser.add_argument('-o', '--output-manifest', required=True,
                         help='Path to desired output manifest file.')
