@@ -142,77 +142,79 @@ def main(workflow):
             input_tax_profiles = [in_file for in_file in input_files_wgs
                                   if 'taxonomic_profile.tsv' in in_file]
             input_files_wgs = set(input_files_wgs) - set(input_tax_profiles)
-            sample_names_wgs = sample_names(input_files_wgs)
 
-            project_dirs_wgs = create_project_dirs([conf.get('deposition_dir'),
-                                                    conf.get('processing_dir'),
-                                                    conf.get('public_dir')],
-                                                   project,
-                                                   creation_date,
-                                                   'WGS')
-            public_dir_wgs = project_dirs_wgs[-1]
+            if input_files_wgs:
+                sample_names_wgs = sample_names(input_files_wgs)
 
-            deposited_files_wgs = stage_files(workflow,
-                                              input_files_wgs,
-                                              project_dirs_wgs[0],
-                                              symlink=True)
+                project_dirs_wgs = create_project_dirs([conf.get('deposition_dir'),
+                                                        conf.get('processing_dir'),
+                                                        conf.get('public_dir')],
+                                                    project,
+                                                    creation_date,
+                                                    'WGS')
+                public_dir_wgs = project_dirs_wgs[-1]
 
-            (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
-                                                                    deposited_files_wgs,
-                                                                    project_dirs_wgs[1],
-                                                                    args.threads,
-                                                                    [contaminate_db,
-                                                                     rrna_db],
-                                                                    remove_intermediate_output=True)
+                deposited_files_wgs = stage_files(workflow,
+                                                input_files_wgs,
+                                                project_dirs_wgs[0],
+                                                symlink=True)
 
-            tax_profile_outputs_wgs = taxonomic_profile(workflow,
-                                                        cleaned_fastqs_wgs,
-                                                        project_dirs_wgs[1],
-                                                        args.threads,
-                                                        '*.fastq')
+                (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
+                                                                        deposited_files_wgs,
+                                                                        project_dirs_wgs[1],
+                                                                        args.threads,
+                                                                        [contaminate_db,
+                                                                        rrna_db],
+                                                                        remove_intermediate_output=True)
 
-            func_profile_outputs_wgs = functional_profile(workflow,
-                                                          cleaned_fastqs_wgs,
-                                                          project_dirs_wgs[1],
-                                                          args.threads,
-                                                          tax_profile_outputs_wgs[1],
-                                                          remove_intermediate_output=True)
-            input_tax_profiles.extend(tax_profile_outputs_wgs[1])
+                tax_profile_outputs_wgs = taxonomic_profile(workflow,
+                                                            cleaned_fastqs_wgs,
+                                                            project_dirs_wgs[1],
+                                                            args.threads,
+                                                            '*.fastq')
 
-            pub_wgs_raw_dir = os.path.join(public_dir_wgs, 'raw')
-            pub_wgs_tax_profile_dir = os.path.join(public_dir_wgs, 'tax_profile')
-            pub_wgs_func_profile_dir = os.path.join(public_dir_wgs, 'func_profile')
-            map(create_folders, [pub_wgs_raw_dir, pub_wgs_tax_profile_dir,
-                                 pub_wgs_func_profile_dir])
+                func_profile_outputs_wgs = functional_profile(workflow,
+                                                            cleaned_fastqs_wgs,
+                                                            project_dirs_wgs[1],
+                                                            args.threads,
+                                                            tax_profile_outputs_wgs[1],
+                                                            remove_intermediate_output=True)
+                input_tax_profiles.extend(tax_profile_outputs_wgs[1])
 
-            norm_genefamilies_wgs = name_files(sample_names,
-                                               project_dirs_wgs[1],
-                                               subfolder='genes',
-                                               tag='genefamilies_relab',
-                                               extension='tsv')
-            norm_ecs_files_wgs = name_files(sample_names,
-                                            project_dirs_wgs[1],
-                                            subfolder='ecs',
-                                            tag='genefamilies_ecs_relab',
-                                            extension='tsv')
-            norm_path_files_wgs = name_files(sample_names,
-                                             project_dirs_wgs[1],
-                                             subfolder='pathways',
-                                             tag='pathabundance_relab',
-                                             extension='tsv')
+                pub_wgs_raw_dir = os.path.join(public_dir_wgs, 'raw')
+                pub_wgs_tax_profile_dir = os.path.join(public_dir_wgs, 'tax_profile')
+                pub_wgs_func_profile_dir = os.path.join(public_dir_wgs, 'func_profile')
+                map(create_folders, [pub_wgs_raw_dir, pub_wgs_tax_profile_dir,
+                                    pub_wgs_func_profile_dir])
 
-            func_tar_files_wgs = []
-            for (sample, gene_file, ecs_file, path_file) in zip(sample_names_wgs,
-                                                                norm_genefamilies_wgs,
-                                                                norm_ecs_files_wgs,
-                                                                norm_path_files_wgs):
-                tar_path = os.path.join(pub_wgs_func_profile_dir, 
-                                        "%s_humann2.tgz" % sample)
-                func_tar_file = tar_files(workflow,
-                                          [gene_file, ecs_file, path_file],
-                                          tar_path,
-                                          depends=func_profile_outputs_wgs)
-                func_tar_files_wgs.append(func_tar_file)
+                norm_genefamilies_wgs = name_files(sample_names,
+                                                project_dirs_wgs[1],
+                                                subfolder='genes',
+                                                tag='genefamilies_relab',
+                                                extension='tsv')
+                norm_ecs_files_wgs = name_files(sample_names,
+                                                project_dirs_wgs[1],
+                                                subfolder='ecs',
+                                                tag='genefamilies_ecs_relab',
+                                                extension='tsv')
+                norm_path_files_wgs = name_files(sample_names,
+                                                project_dirs_wgs[1],
+                                                subfolder='pathways',
+                                                tag='pathabundance_relab',
+                                                extension='tsv')
+
+                func_tar_files_wgs = []
+                for (sample, gene_file, ecs_file, path_file) in zip(sample_names_wgs,
+                                                                    norm_genefamilies_wgs,
+                                                                    norm_ecs_files_wgs,
+                                                                    norm_path_files_wgs):
+                    tar_path = os.path.join(pub_wgs_func_profile_dir, 
+                                            "%s_humann2.tgz" % sample)
+                    func_tar_file = tar_files(workflow,
+                                            [gene_file, ecs_file, path_file],
+                                            tar_path,
+                                            depends=func_profile_outputs_wgs)
+                    func_tar_files_wgs.append(func_tar_file)
 
 
         ##########################################
