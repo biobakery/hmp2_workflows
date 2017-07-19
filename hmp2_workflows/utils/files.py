@@ -180,11 +180,12 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     
     return seq_file
 
-def match_tax_profiles(mtx_fastqs, tax_profiles, mtx_col_id, 
-                       dtype, tax_col_id, metadata_file,
+def match_tax_profiles(mtx_fastqs, mtx_col_id,
+                       tax_profiles, tax_col_id, 
+                       metadata_file,
                        tax_tag='_taxonomic_profile'):
     """Takes two sets of files and attempts to match them together based on 
-    the supplied HMP2 metadata file. 
+    the supplied HMP2 metadata file. Test
 
     Args:
         files_a (list): The first set of files to match against.
