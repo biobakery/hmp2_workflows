@@ -229,7 +229,7 @@ def match_tax_profiles(mtx_fastqs, mtx_col_id,
     tax_profiles_map = dict(zip(tax_profiles_fnames, tax_profiles))
 
     metadata_df = pd.read_csv(metadata_file)
-    metadata_df_subset = metadata_df[(metadata_df.data_type == "metaranscriptomics") &
+    metadata_df_subset = metadata_df[(metadata_df.data_type == "metatranscriptomics") &
                                      (metadata_df[mtx_col_id].isin(mtx_sample_names))]
 
     for row in metadata_df_subset.iterrows():
