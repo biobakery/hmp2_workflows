@@ -120,7 +120,7 @@ def main(workflow):
                                                                 [contaminate_db,
                                                                  rrna_db,
                                                                  mtx_db],
-                                                                remove_intermediate_output=False)
+                                                                remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
 
@@ -231,7 +231,7 @@ def main(workflow):
         if input_tax_profiles:
             (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
                                                                      'Site/Sub/Coll ID',
-                                                                     tax_profile_outputs_wgs[1],
+                                                                     input_tax_profiles,
                                                                      'External ID',
                                                                      args.metadata_file,
                                                                      ['_taxonomic_profile'])
