@@ -248,18 +248,21 @@ def main(workflow):
             # the metaphlan2 -> humann2 pipeline.
             cleaned_fastqs_mtx = set(cleaned_fastqs_mtx) - set(matched_fqs)
 
-        tax_outs_mtx = taxonomic_profile(workflow,
-                                         cleaned_fastqs_mtx,
-                                         project_dirs_mtx[1],
-                                         args.threads,
-                                         '*.fastq')
-        func_outs_mtx = functional_profile(workflow,
-                                           cleaned_fastqs_mtx,
-                                           project_dirs_mtx[1],
-                                           args.threads,
-                                           tax_outs_mtx[1],
-                                           remove_intermediate_output=True)
-        func_outs_mtx = list(func_outs_mtx).extend(func_outs_match_mtx)
+        if cleaned_fastqs_mtx:
+            tax_outs_mtx = taxonomic_profile(workflow,
+                                            cleaned_fastqs_mtx,
+                                            project_dirs_mtx[1],
+                                            args.threads,
+                                            '*.fastq')
+            func_outs_mtx = functional_profile(workflow,
+                                            cleaned_fastqs_mtx,
+                                            project_dirs_mtx[1],
+                                            args.threads,
+                                            tax_outs_mtx[1],
+                                            remove_intermediate_output=True)
+            func_outs_mtx = list(func_outs_mtx).extend(func_outs_match_mtx)
+        else:
+            func_outs_mtx = func_outs_match_mtx
 
         pub_mtx_raw_dir = os.path.join(public_dir_mtx, 'raw')
         pub_mtx_tax_profile_dir = os.path.join(public_dir_mtx, 'tax_profile')
