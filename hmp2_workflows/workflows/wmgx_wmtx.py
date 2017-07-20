@@ -270,17 +270,17 @@ def main(workflow):
         map(create_folders, [pub_mtx_raw_dir, pub_mtx_tax_profile_dir,
                              pub_mtx_func_profile_dir])
 
-        norm_genefamilies_mtx = name_files(sample_names,
+        norm_genefamilies_mtx = name_files(sample_names_mtx,
                                            project_dirs_mtx[1],
                                            subfolder='genes',
                                            tag='genefamilies_relab',
                                            extension='tsv')
-        norm_ecs_files_mtx = name_files(sample_names,
+        norm_ecs_files_mtx = name_files(sample_names_mtx,
                                         project_dirs_mtx[1],
                                         subfolder='ecs',
                                         tag='genefamilies_ecs_relab',
                                         extension='tsv')
-        norm_path_files_mtx = name_files(sample_names,
+        norm_path_files_mtx = name_files(sample_names_mtx,
                                          project_dirs_mtx[1],
                                          subfolder='pathways',
                                          tag='pathabundance_relab',
