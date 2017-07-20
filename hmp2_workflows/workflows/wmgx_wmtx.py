@@ -99,6 +99,7 @@ def main(workflow):
 
     if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX').get('input')
+        pair_identifier = data_files.get('MTX').get('pair_identifier')
 
         project_dirs_mtx = create_project_dirs([conf.get('deposition_dir'),
                                                 conf.get('processing_dir'),
@@ -120,6 +121,7 @@ def main(workflow):
                                                                 [contaminate_db,
                                                                  rrna_db,
                                                                  mtx_db],
+                                                                pair_identifier=pair_identifier,
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
