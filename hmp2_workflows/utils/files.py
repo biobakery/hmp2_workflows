@@ -232,7 +232,7 @@ def match_tax_profiles(mtx_fastqs, mtx_col_id,
     metadata_df_subset = metadata_df[(metadata_df.data_type == "metatranscriptomics") &
                                      (metadata_df[mtx_col_id].isin(mtx_sample_names))]
 
-    for row in metadata_df_subset.iterrows():
+    for (idx, row) in metadata_df_subset.iterrows():
         mtx_id = row.get(mtx_col_id)
         tax_profile_fname = row.get(tax_col_id) + tax_tag
 
