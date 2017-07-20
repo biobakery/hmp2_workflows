@@ -235,8 +235,7 @@ def main(workflow):
                                                                      'Site/Sub/Coll ID',
                                                                      input_tax_profiles,
                                                                      'External ID',
-                                                                     args.metadata_file,
-                                                                     ['_taxonomic_profile'])
+                                                                     args.metadata_file)
 
             func_outs_match_mtx = functional_profile(workflow,
                                                      matched_fqs,
