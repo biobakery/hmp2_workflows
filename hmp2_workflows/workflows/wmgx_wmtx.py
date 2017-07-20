@@ -43,9 +43,10 @@ from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                          tar_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import bam_to_fastq
-from hmp2_workflows.utils.files import find_files, match_tax_profiles
+from hmp2_workflows.utils.files import (find_files, match_tax_profiles, 
+                                        create_project_dirs)
 from hmp2_workflows.utils.misc import parse_cfg_file
-from hmp2_workflows.utils.files import create_project_dirs
+from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 
 
 def parse_cli_arguments():
@@ -86,7 +87,8 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    conf = parse_cfg_file(args.config_file, section='MTX')
+    conf_mtx = parse_cfg_file(args.config_file, section='MTX')
+    conf_mgx = parse.cfg_file(args.config_file, section='WGS')
     manifest = parse_cfg_file(args.manifest_file)
 
     data_files = manifest.get('submitted_files')
@@ -101,9 +103,9 @@ def main(workflow):
         input_files_mtx = data_files.get('MTX').get('input')
         pair_identifier = data_files.get('MTX').get('pair_identifier')
 
-        project_dirs_mtx = create_project_dirs([conf.get('deposition_dir'),
-                                                conf.get('processing_dir'),
-                                                conf.get('public_dir')],
+        project_dirs_mtx = create_project_dirs([conf_mtx.get('deposition_dir'),
+                                                conf_mtx.get('processing_dir'),
+                                                conf_mtx.get('public_dir')],
                                                project,
                                                creation_date,
                                                'MTX')
@@ -149,18 +151,18 @@ def main(workflow):
             if input_files_wgs:
                 sample_names_wgs = sample_names(input_files_wgs)
 
-                project_dirs_wgs = create_project_dirs([conf.get('deposition_dir'),
-                                                        conf.get('processing_dir'),
-                                                        conf.get('public_dir')],
+                project_dirs_wgs = create_project_dirs([conf_mgx.get('deposition_dir'),
+                                                        conf_mgx.get('processing_dir'),
+                                                        conf_mgx.get('public_dir')],
                                                     project,
                                                     creation_date,
                                                     'WGS')
                 public_dir_wgs = project_dirs_wgs[-1]
 
                 deposited_files_wgs = stage_files(workflow,
-                                                input_files_wgs,
-                                                project_dirs_wgs[0],
-                                                symlink=True)
+                                                  input_files_wgs,
+                                                  project_dirs_wgs[0],
+                                                  symlink=True)
 
                 (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
                                                                         deposited_files_wgs,
@@ -206,6 +208,15 @@ def main(workflow):
                                                 tag='pathabundance_relab',
                                                 extension='tsv')
 
+                pcl_files = add_metadata_to_tsv(workflow,
+                                                [tax_profile_outputs_wgs[1]] 
+                                                + func_profile_outputs_wgs,
+                                                'metagenomics',
+                                                conf_mgx.get('metadata_id_col'),
+                                                conf_mgx.get('analysis_col_patterns'),
+                                                conf_mgx.get('target_metadata_cols'),
+                                                aux_files=[knead_read_counts])
+                                      
                 func_tar_files_wgs = []
                 for (sample, gene_file, ecs_file, path_file) in zip(sample_names_wgs,
                                                                     norm_genefamilies_wgs,
@@ -232,9 +243,9 @@ def main(workflow):
         func_outs_match_mtx = []
         if input_tax_profiles:
             (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
-                                                                     'Site/Sub/Coll ID',
+                                                                     conf_mtx.get('metadat_id_col')
                                                                      input_tax_profiles,
-                                                                     'External ID',
+                                                                     conf_mtx.get('tax_profile_id')
                                                                      args.metadata_file)
 
             func_outs_match_mtx = functional_profile(workflow,
@@ -250,16 +261,16 @@ def main(workflow):
 
         if cleaned_fastqs_mtx:
             tax_outs_mtx = taxonomic_profile(workflow,
-                                            cleaned_fastqs_mtx,
-                                            project_dirs_mtx[1],
-                                            args.threads,
-                                            '*.fastq')
+                                             cleaned_fastqs_mtx,
+                                             project_dirs_mtx[1],
+                                             args.threads,
+                                             '*.fastq')
             func_outs_mtx = functional_profile(workflow,
-                                            cleaned_fastqs_mtx,
-                                            project_dirs_mtx[1],
-                                            args.threads,
-                                            tax_outs_mtx[1],
-                                            remove_intermediate_output=True)
+                                               cleaned_fastqs_mtx,
+                                               project_dirs_mtx[1],
+                                               args.threads,
+                                               tax_outs_mtx[1],
+                                               remove_intermediate_output=True)
             func_outs_mtx = list(func_outs_mtx).extend(func_outs_match_mtx)
         else:
             func_outs_mtx = func_outs_match_mtx
@@ -298,7 +309,7 @@ def main(workflow):
                                       tar_path,
                                       depends=func_outs_mtx)
             func_tar_files_mtx.append(func_tar_file)
-
+    
         workflow.go()
 
 

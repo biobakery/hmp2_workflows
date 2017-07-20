@@ -6,72 +6,77 @@
 ###################
 
 base: &base
-    # Directories where AnADAMA2 pipelines will pull and deposit files to.
-    deposition_dir: /PATH/TO/data_deposition
-    processing_dir: /PATH/TO/processing
-    public_dir: /PATH/TO/public
+    # It seems like a lot of the sequences handled by the Broad are dropped
+    # in the following directory.
+    # broad_sequence_dir: 
+
+    # Next comes up the directories where our AnADAMA2 pipelines will pull and
+    # deposit files to.        
+    deposition_dir: /PATH/TO/DATA/DEPOSITION/DIRECTORY
+    processing_dir: /PATH/TO/DATA/PROCESSING/DIRECTORY
+    public_dir: /PATH/TO/PUBLIC/DATA/DIRECTORY
 
     # Databases used by the various different workflows. 
+    # TODO: Move these to a centralized location
     databases:
-        gg_usearch: /PATH/TO/DATABASES/gg_13_5_otus/rep_set/97_otus.udb
-        gg_taxonomy: /PATH/TO/DATABASES/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
-        gg_fasta: /PATH/TO/DATABASES/gg_13_5_otus/rep_set/97_otus.fasta
-        chimera: /PATH/TO/DATABASES/uchime/gold.fa
-        copy_num: /PATH/TO/DATABASES/picrust/data/16S_13_5_precalculated.tab.gz        
-        knead_dna: /PATH/TO/DATABASES/Homo_sapiens_Bowtie2_v0.1
-        knead_mtx: /PATH/TO/DATABASES/mrna
-        knead_rrna: /PATH/TO/DATABASES/silva-119-1_SSURef_nr99
-        humann2_nt: /PATH/TO/DATABASES/humann2/chocophlan
-        humann2_p: /PATH/TO/DATABASES/humann2/uniref
+        gg_usearch: /PATH/TO/GREENGENES/DB/gg_13_5_otus/rep_set/97_otus.udb
+        gg_taxonomy: /PATH/TO/GREENGENES/DB/gg_13_5_otus/taxonomy/97_otu_taxonomy.txt
+        gg_fasta: /PATH/TO/GREENGENES/DB/gg_13_5_otus/rep_set/97_otus.fasta
+        chimera: /PATH/TO/UCHIME/DB/uchime/gold.fa
+        copy_num: /PATH/TO/PICRUST/DB/picrust/data/16S_13_5_precalculated.tab.gz        
+        knead_dna: /PATH/TO/KNEAD/DB/Homo_sapiens_Bowtie2_v0.1
+        knead_mtx: /PATH/TO/KNEAD/DB/mrna
+        knead_rrna: /PATH/TO/KNEAD/DB/silva-119-1_SSURef_nr99
+        humann2_nt: /PATH/TO/HUMANN2/DB/chocophlan
+        humann2_p: /PATH/TO/HUMANN2/DB/uniref
 
-    # Columns that will be present in our analysis PCL files.
-    target_metadata_cols:
+    target_metadata_cols: &metadata_cols
         - Site/Sub/Coll ID
-        - Site
+        - SiteName
         - Age at diagnosis
         - Sex
         - visit_num
         - week_num
         - Diagnosis 
-        - Was SCCAI completed?
         - SCCAI Total
-        - Was HBI completed?
         - HBI Total
         - "FecalCal Result:"
-    
-    # Find-and-replace patterns in our analysis files to ensure we can map 
-    # corresponding metadata and create valid PCL files.
+
     analysis_col_patterns:
         - _taxonomic_profile
         - _functional_profile
         - _Abundance-RPKs
+        - _Abundance
+        - _Coverage
 
 ############################
 # PER-DATATYPE  PARAMETERS #
 ############################
 
-proteomics: &proteomics
+Proteomics: &proteomics
     <<: *base
     
     metadata_id_col: Job
 
     target_metadata_cols:
-        ? State   
-        ? Dataset_Type
-        ? Request_ID
-        ? Protein
+        - *metadata_cols
+        - State   
+        - Dataset_Type
+        - Request_ID
+        - Protein
 
     output_ftypes:
         - _rollup.txt
         - .png        
 
-mgx: &mgx
+MGX: &mgx
     <<: *base
 
     metadata_id_col: External ID
 
     target_metadata_cols:
-        ? "final single"
+        - *metadata_cols
+        - "final single"
 
     output_ftypes:
         - _tax.txt
@@ -90,19 +95,30 @@ mgx: &mgx
     min_size: 2
     percent_identity: 0.97        
 
-mtx: &mtx
+MTX: &mtx
     <<: *base
+    
+    metadat_id_col: "Site/Sub/Coll ID"
 
-mbx: &mbx
+    # When attempting to match taxonomic profiles to a MTX sequences 
+    # use this column in our metadata file to find match.
+    tax_profile_id: "External ID"
+
+    target_metadata_cols:
+        - *metadata_cols
+        - "final single"
+
+MBX: &mbx
     <<: *base
 
     metadata_id_col: "Tube A: Metabolomics"
 
     target_metadata_cols:
-        ? Injection Order
-        ? Date extracted
-        ? Date injected 
-        ? Column
+        - *metadata_cols
+        - Injection Order
+        - Date extracted
+        - Date injected 
+        - Column
 
 ############################
 #        METADATA          #
@@ -118,15 +134,13 @@ metadata: &metadata
         - .bam
         - .raw
 
-    # Coding from abbreviate data-type names to their English-readable version.
     dtype_mapping:
-        mbx: "metabolomics"
-        mgx: "metagenomics"
-        16s: "amplicon"
-        proteomics: "proteomics"
-    
-    # Once the QC and merge process is completed these columns can safely be
-    # dropped from our final metadata file.
+        MBX: "metabolomics"
+        MGX: "metagenomics"
+        16S: "amplicon"
+        Proteomics: "proteomics"
+        MTX: "metatranscriptomics"
+
     drop_cols:
         - Sheet Name
         - Subject
@@ -187,8 +201,6 @@ metadata: &metadata
         - Request_ID
         - Site/Sub/Coll
 
-    # In the merging process our columns get shuffled around and the following 
-    # order is provided to re-orient things.
     col_order:
         - Project
         - External ID
@@ -207,6 +219,14 @@ metadata: &metadata
         - WR ID
         - "# Lanes in Aggregation"
         - Total Reads
+
+    col_rename:
+        "Site/Sub/Coll ID": site_sub_coll
+        "Actual Date of Receipt": date_of_receipt
+        "SCCAI Total": "sccai"
+        "HBI Total": "hbi"
+        "FecalCal Result:": "fecalcal"
+        "final single": "read_counts"
 
     ## The cutplace CID files to use against our metadata files.
     validators:
@@ -247,9 +267,6 @@ dcc: &dcc
         "Black or African American": african_american
         White: caucasian
 
-    # All of the below information is static-metadata that is used by the 
-    # IDBMDB project to make a successful submission to the DCC. This 
-    # information can and should change when working with a different project.
     study:
         name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
         subtype: ibd
@@ -300,12 +317,12 @@ dcc: &dcc
             library were determined using an Agilent Bioanalyzer DNA 1000
             kit (Agilent Technologies).
         prep_id: 2
-        sequencing_contact: "enter@email_here.com"
-        sequencing_center: SEQUENCING CENTER NAME HERE
+        sequencing_contact: "contact@email.com"
+        sequencing_center: Sequencing Center
         ncbi_taxon_id: 408170 
         lib_layout: fragment
         lib_selection: Random
-        prep_comment: Broad IBDMDB default WGS dna prep
+        prep_comment: IBDMDB default WGS dna prep
         seq_comment: Raw WGS Sequence set 
         storage_duration: 365
         sequencer_model: Illumina HiSeq 2000
@@ -322,20 +339,20 @@ dcc: &dcc
             strand-specific, quantitative sequencing of full-length
             transcripts in diverse prokaryotic and eukaryotic species.
         prep_id: 3
-        sequencing_contact: "enter@email_here.com"
-        sequencing_center: SEQUENCE CENTER NAME HERE
+        sequencing_contact: "contact@email.com"
+        sequencing_center: Sequencing Center
         ncbi_taxon_id: 408170 
         lib_layout: fragment
         lib_selection: Random
-        prep_comment: Broad IBDMDB default Microbe Transcriptomics dna prep
+        prep_comment: IBDMDB default Microbe Transcriptomics dna prep
         seq_comment: Raw Microbe Transcriptomics Sequence set 
         storage_duration: 365
         sequencer_model: Illumina HiSeq 2000
 
     proteomics:
         assay:
-            center: PNNL
-            contact: "proteomics_contact@email_here.com"
+            center: Center Name
+            contact: "contact@email.com"
             storage_duration: 365
             experiment_type: "PRIDE:0000429, Shotgun proteomics"
             protocol_steps: ""
@@ -362,3 +379,4 @@ dcc: &dcc
             comment: IBDMDB
             title: IBDMDB
             short_label: NA
+            

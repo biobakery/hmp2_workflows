@@ -47,10 +47,8 @@ from hmp2_workflows.tasks.common import (verify_files,
                                          stage_files,
                                          tar_files,
                                          make_files_web_visible)
-from hmp2_workflows.tasks.file_conv import (bam_to_fastq,
-                                            batch_convert_tsv_to_biom)
-from hmp2_workflows.tasks.metadata import (generate_sample_metadata, 
-                                           add_metadata_to_tsv)
+from hmp2_workflows.tasks.file_conv import batch_convert_tsv_to_biom
+from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.utils.misc import (parse_cfg_file, 
                                        create_merged_md5sum_file)
 from hmp2_workflows.utils.files import create_project_dirs
