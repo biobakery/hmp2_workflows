@@ -183,7 +183,7 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
 def match_tax_profiles(mtx_fastqs, mtx_col_id,
                        tax_profiles, tax_col_id, 
                        metadata_file,
-                       tax_tag='_taxonomic_profile'):
+                       tax_tag='_taxonomic_profile.tsv'):
     """Takes two sets of files and attempts to match them together based on 
     the supplied HMP2 metadata file. Test
 
@@ -234,7 +234,7 @@ def match_tax_profiles(mtx_fastqs, mtx_col_id,
 
     for (idx, row) in metadata_df_subset.iterrows():
         mtx_id = row.get(mtx_col_id)
-        tax_profile_fname = row.get(tax_col_id) + tax_tag
+        tax_profile_fname = row.get(tax_col_id) + tax_tag 
 
         if tax_profile_fname in tax_profiles_fnames:
             matching_mtx_fastq.append(mtx_sample_map.get(mtx_id))
