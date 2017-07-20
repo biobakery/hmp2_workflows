@@ -88,16 +88,20 @@ def main(workflow):
     args = workflow.parse_args()
 
     conf_mtx = parse_cfg_file(args.config_file, section='MTX')
-    conf_mgx = parse.cfg_file(args.config_file, section='WGS')
+    conf_mgx = parse_cfg_file(args.config_file, section='MGX')
     manifest = parse_cfg_file(args.manifest_file)
 
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
 
-    contaminate_db = conf.get('databases').get('knead_dna')
-    mtx_db = conf.get('databases').get('knead_mtx')
-    rrna_db = conf.get('databases').get('knead_rrna')
+    contaminate_db = conf_mtx.get('databases').get('knead_dna')
+    mtx_db = conf_mtx.get('databases').get('knead_mtx')
+    rrna_db = conf_mtx.get('databases').get('knead_rrna')
+
+    qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
+    tax_threads = args.threads_metaphlan if args.threads_metaphlan else args.threads
+    func_threads = args.threads_humann if args.threads_humann else args.threads
 
     if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX').get('input')
@@ -116,10 +120,11 @@ def main(workflow):
                                           project_dirs_mtx[0],
                                           symlink=True)
 
+
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
                                                                 deposited_files_mtx,
                                                                 project_dirs_mtx[1],
-                                                                args.threads,
+                                                                qc_threads,
                                                                 [contaminate_db,
                                                                  rrna_db,
                                                                  mtx_db],
@@ -127,6 +132,9 @@ def main(workflow):
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
+
+
+
 
         ##########################################
         #          MGX FILE PROCESSING           #
@@ -167,7 +175,7 @@ def main(workflow):
                 (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
                                                                         deposited_files_wgs,
                                                                         project_dirs_wgs[1],
-                                                                        args.threads,
+                                                                        qc_threads,
                                                                         [contaminate_db,
                                                                         rrna_db],
                                                                         remove_intermediate_output=True)
@@ -175,13 +183,13 @@ def main(workflow):
                 tax_profile_outputs_wgs = taxonomic_profile(workflow,
                                                             cleaned_fastqs_wgs,
                                                             project_dirs_wgs[1],
-                                                            args.threads,
+                                                            tax_threads,
                                                             '*.fastq')
 
                 func_profile_outputs_wgs = functional_profile(workflow,
                                                             cleaned_fastqs_wgs,
                                                             project_dirs_wgs[1],
-                                                            args.threads,
+                                                            func_threads,
                                                             tax_profile_outputs_wgs[1],
                                                             remove_intermediate_output=True)
                 input_tax_profiles.extend(tax_profile_outputs_wgs[1])
@@ -251,7 +259,7 @@ def main(workflow):
             func_outs_match_mtx = functional_profile(workflow,
                                                      matched_fqs,
                                                      project_dirs_mtx[1],
-                                                     args.threads,
+                                                     func_threads,
                                                      matched_tax_profiles,
                                                      remove_intermediate_output=True)
 
@@ -263,12 +271,12 @@ def main(workflow):
             tax_outs_mtx = taxonomic_profile(workflow,
                                              cleaned_fastqs_mtx,
                                              project_dirs_mtx[1],
-                                             args.threads,
+                                             tax_threads,
                                              '*.fastq')
             func_outs_mtx = functional_profile(workflow,
                                                cleaned_fastqs_mtx,
                                                project_dirs_mtx[1],
-                                               args.threads,
+                                               func_threads,
                                                tax_outs_mtx[1],
                                                remove_intermediate_output=True)
             func_outs_mtx = list(func_outs_mtx).extend(func_outs_match_mtx)
