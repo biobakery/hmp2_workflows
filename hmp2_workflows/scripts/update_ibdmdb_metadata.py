@@ -502,7 +502,7 @@ def get_no_sequence_metadata(metadata_df, clinical_df):
         pandas.DataFrame: DataFrame containing any clinical metadata not 
             associated with a specific sequence file.                    
     """
-    sample_ids = [sid[1:2] + '-' + sid[3:] for sid in metadata_df['External ID']]
+    sample_ids = [sid[1:3] + '-' + sid[3:] for sid in metadata_df['External ID']]
     clinical_reamining_df = clinical_df[-clinical_df['st_q4'].isin(sample_ids)]
 
     return clinical_remaining_df
@@ -594,8 +594,10 @@ def main(args):
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.to_csv(metadata_file, index=False)
+    
+    no_seq_files_metadata = get_no_sequence_metadata(metadata_df, clinical_df)
+    no_seq_files_metadata.to_csv(no_seq_files_metadata, index=False)
 
-    no_data_metdata_df = get_no_sequence_metadata(metadata_df, study_trax_df)
 
 if __name__ == "__main__":
     main(parse_cli_arguments())
