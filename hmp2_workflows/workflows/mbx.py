@@ -73,7 +73,7 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    conf = parse_cfg_file(args.config_file, section='mbx')
+    conf = parse_cfg_file(args.config_file, section='MBX')
     manifest = parse_cfg_file(args.manifest_file)
 
     data_files = manifest.get('submitted_files')
@@ -81,8 +81,8 @@ def main(workflow):
     creation_date = manifest.get('submission_date')
     dataset_cfg = manifest.get('config')
 
-    if data_files and data_files.get('mbx'):
-        input_files = data_files.get('mbx').get('input')
+    if data_files and data_files.get('MBX'):
+        input_files = data_files.get('MBX').get('input')
         sample_names = get_sample_names(input_files)
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),

@@ -1,0 +1,103 @@
+## Configuration parameters required to handle any metadata file creation 
+## or refresh for the HMP2 project
+
+dtype_mapping:
+    MBX: "metabolomics"
+    MGX: "metagenomics"
+    16S: "amplicon"
+    Proteomics: "proteomics"
+    MTX: "metatranscriptomics"
+
+drop_cols:
+    - Sheet Name
+    - Subject
+    - Status
+    - Receipt Status
+    - "Collection #"
+    - Parent Sample A
+    - Parent Sample B
+    - DNA/RNA
+    - DNA/RNA mass
+    - DNA/RNA status
+    - MbX
+    - MBX mass
+    - MBX status
+    - MBX leak?
+    - MBX Volume Recorded
+    - Viromics
+    - Viromics mass
+    - Viromics status
+    - Viromics Selection
+    - Storage 
+    - Storage mass
+    - Storage status
+    - Storage Sample Selection
+    - Fecal Cal Selection
+    - Fecal Calprotectin
+    - Fecal Cal mass
+    - Fecal Cal status
+    - Proteomics
+    - Proteomics mass
+    - Proteomics status
+    - Prot. Sample Selection
+    - SiteName
+    - sample_ids
+    - Dataset
+    - State
+    - Job
+    - Tool
+    - Parameter_File
+    - Settings_File
+    - Instrument
+    - Experiment
+    - Campaign
+    - Organism
+    - Organism DB
+    - Protein Collection List
+    - Protein Options
+    - Comment
+    - Results Folder
+    - Folder
+    - Dataset_ID
+    - Dataset_Created
+    - Job_Finish
+    - Dataset_Rating
+    - Separation_Type
+    - Dataset_Type
+    - Request_ID
+    - Site/Sub/Coll
+
+col_order:
+    - project
+    - external_id
+    - participant_id
+    - site_sub_coll
+    - data_type
+    - date_of_receipt
+    - week_num
+    - interval_days
+    - visit_num
+    - research_project
+    - pdo_number
+    - gssr_ids
+    - product
+    - lcset
+    - aggregated_lanes
+    - wr_id
+    - lanes_in_aggregation
+    - total_reads
+
+col_rename:
+    "Site/Sub/Coll ID": site_sub_coll
+    "Actual Date of Receipt": date_of_receipt
+    "SCCAI Total": "sccai"
+    "HBI Total": "hbi"
+    "# Lanes in Aggregation": "lanes_in_aggregation"
+    "FecalCal Result:": "fecalcal"
+    "final single": "read_counts"
+
+
+## The cutplace CID files to use against our metadata files.
+validators:
+    - studytrax: config/validation/studytrax.cid
+    - broad_datasheet: config/validation/broad.cid

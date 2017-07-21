@@ -218,7 +218,6 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
     metadata_df = pd.read_csv(metadata_file, dtype='str')
     
     def _workflow_add_metadata_to_tsv(task):
-    #def _workflow_add_metadata_to_tsv(analysis_file, pcl_out):
         analysis_file = task.depends[0].name
         pcl_out = task.targets[0].name
 
@@ -246,7 +245,6 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
             pcl_metadata_df = hmp2_utils.misc.reset_column_headers(pcl_metadata_df)
 
             analysis_df.drop(analysis_df.index[range(0,metadata_rows)], inplace=True)
-            #analysis_df.index = analysis_df.index + len(pcl_metadata_df.index)
             analysis_df.rename(columns=analysis_df.iloc[0], inplace=True)
         else:
             analysis_df = hmp2_utils.misc.reset_column_headers(analysis_df)
@@ -288,10 +286,13 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         if target_cols:
             target_cols.insert(0, id_col)
             subset_metadata_df = subset_metadata_df.filter(target_cols)
+        if col_rename:
+            subset_metadata_df.rename(columns=col_rename, inplace=True)
 
         subset_metadata_df = subset_metadata_df.T
         subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
         subset_metadata_df = subset_metadata_df.reset_index()
+        subset_metadata_df.fillna('NA', inplace=True)
 
         _col_offset = col_offset-1 if col_offset != -1 else col_offset
         col_name = analysis_df.columns[_col_offset+1]
@@ -318,8 +319,8 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
     workflow.add_task_group(_workflow_add_metadata_to_tsv,
                             depends=analysis_files,
                             targets=pcl_files,
-                            time=1*60,
-                            mem=1024,
+                            time="1*60 if ( file_size('depends[0]]') < 1 else 2*60",
+                            mem="4*1024 if ( file_size('depends[0]]') < 1 else 3*12*1024" ,
                             cores=1,
                             name="Generate analysis PCL output file")
 
