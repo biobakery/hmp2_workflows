@@ -595,7 +595,7 @@ def main(args):
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.to_csv(metadata_file, index=False)
     
-    no_seq_files_metadata = get_no_sequence_metadata(metadata_df, clinical_df)
+    no_seq_files_metadata = get_no_sequence_metadata(metadata_df, study_trax_df)
     no_seq_files_metadata.to_csv(no_seq_files_metadata, index=False)
 
 
