@@ -503,9 +503,9 @@ def get_no_sequence_metadata(metadata_df, clinical_df):
             associated with a specific sequence file.                    
     """
     sample_ids = [sid[1:3] + '-' + sid[3:] for sid in metadata_df['External ID']]
-    clinical_reamining_df = clinical_df[-clinical_df['st_q4'].isin(sample_ids)]
+    clinical_noseq_df = clinical_df[-clinical_df['st_q4'].isin(sample_ids)]
 
-    return clinical_remaining_df
+    return clinical_noseq_df
 
 
 def main(args):
