@@ -45,6 +45,7 @@ furnished to do so, subject to the following conditions:
 """
 
 import argparse
+import datetime
 import os
 
 import glob2
@@ -77,9 +78,9 @@ def parse_cli_arguments():
     parser.add_argument('-m', '--metadata-file',
                         help='OPTIONAL: An existing metadata file if '
                         'available.')
-    parser.add_argument('-o', '--output-file',
-                        help='Desired output file to write updated metadata '
-                        'file too.')
+    parser.add_argument('-o', '--output-dir',
+                        help='Desired output folder to write updated metadata '
+                        'and auxillary file too.')
     parser.add_argument('-f', '--manifest-file',
                         help='Manifest file detailing new or updated data '
                         'files from which metadata should be generated.')
@@ -484,8 +485,31 @@ def reorder_columns(metadata_df, cols_to_move):
     return metadata_df
 
 
+def get_no_sequence_metadata(metadata_df, clinical_df):
+    """Generates a dataframe containing any remaiing clinical metadata that 
+    is not tied to sequence data. 
+
+    Args:
+        metadata_df (pandas.DataFrame): HMP2 metadata table stored in a pandas
+            DataFrame.
+        clinical_df (pandas.DataFrame): StudyTrax clinical metadata stored in
+            pandas DataFrame.
+
+    Requires:
+        None
+
+    Returns:
+        pandas.DataFrame: DataFrame containing any clinical metadata not 
+            associated with a specific sequence file.                    
+    """
+    sample_ids = [sid[1:2] + '-' + sid[3:] for sid in metadata_df['External ID']]
+    clinical_reamining_df = clinical_df[-clinical_df['st_q4'].isin(sample_ids)]
+
+    return clinical_remaining_df
+
+
 def main(args):
-    config = parse_cfg_file(args.config, section='metadata')  
+    config = parse_cfg_file(args.config)  
 
     study_trax_df = pd.read_csv(args.studytrax_metadata)
     broad_sample_df = pd.read_csv(args.broad_sample_tracking,
@@ -494,6 +518,12 @@ def main(args):
     proteomics_df = None
     metadata_df = None
     
+    date_today = datetime.date.today()
+    metadata_file = os.path.join(args.output_dir, 
+                                 'hmp2_metadata_%s.csv' % date_today)
+    no_data_metadata = os.path.join(args.output_dir,
+                                    'hmp2_metadata_no_sequence_%s.csv' % date_today)
+
     ## Before we filter our metadata rows down to just to rows associated
     ## with the files we have present, we'll want a list of all the collection
     ## dates
@@ -501,8 +531,6 @@ def main(args):
 
     if args.proteomics_metadata:
         proteomics_df = pd.read_table(args.proteomics_metadata)
-
-    #sequence_files = []
 
     ## The update procedure either assumes that we have an exisitng metadata
     ## file that we are going to be appending too/updating or that we are 
@@ -565,8 +593,9 @@ def main(args):
 
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
-    metadata_df.to_csv(args.output_file, index=False)
+    metadata_df.to_csv(metadata_file, index=False)
 
+    no_data_metdata_df = get_no_sequence_metadata(metadata_df, study_trax_df)
 
 if __name__ == "__main__":
     main(parse_cli_arguments())

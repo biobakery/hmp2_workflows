@@ -286,8 +286,6 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         if target_cols:
             target_cols.insert(0, id_col)
             subset_metadata_df = subset_metadata_df.filter(target_cols)
-        if col_rename:
-            subset_metadata_df.rename(columns=col_rename, inplace=True)
 
         subset_metadata_df = subset_metadata_df.T
         subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
