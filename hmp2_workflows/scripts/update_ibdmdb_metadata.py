@@ -93,10 +93,8 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--proteomics-metadata', 
                         help='Any metadata associated with Proteomics data '
                         'supplied by the PNNL.')
-    parser.add_argument('-i', '--pair-identifier', required=False,
-                        default=None,
-                        help='OPTIONAL: Paired identifier if dealing with '
-                        'paired-end input sequences.')                        
+    parser.add_argument('-f', '--dump-full-table', default=False,
+                        action='store_true')                        
     parser.add_argument('-a', '--refresh-all', action="store_true",
                         help='OPTIONAL: Refresh all metadata from scratch '
                         'before adding files specified in accompanying ' 
@@ -521,8 +519,8 @@ def main(args):
     date_today = datetime.date.today()
     metadata_file = os.path.join(args.output_dir, 
                                  'hmp2_metadata_%s.csv' % date_today)
-    no_data_metadata = os.path.join(args.output_dir,
-                                    'hmp2_metadata_no_sequence_%s.csv' % date_today)
+    no_seq_metadata = os.path.join(args.output_dir,
+                                   'hmp2_metadata_no_sequence_%s.csv' % date_today)
 
     ## Before we filter our metadata rows down to just to rows associated
     ## with the files we have present, we'll want a list of all the collection
@@ -543,15 +541,16 @@ def main(args):
     if args.manifest_file:
         manifest = parse_cfg_file(args.manifest_file)
         submitted_files = manifest.get('submitted_files')
-    
+
         if submitted_files:
             new_metadata = []
             for (dtype, items) in submitted_files.iteritems():
                 input_files = items.get('input')
+                pair_identifier = items.get('pair_identifier')
 
                 if args.pair_identifier:
                     (input_pair1, input_pair2) = bb_utils.paired_files(input_files,
-                                                                       args.pair_identifier)
+                                                                       pair_identifier)
                     input_files = input_pair1 if input_pair1 else input_files                                                                       
 
                 new_metadata.append(get_metadata_rows(config,
@@ -595,8 +594,8 @@ def main(args):
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.to_csv(metadata_file, index=False)
     
-    no_seq_files_metadata = get_no_sequence_metadata(metadata_df, study_trax_df)
-    no_seq_files_metadata.to_csv(no_seq_files_metadata, index=False)
+    no_seq_files_metadata_df = get_no_sequence_metadata(metadata_df, study_trax_df)
+    no_seq_files_metadata_df.to_csv(no_seq_metadata, index=False)
 
 
 if __name__ == "__main__":

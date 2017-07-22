@@ -12,6 +12,7 @@ properly.
 """
 
 import argparse
+import re
 
 import pandas as pd
 
@@ -46,6 +47,16 @@ def populate_value_lookup(row, lookup):
         lookup[code_col][str(float(code_val))] = human_val.replace(':', '').strip()
 
 
+def _char_strip(value):
+    """Strips a defined set of characters from the given string. Returns 
+    cleaned string.
+    """
+    # TODO: Probably don't want this hard-coded in our final pipeline
+    for replace_char in ['#', ':', '(', ')', '.', '?']:
+        value = value.replace(replace_char, '')
+
+    return value.replace('-', '_').replace(',' '_').replace('//', '_')
+
 def main(args):
     ## First parse the metadata file 
     metadata_df = pd.read_csv(args.metadata_file, dtype='object')
@@ -55,7 +66,8 @@ def main(args):
 
     ## Now let's create a dictionary lookup for the coded to human readable
     col_name_lookup = pd.Series(dictionary_df['Variable Name'].values, index=dictionary_df['Code'].values)
-    
+    col_name_lookup = dict((k.lower(), _char_strip(v) for (k,v) in col_name_lookup.iteritems())
+
     value_field_lookup = {}
     dictionary_df[dictionary_df['Pick Lists  (Value, Missing, Name)'].notnull()].apply(populate_value_lookup, axis=1, args=(value_field_lookup,))
 
