@@ -93,7 +93,7 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--proteomics-metadata', 
                         help='Any metadata associated with Proteomics data '
                         'supplied by the PNNL.')
-    parser.add_argument('-f', '--dump-full-table', default=False,
+    parser.add_argument('-df', '--dump-full-table', default=False,
                         action='store_true')                        
     parser.add_argument('-a', '--refresh-all', action="store_true",
                         help='OPTIONAL: Refresh all metadata from scratch '
@@ -548,7 +548,7 @@ def main(args):
                 input_files = items.get('input')
                 pair_identifier = items.get('pair_identifier')
 
-                if args.pair_identifier:
+                if pair_identifier:
                     (input_pair1, input_pair2) = bb_utils.paired_files(input_files,
                                                                        pair_identifier)
                     input_files = input_pair1 if input_pair1 else input_files                                                                       
@@ -559,7 +559,7 @@ def main(args):
                                                       proteomics_df,
                                                       dtype,
                                                       input_files,
-                                                      args.pair_identifier))
+                                                      pair_identifier))
  
             new_metadata_df = pd.concat(new_metadata)
             new_metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)

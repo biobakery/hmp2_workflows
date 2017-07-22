@@ -68,27 +68,32 @@ drop_cols:
     - Site/Sub/Coll
 
 col_order:
-    - project
-    - external_id
-    - participant_id
+    - Project
+    - External ID
+    - Participant ID
     - site_sub_coll
     - data_type
     - date_of_receipt
     - week_num
     - interval_days
     - visit_num
-    - research_project
-    - pdo_number
-    - gssr_ids
-    - product
-    - lcset
-    - aggregated_lanes
-    - wr_id
-    - lanes_in_aggregation
-    - total_reads
+    - Research Project
+    - PDO Number
+    - GSSR IDs
+    - Product
+    - LCSET
+    - Aggregated Lanes
+    - WR ID
+    - # Lanes In Aggregation
+    - Total Reads
 
 col_rename:
     "Site/Sub/Coll ID": site_sub_coll
+    "SiteName": "site_name"
+    "Sex": "sex"
+    "Race": "race"
+    "Diagnosis": "diagnosis"
+    "Antibiotics": "antibiotics"
     "Actual Date of Receipt": date_of_receipt
     "SCCAI Total": "sccai"
     "HBI Total": "hbi"
@@ -96,6 +101,11 @@ col_rename:
     "FecalCal Result:": "fecalcal"
     "final single": "read_counts"
 
+value_recode:
+    "Diagnosis":
+        "Crohn's Disease": "CD"
+        "Ulcerative colitis": "UC"
+        "Healthy control": "nonIBD"
 
 ## The cutplace CID files to use against our metadata files.
 validators:

@@ -16,6 +16,8 @@ import re
 
 import pandas as pd
 
+from hmp2_workflows.utils.misc import parse_cfg_file 
+
 
 def parse_cli_arguments():
     """Parses any command-line arguments passed in by the user."""
@@ -23,6 +25,9 @@ def parse_cli_arguments():
                                      'human readable ones.')
     parser.add_argument('-m', '--metadata-file', required=True, help='IBDMDB '
                         'metadata table file.')
+    parser.add_argument('-c', '--config-file', required=True,
+                        help='Metadata configuration file containing '
+                        'parameters needed in human-ifying metadata.' )                        
     parser.add_argument('-d', '--data-dictionary', required=True, help='Data '
                         'dictionary containing coded column names to human '
                         'readable column names look-up')
@@ -60,13 +65,17 @@ def _char_strip(value):
 def main(args):
     ## First parse the metadata file 
     metadata_df = pd.read_csv(args.metadata_file, dtype='object')
+    metadata_conf = parse_cfg_file(args.config_file)
+    conf_rename_cols = metadata_conf.get('col_rename')
+    conf_recode_cols = metadata_conf.get('value_recode')
 
     ## Then parse the data dictionary
     dictionary_df = pd.read_excel(args.data_dictionary)
 
     ## Now let's create a dictionary lookup for the coded to human readable
     col_name_lookup = pd.Series(dictionary_df['Variable Name'].values, index=dictionary_df['Code'].values)
-    col_name_lookup = dict((k.lower(), _char_strip(v) for (k,v) in col_name_lookup.iteritems())
+    col_name_lookup = dict((k, v) for (k,v) in col_name_lookup.iteritems())
+    col_name_lookup.update(conf_rename_cols)
 
     value_field_lookup = {}
     dictionary_df[dictionary_df['Pick Lists  (Value, Missing, Name)'].notnull()].apply(populate_value_lookup, axis=1, args=(value_field_lookup,))
@@ -97,7 +106,8 @@ def main(args):
                     'dr_q5', 'dr_q6', 'dr_q7']
 
     map(lambda field: metadata_df[field].replace(replace_yes_no, inplace=True), replace_cols)
-                    
+    [metadata_df[field].replace(replace_val) for (field, replace_val) in conf_recode_cols.iteritems()]
+
     ## Rename and write out new CSV file
     metadata_df.rename(columns=col_name_lookup, inplace=True)
     metadata_df.to_csv(args.output_file, index=False)
