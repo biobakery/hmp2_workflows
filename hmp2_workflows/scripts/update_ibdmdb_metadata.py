@@ -290,7 +290,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     metadata_df = sample_subset_df.merge(studytrax_df, 
                                          left_on='Parent Sample A',
                                          right_on='st_q4',
-                                         how='join_how')
+                                         how=join_how)
 
     ## We sometimes get a situation where our studytrax metadata is missing 
     ## some of the proteomics sample ID's so we need to make sure we 
