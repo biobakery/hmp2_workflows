@@ -1,5 +1,12 @@
 ## Configuration parameters required to handle any metadata file creation 
 ## or refresh for the HMP2 project
+project: HMP2
+
+# Next comes up the directories where our AnADAMA2 pipelines will pull and
+# deposit files to.        
+deposition_dir: /PATH/TO/DATA/DEPOSITION/DIRECTORY
+processing_dir: /PATH/TO/DATA/PROCESSING/DIRECTORY
+public_dir: /Users/cesararze/Downloads/metadata_testing
 
 dtype_mapping:
     MBX: "metabolomics"
@@ -71,9 +78,9 @@ col_order:
     - Project
     - External ID
     - Participant ID
-    - site_sub_coll
+    - Site/Sub/Coll ID
     - data_type
-    - date_of_receipt
+    - Actual Date of Receipt
     - week_num
     - interval_days
     - visit_num
@@ -90,24 +97,22 @@ col_order:
 col_rename:
     "Site/Sub/Coll ID": site_sub_coll
     "SiteName": "site_name"
-    "Sex": "sex"
-    "Race": "race"
-    "Diagnosis": "diagnosis"
-    "Antibiotics": "antibiotics"
+    "sex": "sex"
+    "race": "race"
+    "diagnosis": "diagnosis"
+    "mh_heading3": "antibiotics"
     "Actual Date of Receipt": date_of_receipt
-    "SCCAI Total": "sccai"
-    "HBI Total": "hbi"
-    "# Lanes in Aggregation": "lanes_in_aggregation"
-    "FecalCal Result:": "fecalcal"
-    "final single": "read_counts"
+    "sccai_score": "sccai"
+    "hbi_score": "hbi"
+    "st_q16": "fecalcal"
 
 value_recode:
-    "Diagnosis":
+    "diagnosis":
         "Crohn's Disease": "CD"
         "Ulcerative colitis": "UC"
         "Healthy control": "nonIBD"
 
 ## The cutplace CID files to use against our metadata files.
 validators:
-    - studytrax: config/validation/studytrax.cid
-    - broad_datasheet: config/validation/broad.cid
+    studytrax: /Users/cesararze/Documents/work/hutlab/projects/hmp2_workflows/hmp2_workflows/config/validation/studytrax.cid
+    broad_sample_status: /Users/cesararze/Documents/work/hutlab/projects/hmp2_workflows/hmp2_workflows/config/validation/broad_data.cid

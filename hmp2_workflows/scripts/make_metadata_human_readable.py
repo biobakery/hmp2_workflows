@@ -49,18 +49,8 @@ def populate_value_lookup(row, lookup):
     lookup.setdefault(code_col, {})
     for value in values:
         (code_val, _null, human_val) = value.split(',', 2)
-        lookup[code_col][str(float(code_val))] = human_val.replace(':', '').strip()
+        lookup[code_col][str(code_val)] = human_val.replace(':', '').strip()
 
-
-def _char_strip(value):
-    """Strips a defined set of characters from the given string. Returns 
-    cleaned string.
-    """
-    # TODO: Probably don't want this hard-coded in our final pipeline
-    for replace_char in ['#', ':', '(', ')', '.', '?']:
-        value = value.replace(replace_char, '')
-
-    return value.replace('-', '_').replace(',' '_').replace('//', '_')
 
 def main(args):
     ## First parse the metadata file 
@@ -75,7 +65,6 @@ def main(args):
     ## Now let's create a dictionary lookup for the coded to human readable
     col_name_lookup = pd.Series(dictionary_df['Variable Name'].values, index=dictionary_df['Code'].values)
     col_name_lookup = dict((k, v) for (k,v) in col_name_lookup.iteritems())
-    col_name_lookup.update(conf_rename_cols)
 
     value_field_lookup = {}
     dictionary_df[dictionary_df['Pick Lists  (Value, Missing, Name)'].notnull()].apply(populate_value_lookup, axis=1, args=(value_field_lookup,))
@@ -106,9 +95,10 @@ def main(args):
                     'dr_q5', 'dr_q6', 'dr_q7']
 
     map(lambda field: metadata_df[field].replace(replace_yes_no, inplace=True), replace_cols)
-    [metadata_df[field].replace(replace_val) for (field, replace_val) in conf_recode_cols.iteritems()]
+    [metadata_df[field].replace(replace_val, inplace=True) for (field, replace_val) in conf_recode_cols.iteritems()]
 
     ## Rename and write out new CSV file
+    col_name_lookup.update(conf_rename_cols)
     metadata_df.rename(columns=col_name_lookup, inplace=True)
     metadata_df.to_csv(args.output_file, index=False)
 

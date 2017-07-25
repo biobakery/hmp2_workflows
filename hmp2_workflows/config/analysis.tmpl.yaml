@@ -31,18 +31,19 @@ base: &base
         humann2_p: /PATH/TO/HUMANN2/DB/uniref
 
     target_metadata_cols: &metadata_cols
-        - Site/Sub/Coll ID
-        - SiteName
-        - Age at diagnosis
-        - Sex
-        - Race
+        - site_sub_coll
+        - site_name
+        - sex
+        - race
+        - consent_age
         - visit_num
         - week_num
-        - Antibiotics
-        - Diagnosis 
-        - SCCAI Total
-        - HBI Total
-        - "FecalCal Result:"
+        - date_of_receipt
+        - antibiotics
+        - diagnosis 
+        - sccai
+        - hbi
+        - fecalcal
 
     analysis_col_patterns:
         - _taxonomic_profile
@@ -50,6 +51,7 @@ base: &base
         - _Abundance-RPKs
         - _Abundance
         - _Coverage
+        - HMP.2.
 
     col_rename: &col_rename
         Site/Sub/Coll ID: site_sub_coll
@@ -98,7 +100,7 @@ MGX: &mgx
 MTX: &mtx
     <<: *base
     
-    metadat_id_col: "Site/Sub/Coll ID"
+    metadat_id_col: "site_sub_coll"
 
     # When attempting to match taxonomic profiles to a MTX sequences 
     # use this column in our metadata file to find match.

@@ -36,10 +36,13 @@ import pandas as pd
 
 from anadama2 import Workflow
 
-from hmp2_workflows.tasks.metadata import (validate_metadata_file)
+from hmp2_workflows.tasks.metadata import (validate_metadata_file, 
+                                           generate_metadata_file)
+#                                           make_metadata_human_readable)
 from hmp2_workflows.tasks.common import stage_files
 
-from hmp2_workflows.utils.misc import parse_cfg_file
+from hmp2_workflows.utils.misc import (parse_cfg_file)
+                                       #merge_metadata_file)
 
 
 def parse_cli_arguments():
@@ -51,17 +54,27 @@ def parse_cli_arguments():
         None
     Returns:
         AnaDAMA2.Workflow: The workflow object for this pipeline.
-        AnaDAMA2.cli.Configuration: Arguments passed into this workflow.
     """
     workflow = Workflow(version='0.1', description='A workflow to handle '
                         'refreshing and disseminating HMP2 metadata.',
                         remove_options=['input', 'output'])
-    workflow.add_argument('--manifest-file', desc='Manifest file containing '
+    workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
-    workflow.add_argument('--config-file', desc='Configuration file '
+    workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
-    workflow.add_argument('--metadata-file', desc='If an existing metadata '
-                          'file exists it can be supplied here.')                          
+    workflow.add_argument('metadata-file', desc='If an existing metadata '
+                          'file exists it can be supplied here. This metadata '
+                          'file will be appended to instead of a whole new '
+                          'metadata file being generated.')
+    workflow.add_argument('studytrax-metadata-file', desc='Accompanying '
+                          'StudyTrax data all corresponding samples in the '
+                          'HMP2 project.')
+    workflow.add_argument('broad-sample-tracking-file', desc='Broad Institute '
+                           'sample tracking spreadsheet containing status of '
+                           'sequence products generated.')
+    workflow.add_argument('auxillary-metadata', action='append', default=[],
+                          desc='Any auxillary metadata to be appeneded '
+                          'to the final metadata table.')                           
 
     return workflow
 
@@ -69,29 +82,40 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    config = parse_cfg_file(args.config_file, section='metadata')
+    config = parse_cfg_file(args.config_file)
     manifest = parse_cfg_file(args.manifest_file)
 
-    studytrax_metadata = manifest.get('studytrax')
-    broad_sample_status = manifest.get('broad_sample_status')
-    broad_data_status = manifest.get('broad_data_status')
+    if manifest.get('submitted_files'):
+        data_files = manifest.get('submitted_files')
 
-    ## Validate our metadata files
-    validate_metadata_file(workflow, studytrax_metadata,
-                      config.get('validators').get('studytrax'))
-    validate_metadata_file(workflow, broad_sample_status,
-                      config.get('validators').get('broad_sample_status'))
-    validate_metadata_file(workflow, broad_data_status,
-                      config.get('validators').get('broad_data_status'))
-    
-    metadata_dir = os.path.join(config.get('public_dir'), 
-                                config.get('project'), 
-                                'metadata')
+        ## Validate our metadata files
+        validate_metadata_file(workflow, args.studytrax_metadata_file,
+                               config.get('validators').get('studytrax'))
+        validate_metadata_file(workflow, args.broad_sample_tracking_file,
+                               config.get('validators').get('broad_sample_status'))
+        
+        metadata_file = None
+        metadata_dir = os.path.join(config.get('public_dir'), 
+                                    config.get('project'), 
+                                    'metadata')
 
-    final_metadata_file = None
-    pub_metadata_file = stage_files(workflow, final_metadata_file,
-                                    metadata_dir)
-    
+        manifest_metadata_df = generate_metadata_file(workflow,
+                                                      config,
+                                                      data_files,
+                                                      args.studytrax_metadata_file,
+                                                      args.broad_sample_tracking_file,
+                                                      args.auxillary_metadata)
+
+        if args.metadata_file:
+            metadata_df = pd.read_csv(args.metadata_file)
+            #metadata_file = merge_metadata_file(manifest_metadata_df, 
+            #                                    metadata_df)
+
+        #metadata_file = make_metadata_human_readable(metadata_file)
+
+        #pub_metadata_file = stage_files(workflow, metadata_file,
+        #                                metadata_dir)
+        workflow.go()    
 
 if __name__ == "__main__":
     main(parse_cli_arguments())

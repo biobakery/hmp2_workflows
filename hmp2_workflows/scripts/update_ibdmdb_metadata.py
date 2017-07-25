@@ -246,7 +246,8 @@ def get_data_type(row):
 
 
 def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df, 
-                      data_type, sequence_files, pair_identifier):
+                      data_type, sequence_files, pair_identifier,
+                      full_join=True):
     """Extracts metadata from the supplied sources of metadata for the
     provided sequence files. 
 
@@ -271,7 +272,9 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     sample_mapping = dict(zip(bb_utils.sample_names(sequence_files, pair_identifier),
                               map(get_sample_id_from_fname, sequence_files)))
     sample_ids = sample_mapping.values()   
-    sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
+    
+    if pair_identifier:
+       sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
 
     data_type_mapping = config.get('dtype_mapping')
 
@@ -282,10 +285,12 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                                  (sample_df['Site/Sub/Coll']).isin(sample_ids)]
 
     ## TODO: Figure out if we have any samples that did not have aassociated metadata
+    join_how = 'outer' if full_join else 'left'
+
     metadata_df = sample_subset_df.merge(studytrax_df, 
                                          left_on='Parent Sample A',
                                          right_on='st_q4',
-                                         how='left')
+                                         how='join_how')
 
     ## We sometimes get a situation where our studytrax metadata is missing 
     ## some of the proteomics sample ID's so we need to make sure we 

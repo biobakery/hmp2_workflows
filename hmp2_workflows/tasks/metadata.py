@@ -29,12 +29,18 @@ furnished to do so, subject to the following conditions:
 """
 
 import os
+import tempfile
 
 import funcy
 import pandas as pd
 
+from anadama2.tracked import Container
+
+import hmp2_workflows.utils.metadata as metadata_utils
+
 from biobakery_workflows import utilities as bb_utils
-from hmp2_workflows import utils as hmp2_utils
+
+from hmp2_workflows.utils.misc import get_sample_id_from_fname
 
 def validate_metadata_file(workflow, input_file, validation_file):
     """Validates an HMP2 metadata file using the cutplace utility. 
@@ -69,8 +75,104 @@ def validate_metadata_file(workflow, input_file, validation_file):
     if not os.path.exists(validation_file):
         raise OSError(2, 'Input CID file does not exists', validation_file)
 
-    workflow.add_task_gridable('cutplace [depends[0] [depends[1]]',
+    workflow.add_task_gridable('cutplace [depends[0]] [[depends[1]]',
                                depends=[input_file, validation_file])
+
+
+def generate_metadata_file(workflow, config, data_files, studytrax_metadata, 
+                          broad_tracking_sheet, auxillary_metadata=[]):
+    """Generates a metadata file for the set of sequence files provided 
+    using the StudyTrax metadata sheet, Broad Sample Tracking data 
+    sheet and any auxillary metadata files provided.
+
+    Any auxillary metadata files provided should have the column to merge
+    into the StuyTrax and Broad tracking sheets in the first column.
+
+    Args:
+        workflow (anadama2.Workflow): The AnADAMA2 workflow object.
+        config (dict): A dictionary containing metadata configuration 
+            parameters used in metadata generation.
+        data_files (list): The set of files to retrieve metadata for. 
+            These files should be in format [<DATATYPE>: [FILES]].
+        studytrax_metadata (string): Path to StudyTrax clinical metadata 
+            file.
+        broad_tracking_sheet (string): Path to Broad sample tracking 
+            spreadsheet file.
+        auxillary_metadat (list): Any auxillary metadata files to pull
+            metadata and integrate into an HMP2 metadata file.                                  
+    """
+    metadata_files = []
+    temp_dir = tempfile.mkdtemp(prefix='generate_metadata_file')
+
+    def _generate_metadata_file(task):
+        input_files = [seq_file.name for seq_file in task.depends[:-3]]
+        studytrax_metadata = task.depends[-3].name
+        broad_sample_sheet = task.depends[-2].name
+        auxillary_metadata = task.depends[-1].name if task.depends[-1].name != '/dev/null' else None
+        metadata_out_file = task.targets[0].name
+
+        data_type_map = config.get('dtype_mapping')
+
+        studytrax_df = pd.read_csv(studytrax_metadata)
+        broad_sample_df = pd.read_csv(broad_sample_sheet, 
+                                      na_values=['destroyed', 'missed'],
+                                      parse_dates=['Actual Date of Receipt'])
+
+        collection_dates_dict = metadata_utils.get_collection_dates(broad_sample_df)
+
+        if pair_identifier:
+            (input_pair1, input_pair2) = bb_utils.paired_files(input_files, pair_identifier)
+            input_files = input_pair1 if input_pair1 else input_files
+
+        sample_mapping = dict(zip(bb_utils.sample_names(input_files, pair_identifier),
+                               map(get_sample_id_from_fname, input_files)))        
+        sample_ids = [sid.replace(pair_identifier, '') for sid in sample_mapping.values()]
+
+        sample_subset_df = broad_sample_df[(broad_sample_df['Parent Sample A'].isin(sample_ids)) |
+                                           (broad_sample_df['Proteomics'].isin(sample_ids)) |
+                                           (broad_sample_df['MbX'].isin(sample_ids)) |
+                                           (broad_sample_df['Site/Sub/Coll']).isin(sample_ids)]        
+
+        metadata_df = sample_subset_df.merge(studytrax_df,
+                                            left_on='Parent Sample A',
+                                            right_on='st_q4',
+                                            how='left')
+
+        ## We sometimes get a situation where our studytrax metadata is missing
+        ## some of the proteomics sample ID's so we need to make sure we replicate
+        ## them
+        metadata_df.loc[metadata_df['st_q17'].isnull(), 'st_q17'] = metadata_df['Proteomics']
+        metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['MbX']
+        metadata_df['data_type'] = data_type_mapping.get(data_type)
+
+        metadata_df.to_csv(metadata_out_file, index=False)
+
+    for (data_type, items) in data_files.iteritems():
+        metadata_file = tempfile.mkstemp(prefix='%s_metadata_' % data_type,
+                                         dir=temp_dir)[-1]
+        pair_identifier = items.get('pair_identifier', '')
+        sequence_files = items.get('input')
+
+        # Setup the group of dependencies the task needs
+        metadata_dependencies = [studytrax_metadata, broad_tracking_sheet]
+
+        if auxillary_metadata:
+           metadata_dependencies.extend(auxillary_metadata)
+        else:
+            metadata_dependencies.append('/dev/null')
+
+        workflow.add_task(_generate_metadata_file,
+                                   targets=[metadata_file],
+                                   depends=sequence_files + 
+                                           metadata_dependencies,
+                                   time="1*60",
+                                   memory="2*1024",
+                                   cores=1,
+                                   name="Generate metadata file")
+
+        metadata_files.append(metadata_file)                                   
+
+    return metadata_files
 
 
 def generate_sample_metadata(workflow, data_type, in_files, metadata_file, 
@@ -140,9 +242,9 @@ def generate_sample_metadata(workflow, data_type, in_files, metadata_file,
             metadata_subset.xs(sample_id).to_csv(sample_metadata_file, index=False)
     
     workflow.add_task(_workflow_gen_metadata,
-                      targets = output_metadata_files,  
-                      depends = in_files + [metadata_file],
-                      name = 'Generate sample metadata')
+                      targets=output_metadata_files,  
+                      depends=in_files + [metadata_file],
+                      name='Generate sample metadata')
 
     return sample_metadata_dict.values()
 
