@@ -93,12 +93,9 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--proteomics-metadata', 
                         help='Any metadata associated with Proteomics data '
                         'supplied by the PNNL.')
-    parser.add_argument('-df', '--dump-full-table', default=False,
-                        action='store_true')                        
-    parser.add_argument('-a', '--refresh-all', action="store_true",
-                        help='OPTIONAL: Refresh all metadata from scratch '
-                        'before adding files specified in accompanying ' 
-                        'manifest.')
+    parser.add_argument('-a', '--auxillary-metadata', action='append',
+                        default=[], help='Additional auxillary metadata '
+                        'to use in populating the HMP2 metadata table.')                        
     
     return parser.parse_args()
 
@@ -246,8 +243,7 @@ def get_data_type(row):
 
 
 def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df, 
-                      data_type, sequence_files, pair_identifier,
-                      full_join=True):
+                      data_type, sequence_files, pair_identifier):
     """Extracts metadata from the supplied sources of metadata for the
     provided sequence files. 
 
@@ -285,12 +281,12 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                                  (sample_df['Site/Sub/Coll']).isin(sample_ids)]
 
     ## TODO: Figure out if we have any samples that did not have aassociated metadata
-    join_how = 'outer' if full_join else 'left'
+    #join_how = 'outer' if full_join else 'left'
 
     metadata_df = sample_subset_df.merge(studytrax_df, 
                                          left_on='Parent Sample A',
                                          right_on='st_q4',
-                                         how=join_how)
+                                         how='left')
 
     ## We sometimes get a situation where our studytrax metadata is missing 
     ## some of the proteomics sample ID's so we need to make sure we 
@@ -594,6 +590,32 @@ def main(args):
             metadata_df = metadata_df.drop_duplicates(subset=['Site/Sub/Coll ID', 'data_type'], keep='last')
     else:
         metadata_df = new_metadata_df
+
+    if args.aux_metadata:
+        for aux_file in aux_metadata:
+            supp_df = pd.read_table(supp_file, dtype='str')
+            supp_columns = supp_df.columns.tolist()
+            join_id = supp_columns[0]
+
+            ## We need to do this in two stages. If the columns already exist
+            ## here we want to update them. If they do not exist we append
+            ## them.
+            metadata_cols = metadata_df.columns.tolist()
+            new_cols = set(supp_columns[1:]) - set(metadata_cols)
+            existing_cols = set(supp_columns[1:]).intersection(metadata_cols)
+
+            if new_cols:
+                supp_new_df = supp_df.filter(items=supp_columns[:1] + list(new_cols))
+                subset_metadata_df = pd.merge(metadata_df, supp_new_df, how='left',
+                                              on=join_id)
+
+            if existing_cols:
+                supp_existing_df = supp_df.filter(items=supp_columns[:1] + list(existing_cols))
+                metadata_df.set_index(join_id, inplace=True)
+                supp_existing_df.set_index(join_id, inplace=True)
+
+                metadata_df.update(supp_existing_df)
+                metadata_df.reset_index(inplace=True)
 
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
