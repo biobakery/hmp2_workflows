@@ -75,8 +75,9 @@ def parse_cli_arguments():
 
 def main(workflow):
     args = workflow.parse_args()
-    conf = parse_cfg_file(args.config_file, section='dcc')
-    
+    conf = parse_cfg_file(args.config_file)
+    data_type_mapping = conf.get('datatype_mapping')
+
     manifest = parse_cfg_file(args.manifest_file)
     data_files = manifest.get('submitted_files')
 
@@ -101,15 +102,16 @@ def main(workflow):
                                               'rand_subject_id')
 
         for data_type in data_files:
-            dtype_metadata = conf.get(data_type.lower())
+            dtype_metadata = conf.get(data_type)
 
+            input_files = data_files[data_type]['input']
             md5sums_file = data_files.get(data_type).get('md5sums_file')
+
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
             else:
                 ## If the files we are working with are provided by the Broad
                 ## we need to gather up all the md5sums into one file.
-                input_files = data_files[data_type]['input_files']
                 input_dirs = [group[0] for group in itertools.groupby(input_files, 
                                                                       os.path.dirname)]
                 md5sum_files = itertools.chain.from_iterable([find_files(input_dir, '.md5') for 
@@ -123,12 +125,21 @@ def main(workflow):
             ## identifier we use to map a file to a piece of metadata may 
             ## be different. We need to account for this and create a map 
             ## of the 'universal ID' back to the specific file it references
-            id_col = conf['metadata_id_mappings'][data_type]
-            seq_fname_map = dcc.create_seq_fname_map(data_type,
-                                                     data_files[data_type]['input_files'])
+            id_cols = conf['metadata_id_mappings'][data_type]
+            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files)
+ 
             sample_ids = seq_fname_map.keys()
+            dtype_name = data_type_mapping.get(data_type)
+            id_col = conf['metadata_id_mappings'][data_type]
+
             sample_metadata_df = metadata_df[(metadata_df[id_col].isin(sample_ids)) &
-                                             (metadata_df['data_type'] == data_type)]
+                                             (metadata_df['data_type'] == dtype_name)]
+
+            ## Just in case there are more samples
+            missing_samples = set(sample_ids) - set(sample_metadata_df[id_col].tolist())
+            if missing_samples:
+                seq_fname_map = {key: seq_fname_map[key] for key in seq_fname_map 
+                                if key not in missing_samples}
 
             ## In our proteomics dataset we occasionally see two datasets tied to the same
             ## sample so we need to do a little extra work to figure out which dataset
@@ -142,24 +153,17 @@ def main(workflow):
                                                                 is_proteomics),
                                                           axis=1)
             sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
-
-            ## Once we've mapped to our samples to our metadata we need to 
-            ## grab another set of ID's so we can map to the Broad sample 
-            ## tracking sheet.
-            ## TODO: Account for 'N/A' values that can appear in these columns
-            tracking_map_col = conf.get('metadata_to_tracking_mapping')
-            tracking_id_col = conf.get('tracking_id_col')
-
-            tube_ids = sample_metadata_df[tracking_map_col]
-            samples_coll_df = coll_df[coll_df[tracking_id_col].isin(tube_ids)]
-            samples_coll_df = samples_coll_df.set_index(tracking_id_col)
-            samples_coll_df.index.names = [None]
+            
+            output_files = data_files[data_type]['output']
+            if output_files:
+                ## Do a bunch of stuff here since we have output files
+                pass                    
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 print "Uploading metadata and sequence data for subject: %s" % subject_id
 
                 dcc_subject = dcc.create_or_update_subject(dcc_subjects,
-                                                           subject_id.replace('C', ''),
+                                                           subject_id[1:],
                                                            dcc_study.id,
                                                            metadata,
                                                            conf)
@@ -167,10 +171,9 @@ def main(workflow):
                                                     'visit_number')
                 
                 for (idx, row) in metadata.iterrows():
-                    print "DEBUG: %s - %s - %s" % (row['External ID'], 
-                                                   row['seq_file'],
-                                                   row['Tube B:Proteomics'])
-                    sample_coll_row = samples_coll_df.xs(row.get(tracking_map_col))
+                    #print "DEBUG: %s - %s - %s" % (row['External ID'], 
+                    #                               row['seq_file'],
+                    #                               row['Tube B:Proteomics'])
 
                     dcc_visit = dcc.create_or_update_visit(dcc_visits, 
                                                            int(row.get('visit_num')),
@@ -182,7 +185,7 @@ def main(workflow):
                     dcc_sample = dcc.create_or_update_sample(dcc_samples,
                                                              ## These are on Parent Sample A even though 
                                                              ## I've been tracking everything of Sample B...
-                                                             sample_coll_row.get('Parent Sample A'),
+                                                             row.get('site_sub_coll'),
                                                              dcc_visit.id, 
                                                              conf,
                                                              row)
@@ -195,9 +198,9 @@ def main(workflow):
                         if not file_md5sum:
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
 
-                        (dcc_prep, dcc_seq_obj) = (None, None)
+                        (dcc_prep, dcc_seq_in, dcc_seq_out) = (None, None, None)
 
-                        if   data_type == "proteomics": 
+                        if data_type == "MBX": 
                             dcc_prep = dcc.create_or_update_microbiome_prep(dcc_sample,
                                                                             conf.get('data_study'),
                                                                             conf.get(data_type),
@@ -205,26 +208,39 @@ def main(workflow):
                             dcc_seq_obj = dcc.create_or_update_proteome(dcc_prep,
                                                                         file_md5sum,
                                                                         dcc_sample.name,
-                                                                        conf.get(data_type),
+                                                                        dtype_metadata,
                                                                         row)
+
+                            if output_files:
+                                ## We have output files that we want to upload to go
+                                ## along with our input files
+                                pass
+                        elif data_type == "TX":
+                            dcc_prep = dcc.create_or_update_host_seq_prep(dcc_sample,
+                                                                          conf.get('data_study'),
+                                                                          dtype_metadata,
+                                                                          row)
                         elif data_type == "MTX":
-                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
-                                                                         conf,
-                                                                         row)
+                            #dcc_prep = dcc.create_or_update_mtx_rna_prep(dcc_sample,
+                            #                                             conf,
+                            #                                             row)
+                            pass
                         elif data_type == "WGS":
                             dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
-                                                                         conf,
+                                                                         conf.get('data_study'),
+                                                                         dtype_metadata,
                                                                          row)
                             dcc_seq_obj = dcc.create_or_update_wgs_raw_seq_set(dcc_prep,
                                                                                file_md5sum,
                                                                                dcc_sample.name,
-                                                                               conf.get(data_type),
+                                                                               dtype_metadata,
                                                                                row)
 
                         elif data_type == "16S":
-                            dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
-                                                                         conf,
-                                                                         row)
+                            #dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
+                            #                                             conf,
+                            #                                             row)
+                            pass
 
                         dcc_objs.append([dcc_project, dcc_study, dcc_subject,
                                          dcc_visit, dcc_sample, dcc_prep, 

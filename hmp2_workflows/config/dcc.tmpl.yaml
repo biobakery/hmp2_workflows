@@ -8,10 +8,23 @@ namespace: ihmp
 project_id: iHMP
 
 metadata_id_mappings:
-  proteomics: "Tube B:Proteomics"
-  wgs: External ID
-  16s: External ID
-  mtx: External ID
+  MBX: "Tube B:Proteomics"
+  MGX: External ID
+  16S: External ID
+  MTX: External ID
+  TX: 
+    - "Rectum DNA/RNA:"
+    - "Ileum DNA/RNA:"
+    - "Non-inflamed DNA/RNA:"
+    - "Other Inflamed DNA/RNA:"
+
+datatype_mapping:
+  MGX: metagenomics
+  MBX: metabolomics
+  MPX: proteomics
+  16S: amplicon
+  MTX: metatranscriptomics
+  TX: host_transcriptomics
 
 metadata_to_tracking_mapping: "Sample ID: Tube B (No preservative)"
 tracking_id_col: Parent Sample B       
@@ -25,6 +38,7 @@ race_map:
   "More than one race": ethnic_other
   "Black or African American": african_american
   White: caucasian
+  "American Indian or Alaska Native": american_indian_or_alaska_native
 
 study:
   name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
@@ -38,18 +52,38 @@ study:
       - "bioproject:PRJNA306874"
 
 sample:
-  body_site: stool
-  fma_body_site: "FMA:64183"
+  body_site_map:
+    'Sigmoid Colon': 'sigmoid_colon'
+    'Descending (left-sided) colon': 'descending_colon'
+    'Cecum': 'appendix'
+    'Ascending (right-sided) colon': 'ascending_colon'
+    'Transverse colon': 'transverse_colon'
+    'Rectum': 'rectal'
+    'Terminal ileum': 'terminal_ileum'
+    'Ileum': 'ileum'
+  fma_body_map:
+    'sigmoid_colon': 'FMA:14548'
+    'descending_colon': 'FMA:14547'
+    'appendix': 'FMA:14541'
+    'ascending_colon': 'FMA:14545'
+    'transverse_colon': 'FMA:14546'
+    'rectal': 'FMA:14544'
+    'terminal_ileum': 'FMA:14966'
+    'ileum': 'FMA:7208'
+    'stool': 'FMA:64183'
   mixs:            
+      project_name: "iHMP"
+      samp_size: "N/A"
+      samp_collect_device: "stool collection"
       biome: "ENVO:00009003"
-      body_product: stool
       material: "ENVO:5792"
       feature: "ENVO:00002003"
       lat_lon: "+42.363664 -71.069230"
       geo_loc_name: United States of America
       env_package: "Human-associated"
+      rel_to_oxygen: "N/A"
 
-16s:
+16S:
   prep_id: 1
   library_method_text: >-
       Samples are diluted and run in a 30 cycle PCR that specifically
@@ -62,31 +96,53 @@ sample:
       of purification columns and a Pippen Prep SAGE protocol, and
       handed off for MiSeq.
 
-wgs:
-  library_method_text: >-
-      Metagenomic DNA samples were quantified by Quant-iT PicoGreen dsDNA
-      Assay (Life Technologies) and normalized to a concentration of
-      50 pg/microliter. Illumina sequencing libraries were prepared from
-      100-250 pg DNA using the Nextera XT DNA Library Preparation
-      kit (Illumina) according to the manufacturer's recommended
-      protocol, with reaction volumes scaled accordingly. Batches of
-      24, 48, or 96 libraries were pooled by transferring equal
-      volumes of each library using a Labcyte Echo 550 liquid
-      handler. Insert sizes and concentrations for each pooled
-      library were determined using an Agilent Bioanalyzer DNA 1000
-      kit (Agilent Technologies).
-  prep_id: 2
-  sequencing_contact: "contact@email.com"
-  sequencing_center: Sequencing Center
-  ncbi_taxon_id: 408170 
-  lib_layout: fragment
-  lib_selection: Random
-  prep_comment: IBDMDB default WGS dna prep
-  seq_comment: Raw WGS Sequence set 
-  storage_duration: 365
-  sequencer_model: Illumina HiSeq 2000
+MGX:
+  assay:
+    sequencing_contact: "contact@email.com"
+    sequencing_center: Sequencing Center
+    ncbi_taxon_id: 408170 
+    lib_layout: fragment
+    lib_selection: Random
+    storage_duration: 365
+  mims:
+    biome: "terrestrial biome [ENVO:00000446]"
+    geo_loc_name: "United States of America"
+    investigation_type: "metagenome"
+    lat_lon: Unknown
+    seq_method: "Illumina HiSeq 2000"
+    env_package': 'human-associated'
+    library_const_meth: >-
+        Metagenomic DNA samples were quantified by Quant-iT PicoGreen dsDNA
+        Assay (Life Technologies) and normalized to a concentration of
+        50 pg/microliter. Illumina sequencing libraries were prepared from
+        100-250 pg DNA using the Nextera XT DNA Library Preparation
+        kit (Illumina) according to the manufacturer's recommended
+        protocol, with reaction volumes scaled accordingly. Batches of
+        24, 48, or 96 libraries were pooled by transferring equal
+        volumes of each library using a Labcyte Echo 550 liquid
+        handler. Insert sizes and concentrations for each pooled
+        library were determined using an Agilent Bioanalyzer DNA 1000
+        kit (Agilent Technologies).
 
-mtx:
+
+TX:
+  assay:
+      sequencing_center: Center Name
+      sequencing_contact: "contact@email.com"
+      lib_layout: ""
+      lib_selection: ""
+      ncbi_taxon_id: 9606
+      storage_duration: ""
+  host_transcriptome:
+      study: ibd
+      format: fastq
+      format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+      sequence_type: "nucleotide"
+      seq_model: ""
+      exp_length: 0
+      comment: IBDMDB
+
+MTX:
   library_method_text: >-
       Our method, RNAtag-Seq, utilizes a molecular barcoding strategy
       that generates multiple libraries in a single reaction, lowers
@@ -108,7 +164,7 @@ mtx:
   storage_duration: 365
   sequencer_model: Illumina HiSeq 2000
 
-proteomics:
+MBX:
   assay:
       center: Center Name
       contact: "contact@email.com"

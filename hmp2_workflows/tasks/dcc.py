@@ -28,6 +28,8 @@ furnished to do so, subject to the following conditions:
     THE SOFTWARE.
 """
 
+import os
+
 
 def upload_data_files(workflow, metadata, dcc_coll):
     """Transfers the provided iHMP OSDF object to the DCC using the cutlass
@@ -51,8 +53,7 @@ def upload_data_files(workflow, metadata, dcc_coll):
     """
     uploaded_files = []
 
-    #def _dcc_upload(task):
-    def _dcc_upload(dcc_objects):
+    def _dcc_upload(task):
         """Invokes upload of sequencing product(s) to the DCC
         making using of Cutlass' aspera transfer functionality.
 
@@ -72,18 +73,18 @@ def upload_data_files(workflow, metadata, dcc_coll):
             if not success:
                 raise ValueError('Saving sequence to DCC failed: %s' % seq.sample_name)
             else:
-                uploaded_files.append(seq.sample_name)
+                seq_file = os.path.basename(seq.urls[0])
+                uploaded_files.append(seq_file)
     
     for dcc_objects in dcc_coll:
         if not dcc_objects[-1]:
             continue
      
-        _dcc_upload(dcc_objects)
-        # workflow.add_task(_dcc_upload,
-        #                  depends = seq_files,
-        #                  name = "DCC Upload %s" % dcc_objects[-1].sample_name,
-        #                  time = 2*60,
-        #                  mem = 1024,
-        #                  cores = 1)
+        workflow.add_task(_dcc_upload,
+                          depends = dcc_coll,
+                          name = "DCC Upload %s" % dcc_objects[-1].sample_name,
+                          time = 2*60,
+                          mem = 1024,
+                          cores = 1)
 
     return uploaded_files
