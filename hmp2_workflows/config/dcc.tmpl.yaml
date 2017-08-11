@@ -12,11 +12,7 @@ metadata_id_mappings:
   MGX: External ID
   16S: External ID
   MTX: External ID
-  TX: 
-    - "Rectum DNA/RNA:"
-    - "Ileum DNA/RNA:"
-    - "Non-inflamed DNA/RNA:"
-    - "Other Inflamed DNA/RNA:"
+  TX: External ID
 
 datatype_mapping:
   MGX: metagenomics
@@ -98,12 +94,13 @@ sample:
 
 MGX:
   assay:
-    sequencing_contact: "contact@email.com"
     sequencing_center: Sequencing Center
+    sequencing_contact: "contact@email.com"
     ncbi_taxon_id: 408170 
     lib_layout: fragment
     lib_selection: Random
     storage_duration: 365
+    comment: IBDMDB
   mims:
     biome: "terrestrial biome [ENVO:00000446]"
     geo_loc_name: "United States of America"
@@ -123,7 +120,17 @@ MGX:
         handler. Insert sizes and concentrations for each pooled
         library were determined using an Agilent Bioanalyzer DNA 1000
         kit (Agilent Technologies).
-
+  metagenome:
+    study: ibd
+    exp_length: 0
+    format: fastq
+    sequence_type: nucleotide
+    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+    seq_model: ""
+    comment: IBDMDB
+  abundance_matrix:
+    comment: ""
+    format: "biom"
 
 TX:
   assay:

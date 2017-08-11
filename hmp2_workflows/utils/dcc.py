@@ -266,6 +266,44 @@ def get_fields_to_update(new_metadata, osdf_object):
     return np.unique(updated_fields).tolist()
 
 
+def get_wgs_raw_seq_set_abund_matrices(osdf, seq_set_id):
+    """
+    Returns an iterator of all AbundanceMatrix nodes connected to 
+    the WgsRawSeqSet ID provided.
+
+    Args:
+        osdf (cutlass.Session): The current OSDF session
+        seq_set_id (string): The sequence set ID from which to grab 
+            any associated abundance matrices.
+
+    Requires:
+        None
+
+    Returns:
+        iterator: An iterator containing all found abundance matrices.                            
+
+    """
+    query = osdf.get_osdf().oql_query
+    linkage_query = ('"abundance_matrix"[node_type] && "' 
+                        '"%s"[linkage.computed_from]' % seq_set_id)
+
+    from cutlass.AbundanceMatrix import AbundanceMatrix
+    from cutlass.WgsRawSeqSet import WgsRawSeqSet            
+
+    for page_no in count(1):
+        res = query(WgsRawSeqSet.namespace, linkage_query,
+                    page=page_no)
+        res_count = res['result_count']
+
+        for doc in res['results']:
+            yield AbundanceMatrix.load_abundance_matrix(doc)
+
+        res_count -= len(res['results'])
+
+        if res_count < 1:
+            break
+
+
 def get_project(conf, session):
     """Retrieves iHMP OSDF project provided a project ID to search for.
     
@@ -621,7 +659,6 @@ def create_or_update_sample(samples, sample_id, visit_id, conf, metadata):
         sample = cutlass.Sample()
     else:
         sample = sample[0]
-
     
     req_metadata = {}
     req_metadata['mixs'] = default_mixs_dict()
@@ -679,7 +716,7 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
             MicrobiomeAssayPrep object.
     """
     wgs_dna_preps = group_osdf_objects(sample.WgsDnaPreps(),
-                                          'prep_id')
+                                       'prep_id')
     wgs_dna_prep = wgs_dna_preps.get(metadata['External ID'])
 
     if wgs_dna_prep:
@@ -690,13 +727,10 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
     req_metadata.update(conf.get('assay'))
+    req_metadata['mims'] = default_mims_dict()
 
     ## Fill in the remaining pieces of metadata needed from other sources
     req_metadata['prep_id'] = metadata['External ID']
-    req_metadata['mims'] = default_mims_dict()
-    req_metadata['sample_name'] = sample.name
-    req_metadata['study'] = study_id
-    req_metadata['comment'] = "IBDMDB"
     req_metadata['mims'].update(sample_conf.get('mixs'))
 
     fields_to_update = get_fields_to_update(req_metadata, wgs_dna_prep)
@@ -864,9 +898,6 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    ## For the time being we are going to group our Proteom objects on 
-    ## filename but in the future we will want to transition this to by
-    ## PRIDE ID.
     proteomes = group_osdf_objects(prep.proteomes(),
                                    'raw_url')
     proteomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
@@ -912,7 +943,7 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     return proteome        
 
 
-def create_or_update_host_transcriptome_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+def create_or_update_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF HostTranscriptomicsRawSeqSet  object if it 
     doesn't exist or updates an already existing object with the provided metadta.
 
@@ -941,9 +972,6 @@ def create_or_update_host_transcriptome_raw_seq_set(prep, md5sum, sample_id, con
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    ## For the time being we are going to group our Proteom objects on 
-    ## filename but in the future we will want to transition this to by
-    ## PRIDE ID.
     transcriptome = group_osdf_objects(prep.derivations(),
                                        'urls')
     transcriptome = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
@@ -1006,16 +1034,13 @@ def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
         None
 
     Returns:
-        cutlass.WGSRawSeqSet: The WGS raw seq set object to be saved.
+        cutlass.WgsRawSeqSet: The WGS sequence data to be saved.
     """
     raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    ## For the time being we are going to group our Proteom objects on 
-    ## filename but in the future we will want to transition this to by
-    ## PRIDE ID.
     metagenomes= group_osdf_objects(prep.wgs_raw_seq_sets(),
                                     'raw_url')
     metagenomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
@@ -1029,9 +1054,9 @@ def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
         metagenome = metagenome[0]
 
     req_metadata.update(conf.get('metagenome'))
+    req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['size'] = metadata.get('Total Reads')
     req_metadata['checksums'] = { "md5": md5sum }
-
-    req_metadata['local_raw_file'] = metadata.get('seq_file')
 
     fields_to_update = get_fields_to_update(req_metadata, metagenome)
 
@@ -1050,6 +1075,76 @@ def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
         metagenome = None            
 
     return metagenome        
+
+
+def crud_abundance_matrix(session, seq_set, md5sum, sample_id, 
+                          conf, metadata):
+    """Creates or updates an iHMP OSDF AbundanceMatrix object.
+
+    Handles abundance matrices in both BIOM and tab-delimited format.
+
+    Args:
+        session (cutlass.Session): The OSDF session instance.
+        seq_set (cutlass.<SEQ SET OBJECTS>): Any OSDF sequence set object
+            from which an abundance matrice may be derived. (i.e. WgsRawSeqSet or 
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this transcriptome           
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.AbundanceMatrix: The abundance matrice to be saved.
+    """
+    abund_file = metadata.get('out_file')
+    abund_fname = os.path.splitext(os.path.basename(abund_file))[0]
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    abund_matrices = group_osdf_objects(get_wgs_raw_seq_set_abund_matrices(osdf, seq_set.id),
+                                      'raw_url')
+    abund_matrices = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                           in abund_matrices.items())
+    abund_matrix = abund_matrices.get(abund_fname)
+
+    if not abund_matrix:
+        abund_matrix = cutlass.AbundanceMatrix()
+    else:
+        abund_matrix = abund_matrix[0]
+
+    req_metadata.update(conf.get('abundance_matrix'))
+    req_metadata['local_file'] = abund_matrix.get('seq_file')
+    req_metadata['size'] = os.path.getsize(abund_file)
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    if raw_file_name.endswith('biom'):
+        req_metadata['format'] = "biom"
+    elif raw_file_name.endswith('.tsv'):
+        req_metadata['format'] = "tbl"
+    else:
+        raise ValueError("Unknown abundance matrix type:", raw_file_name)                            
+
+    fields_to_update = get_fields_to_update(req_metadata, abund_matrix)
+
+    map(lambda key: setattr(abund_matrix, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        abund_matrix.links['computed_from'] = [seq_set.id]
+
+        if not metagenome.is_valid():
+            raise ValueError('Abundance matrix validation failed: %s' % 
+                             abund_matrix.validate())
+    else:
+        ## Really if there are no changes we don't want to save this object so 
+        ## we return None to be handled downstream.
+        abund_matrix = None            
+
+    return abund_matrix        
 
 
 def create_or_update_16s_dna_prep(sample, conf, metadata):

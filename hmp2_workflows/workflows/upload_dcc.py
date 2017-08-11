@@ -191,6 +191,7 @@ def main(workflow):
                                                              row)
 
                     data_file = row.get('seq_file')
+                    output_file = row.get('out_file')
                     if data_file:
                         data_filename = os.path.basename(data_file)
                         file_md5sum = md5sums_map.get(data_filename)
@@ -211,15 +212,16 @@ def main(workflow):
                                                                         dtype_metadata,
                                                                         row)
 
-                            if output_files:
-                                ## We have output files that we want to upload to go
-                                ## along with our input files
-                                pass
                         elif data_type == "TX":
                             dcc_prep = dcc.create_or_update_host_seq_prep(dcc_sample,
                                                                           conf.get('data_study'),
                                                                           dtype_metadata,
                                                                           row)
+                            dcc_seq_obj = dcc.create_or_update_host_tx_raw_seq_set(dcc_prep,
+                                                                                   file_md5sum,
+                                                                                   dcc_sample.name,
+                                                                                   conf.get(data_type),
+                                                                                   row)                                                                          
                         elif data_type == "MTX":
                             #dcc_prep = dcc.create_or_update_mtx_rna_prep(dcc_sample,
                             #                                             conf,
@@ -235,16 +237,32 @@ def main(workflow):
                                                                                dcc_sample.name,
                                                                                dtype_metadata,
                                                                                row)
-
                         elif data_type == "16S":
                             #dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
                             #                                             conf,
                             #                                             row)
                             pass
 
+                        if output_file:
+                            output_filename = os.path.basename(output_file)
+                            output_md5sum = md5sums_map.get(output_filename)
+
+                            if not output_md5sum:
+                                raise ValueError("Could not find md5sum for file", output_filename)
+
+                            ## The only output type currently supported are AbundanceMatrices 
+                            ## so those are the only we will work with. Short-sided and 
+                            ## ugly but can re-work this later.
+                            dcc_seq_out = dcc.crud_abundance_matrix(session,
+                                                                    dcc_seq_obj,
+                                                                    output_md5sum,
+                                                                    dcc_sample.name,
+                                                                    dtype_metadata,
+                                                                    row)
+
                         dcc_objs.append([dcc_project, dcc_study, dcc_subject,
                                          dcc_visit, dcc_sample, dcc_prep, 
-                                         dcc_seq_obj])
+                                         dcc_seq_obj, dcc_seq_out])
      
             dcc_files = upload_data_files(workflow, sample_metadata_df, dcc_objs)
      
