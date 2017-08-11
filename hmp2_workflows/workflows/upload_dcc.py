@@ -105,21 +105,13 @@ def main(workflow):
             dtype_metadata = conf.get(data_type)
 
             input_files = data_files[data_type]['input']
+            output_files = data_files.get(data_type, {}).get('output')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
             else:
-                ## If the files we are working with are provided by the Broad
-                ## we need to gather up all the md5sums into one file.
-                input_dirs = [group[0] for group in itertools.groupby(input_files, 
-                                                                      os.path.dirname)]
-                md5sum_files = itertools.chain.from_iterable([find_files(input_dir, '.md5') for 
-                                                              input_dir in input_dirs])
-                merged_md5sum_file = tempfile.mktemp('.md5')
-                checksums_file = create_merged_md5sum_file(md5sum_files, 
-                                                           merged_md5sum_file)
-                md5sums_map.update(parse_checksums_file(checksums_file))
+                raise ValueError("MD5 checksums file is required.")
 
             ## Getting data files from different souces means that the 
             ## identifier we use to map a file to a piece of metadata may 
@@ -148,20 +140,22 @@ def main(workflow):
 
             ## Add an extra column to our sample metadata with the corresponding sequence file 
             ## for easy access later on.
-            sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_seq_file,
+            sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
                                                           args=(id_col, seq_fname_map, 
                                                                 is_proteomics),
                                                           axis=1)
             sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
             
-            output_files = data_files[data_type]['output']
             if output_files:
                 ## Do a bunch of stuff here since we have output files
-                pass                    
+                out_fname_map = dcc.create_seq_fname_map(data_type, output_files)
+                sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
+                                                              args=(id_col, out_fname_map,
+                                                                    is_proteomics, 
+                                                                    'out_file'),
+                                                              axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
-                print "Uploading metadata and sequence data for subject: %s" % subject_id
-
                 dcc_subject = dcc.create_or_update_subject(dcc_subjects,
                                                            subject_id[1:],
                                                            dcc_study.id,
@@ -263,11 +257,7 @@ def main(workflow):
                             to_upload.append(dcc_seq_out)                                                                    
 
                         uploaded_files = upload_data_files(workflow, to_upload)
-                        #dcc_objs.append([dcc_project, dcc_study, dcc_subject,
-                        #                 dcc_visit, dcc_sample, dcc_prep, 
-                        #                 dcc_seq_obj, dcc_seq_out])
      
-            #dcc_files = upload_data_files(workflow, to_upload)
     workflow.go()
 
 

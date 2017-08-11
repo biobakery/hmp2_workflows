@@ -161,10 +161,10 @@ def create_seq_fname_map(data_type, data_files):
     return sample_id_map
     
 
-def map_sample_id_to_seq_file(row, id_col, seq_fname_map, is_proteomics):
+def map_sample_id_to_file(row, id_col, fname_map, is_proteomics, out_col='seq_file'):
     """Given a a row from a pandas DataFrame, map the sample identifier 
-    in the metadata to the sequence file map and return the corresponding
-    sequence file for the given row.
+    in the metadata to a file map and return the corresponding file for 
+    the given row.
 
     Args:
         row (pandas.Series): A row from a pandas Dataframe containing HMP2
@@ -185,13 +185,13 @@ def map_sample_id_to_seq_file(row, id_col, seq_fname_map, is_proteomics):
             with a given metadata row.
     """
     sample_id = row.get(id_col)
-    seq_file = seq_fname_map.get(sample_id)
+    sample_file = fname_map.get(sample_id)
     pdo_number = row.get('PDO Number')
 
-    if is_proteomics and str(pdo_number) in seq_file:
-        row['seq_file'] = seq_fname_map.get(sample_id)
+    if is_proteomics and str(pdo_number) in sample_file:
+        row[out_col] = fname_map.get(sample_id)
     else:
-        row['seq_file'] = seq_file
+        row[out_col] = sample_file
 
     return row
 
