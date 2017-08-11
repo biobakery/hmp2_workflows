@@ -190,6 +190,7 @@ def main(workflow):
                                                              conf,
                                                              row)
 
+                    to_upload = []
                     data_file = row.get('seq_file')
                     output_file = row.get('out_file')
                     if data_file:
@@ -198,8 +199,6 @@ def main(workflow):
                         
                         if not file_md5sum:
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
-
-                        (dcc_prep, dcc_seq_in, dcc_seq_out) = (None, None, None)
 
                         if data_type == "MBX": 
                             dcc_prep = dcc.create_or_update_microbiome_prep(dcc_sample,
@@ -243,6 +242,11 @@ def main(workflow):
                             #                                             row)
                             pass
 
+                        to_upload.append(dcc_seq_obj)
+
+                        ## The only output type currently supported are AbundanceMatrices 
+                        ## so those are the only we will work with. Short-sided and 
+                        ## ugly but can re-work this later.
                         if output_file:
                             output_filename = os.path.basename(output_file)
                             output_md5sum = md5sums_map.get(output_filename)
@@ -250,22 +254,20 @@ def main(workflow):
                             if not output_md5sum:
                                 raise ValueError("Could not find md5sum for file", output_filename)
 
-                            ## The only output type currently supported are AbundanceMatrices 
-                            ## so those are the only we will work with. Short-sided and 
-                            ## ugly but can re-work this later.
                             dcc_seq_out = dcc.crud_abundance_matrix(session,
                                                                     dcc_seq_obj,
                                                                     output_md5sum,
                                                                     dcc_sample.name,
                                                                     dtype_metadata,
                                                                     row)
+                            to_upload.append(dcc_seq_out)                                                                    
 
-                        dcc_objs.append([dcc_project, dcc_study, dcc_subject,
-                                         dcc_visit, dcc_sample, dcc_prep, 
-                                         dcc_seq_obj, dcc_seq_out])
+                        uploaded_files = upload_data_files(workflow, to_upload)
+                        #dcc_objs.append([dcc_project, dcc_study, dcc_subject,
+                        #                 dcc_visit, dcc_sample, dcc_prep, 
+                        #                 dcc_seq_obj, dcc_seq_out])
      
-            dcc_files = upload_data_files(workflow, sample_metadata_df, dcc_objs)
-     
+            #dcc_files = upload_data_files(workflow, to_upload)
     workflow.go()
 
 

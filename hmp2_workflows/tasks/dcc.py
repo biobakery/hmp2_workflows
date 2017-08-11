@@ -31,7 +31,7 @@ furnished to do so, subject to the following conditions:
 import os
 
 
-def upload_data_files(workflow, metadata, dcc_coll):
+def upload_data_files(workflow, dcc_file_objects):
     """Transfers the provided iHMP OSDF object to the DCC using the cutlass
     API and aspera. This task is meant to upload in parallel to the DCC to
     account for the large amount of files that are present in the IBDMDB 
@@ -39,17 +39,15 @@ def upload_data_files(workflow, metadata, dcc_coll):
 
     Args:
         workflow (anadama2.Workflow): The AnADAMA2 workflow object.
-        metadata (pandas.DataFrame): Dataframe containing accompanying metadata
-            for all files being submitted to the DCC
-        dcc_coll (list): A list of lists containing all the DCC objects 
-            that have been submitted and the sequence file (and accompanying 
-            cutlass object) that will be submitted.
+        dcc_file_objects (list): A list of OSDF iHMP DCC objects to upload
+            to the DCC. Examples include AbundanceMatrix, WgsRawSeqSet,
+            Proteome, etc.
 
     Requires:
         None
 
     Returns:
-        list: A list of the final sequence files submitted to the DCC.
+        list: A list of the files successfully uploaded.
     """
     uploaded_files = []
 
@@ -66,23 +64,23 @@ def upload_data_files(workflow, metadata, dcc_coll):
         Returns:
             None
         """
-        seq = dcc_objects[-1]
-        
-        if seq:
-            success = seq.save()
+        if dcc_file:
+            success = dcc_file.save()
             if not success:
-                raise ValueError('Saving sequence to DCC failed: %s' % seq.sample_name)
+                raise ValueError('Saving sequence to DCC failed: %s' % task.depends[0].name)
             else:
-                seq_file = os.path.basename(seq.urls[0])
+                seq_file = os.path.basename(dcc_file.urls[0])
                 uploaded_files.append(seq_file)
-    
-    for dcc_objects in dcc_coll:
-        if not dcc_objects[-1]:
-            continue
-     
+
+    for dcc_file in dcc_file_objects:
+        raw_file = getattr(dcc_file, 'local_file', None) 
+
+        if not raw_file:
+            raw_file = getattr(dcc_file, 'local_raw_file', None)
+
         workflow.add_task(_dcc_upload,
-                          depends = dcc_coll,
-                          name = "DCC Upload %s" % dcc_objects[-1].sample_name,
+                          depends = raw_file,
+                          name = "DCC Upload %s" % raw_file,
                           time = 2*60,
                           mem = 1024,
                           cores = 1)
