@@ -31,6 +31,8 @@ import os
 
 import pandas as pd
 
+from itertools import chain
+
 from biobakery_workflows import utilities as bb_utils
 from biobakery_workflows.tasks.sixteen_s import convert_to_biom_from_tsv
 
@@ -116,7 +118,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
             conversion.
 
     Requires:
-        samtools v1.5+: Utilities for the Sequence Alignment/Map (SAM) format
+        bedtools 2.17+
 
     Returns:
         list: A list of the newly-converted FASTQ files.
@@ -132,36 +134,62 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/seq/ibdmdbd/out_dir'])
     """
-    samtools_args = "--input-fmt-option nthreads=%s " % threads
-    out_ext = ".fastq.gz" if compress else ".fastq"
+    sample_names = bb_utils.sample_names(input_files)
+    sorted_bams = bb_utils.name_files(sample_names, 
+                                      output_dir, 
+                                      subfolder="sort", 
+                                      tag="qsort", 
+                                      extension="bam")
 
+    ## Gotta make sure our BAM file is sorted first
+    workflow.add_task_group_gridable("samtools -@ [args[0]] -n [depends[0]] [targets[0]]",
+                                     depends=input_files,
+                                     targets=[os.path.splitext(bam)[0] for bam in sorted_bams],
+                                     args=[threads],
+                                     time=10*60,
+                                     mem=4098)
+
+    bedtools_cmd = "bedtools bamtofastq -i [depends[0]]"
     if paired_end:
         mate_1_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
-                                           tag="_R1",
-                                           extension=out_ext)
+                                           tag="R1",
+                                           extension="fastq")
         mate_2_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
-                                           tag="_R2",
-                                           extension=out_ext)
+                                           tag="R2",
+                                           extension="fastq")
 
         mate_1_files = [fname.replace('.fastq_R1', '_R1.fastq') for fname in mate_1_files]
-        mate_2_files = [fname.replace('.fastq_R2', '_R2.fastq') for fname in mate_1_files]
+        mate_2_files = [fname.replace('.fastq_R2', '_R2.fastq') for fname in mate_2_files]
         output_files = zip(mate_1_files, mate_2_files)
-        samtools_args += "-1 [targets[0]] -2 [targets[1]]"
+        bedtools_cmd += "-fq [targets[0]] -fq2 [targets[1]]"
     else:
         output_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
-                                           extension=out_ext)
-        samtools_args += "> [targets[0]"
+                                           extension=".fastq")
+        bedtools_cmd += "-fq [targets[0]]"                                           
 
-    samtools_cmd = "samtools fastq [depends[0]]" + samtools_args
-    workflow.add_task_group_gridable(samtools_cmd,
+    workflow.add_task_group_gridable(bedtools_cmd,
                                      depends=input_files,
                                      targets=output_files,
                                      time=10*60,
-                                     mem=4098,
-                                     cores=threads)
+                                     mem=4098)
+
+    if compress:
+        fastq_files = chain.from_iterable(output_files) if paired_end else output_files
+        fastq_files_compress = ["%s.gz" % fastq_file for fastq_file in fastq_files]
+
+        workflow.add_task_group_gridable("pigz --best -p [args[0]] [depends[0]]",
+                                         depends=fastq_files,
+                                         targets=fastq_files_compress,
+                                         args=[threads],
+                                         time=10*60,
+                                         mem=4098)
+
+        workflow.add_task_group("rm -rf [targets[0]]",
+                                targets=sorted_bams,
+                                depends=fastq_files_compress)
 
     return output_files
 

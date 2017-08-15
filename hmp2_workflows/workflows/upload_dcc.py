@@ -103,7 +103,7 @@ def main(workflow):
 
             input_files = data_files[data_type]['input']
             output_files = data_files.get(data_type, {}).get('output')
-            md5sums_file = data_files.get(data_type).get('')
+            md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
@@ -195,18 +195,16 @@ def main(workflow):
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
 
                         if data_type == "MBX": 
-                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample,
-                                                                conf.get('data_study'),
-                                                                data_type,
-                                                                dtype_metadata,
-                                                                row)
-                            dcc_seq_obj = dcc.crud_abundance_matrix(session,
-                                                                    dcc_prep,
-                                                                    file_md5sum,
-                                                                    dcc_sample.name,
-                                                                    conf.get('data_study'),
-                                                                    conf.get(data_type,
-                                                                    row))
+                            dcc_prep = dcc.create_or_update_microbiome_prep(dcc_sample,
+                                                                            conf.get('data_study'),
+                                                                            conf.get(data_type),
+                                                                            row)
+                            dcc_seq_obj = dcc.create_or_update_proteome(dcc_prep,
+                                                                        file_md5sum,
+                                                                        dcc_sample.name,
+                                                                        dtype_metadata,
+                                                                        row)
+
                         elif data_type == "TX":
                             dcc_prep = dcc.create_or_update_host_seq_prep(dcc_sample,
                                                                           conf.get('data_study'),

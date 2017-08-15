@@ -41,6 +41,7 @@ furnished to do so, subject to the following conditions:
 """
 
 import argparse
+import datetime
 
 import yaml
 
@@ -75,7 +76,7 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--project', required=True,
                         help='Project that sequence files belong too.')
     parser.add_argument('-d', '--data-type', 
-                        choices=['mgx', 'mbx', '16s', 'mtx', 'prot'],
+                        choices=['MGX', 'MBX', '16S', 'MTX', 'TX'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
                         'specified in the input file list.')                        
@@ -190,6 +191,7 @@ def generate_yaml_dict(data_files, origin_institute, origin_contact,
         dict: A dictionary in the YAML MANIFEST format.
     """
     data_dict = {}
+    now = datetime.datetime.now()
 
     data_dict['origin_institute'] = origin_institute
     data_dict['origin_contact'] = origin_contact
@@ -197,11 +199,12 @@ def generate_yaml_dict(data_files, origin_institute, origin_contact,
     data_dict['project'] = project_name
 
     data_dict['submitted_files'] = {}
+    data_dict['submission_date'] = now.strftime('%Y-%m-%d')
 
     for (data_type, input_files) in data_files.iteritems():
         data_dict['submitted_files'].setdefault(data_type, {})
         data_dict['submitted_files'][data_type].setdefault('input_files', [])
-        data_dict['submitted_files'][data_type] = input_files
+        data_dict['submitted_files'][data_type]['input'] = input_files
 
     return data_dict
 

@@ -194,7 +194,7 @@ def make_files_web_visible(workflow, files):
     return files
 
 
-def tar_files(workflow, files, output_tarball, depends):
+def tar_files(workflow, files, output_tarball, depends, compress=True):
     """Creates a tarball package of the provided files with the given output
     tarball file path.
 
@@ -205,6 +205,7 @@ def tar_files(workflow, files, output_tarball, depends):
         depends (list): A list of files that can be tied to the files to 
             be tar'd. These dependencies are not tar'd but needed to make 
             sure that this step in the workflow is not run out of order.
+        compress (string):             
 
     Requires:
         None
@@ -227,7 +228,8 @@ def tar_files(workflow, files, output_tarball, depends):
     ## a temporary folder to symlink all the files we want to package into 
     ## a tarball to get rid of tar'ing the directory structure as well.
     tmp_dir = tempfile.mkdtemp()
-    
+    tar_args = "-hcvf"
+
     for target_file in files:
         symlink_path = os.path.join(tmp_dir, os.path.basename(target_file))
         os.symlink(target_file, symlink_path)
@@ -238,6 +240,9 @@ def tar_files(workflow, files, output_tarball, depends):
     else:
         depend_files.extend(files)
 
+    if compress:
+        tar_args = tar_args + "z"
+    
     workflow.add_task('tar -hcvzf [targets[0]] -C [args[0]] .; rm -rf [args[0]]',
                       depends = depend_files,
                       targets = [output_tarball],

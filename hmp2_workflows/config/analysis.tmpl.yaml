@@ -40,7 +40,8 @@ base: &base
         - week_num
         - date_of_receipt
         - antibiotics
-        - diagnosis 
+        - diagnosis
+        - baseline_montreal_location
         - sccai
         - hbi
         - fecalcal
@@ -85,7 +86,7 @@ MGX: &mgx
 
     target_metadata_cols:
         - *metadata_cols
-        - "final single"
+        - filtered_read_counts
 
 16S: &16S
     <<: *base
@@ -100,7 +101,7 @@ MGX: &mgx
 MTX: &mtx
     <<: *base
     
-    metadat_id_col: "site_sub_coll"
+    metadata_id_col: "site_sub_coll"
 
     # When attempting to match taxonomic profiles to a MTX sequences 
     # use this column in our metadata file to find match.
@@ -108,7 +109,7 @@ MTX: &mtx
 
     target_metadata_cols:
         - *metadata_cols
-        - "final single"
+        - filtered_read_counts
 
 MBX: &mbx
     <<: *base
@@ -121,3 +122,8 @@ MBX: &mbx
         - Date extracted
         - Date injected 
         - Column
+
+TX: &tx
+    <<: *base
+
+    metadata_id_col: "External ID"

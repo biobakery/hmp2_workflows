@@ -36,11 +36,12 @@ import pandas as pd
 
 from anadama2.tracked import Container
 
-import hmp2_workflows.utils.metadata as metadata_utils
+import hmp2_workflows.utils.metadata as m_utils
 
 from biobakery_workflows import utilities as bb_utils
 
-from hmp2_workflows.utils.misc import get_sample_id_from_fname
+from hmp2_workflows.utils.misc import (get_sample_id_from_fname, 
+                                       reset_column_headers)
 
 def validate_metadata_file(workflow, input_file, validation_file):
     """Validates an HMP2 metadata file using the cutplace utility. 
@@ -80,7 +81,8 @@ def validate_metadata_file(workflow, input_file, validation_file):
 
 
 def generate_metadata_file(workflow, config, data_files, studytrax_metadata, 
-                          broad_tracking_sheet, auxillary_metadata=[]):
+                           broad_tracking_sheet, proteomics_metadata=None,
+                           auxillary_metadata=[]):
     """Generates a metadata file for the set of sequence files provided 
     using the StudyTrax metadata sheet, Broad Sample Tracking data 
     sheet and any auxillary metadata files provided.
@@ -98,6 +100,8 @@ def generate_metadata_file(workflow, config, data_files, studytrax_metadata,
             file.
         broad_tracking_sheet (string): Path to Broad sample tracking 
             spreadsheet file.
+        proteomics_metadata (string): Path to any proteomics metadata to 
+            accompany PNNL proteomics data.
         auxillary_metadat (list): Any auxillary metadata files to pull
             metadata and integrate into an HMP2 metadata file.                                  
     """
@@ -106,8 +110,8 @@ def generate_metadata_file(workflow, config, data_files, studytrax_metadata,
 
     def _generate_metadata_file(task):
         input_files = [seq_file.name for seq_file in task.depends[:-3]]
-        studytrax_metadata = task.depends[-3].name
-        broad_sample_sheet = task.depends[-2].name
+        studytrax_metadata = task.depends[-4].name
+        broad_sample_sheet = task.depends[-3].name
         auxillary_metadata = task.depends[-1].name if task.depends[-1].name != '/dev/null' else None
         metadata_out_file = task.targets[0].name
 
@@ -118,7 +122,7 @@ def generate_metadata_file(workflow, config, data_files, studytrax_metadata,
                                       na_values=['destroyed', 'missed'],
                                       parse_dates=['Actual Date of Receipt'])
 
-        collection_dates_dict = metadata_utils.get_collection_dates(broad_sample_df)
+        collection_dates_dict = m_utils.get_collection_dates(broad_sample_df)
 
         if pair_identifier:
             (input_pair1, input_pair2) = bb_utils.paired_files(input_files, pair_identifier)
@@ -143,12 +147,40 @@ def generate_metadata_file(workflow, config, data_files, studytrax_metadata,
         ## them
         metadata_df.loc[metadata_df['st_q17'].isnull(), 'st_q17'] = metadata_df['Proteomics']
         metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['MbX']
-        metadata_df['data_type'] = data_type_mapping.get(data_type)
+        metadata_df['data_type'] = data_type_map.get(data_type)
+
+        if proteomics_metadata:
+            proteomics_df = m_utils.add_proteomics_metadata(sample_subset_df, 
+                                                            proteomics_metadata,
+                                                            sample_mapping)
+            metadata_df = metadata_df.merge(proteomics_df,
+                                            on='Parent Sample A',
+                                            how='left')
+
+
+        metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
+
+        metadata_df['Site/Sub/Coll ID'] = metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
+        metadata_df['Site'] = metadata_df['SiteName']
+        metadata_df['Participant ID'] = metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
+        metadata_df['visit_num'] = metadata_df['Collection #']
+        metadata_df['Research Project'] = config.get('research_project')
+        metadata_df['Project'] = metadata_df.apply(m_utils.get_project_id, axis=1)
+        metadata_df = generate_collection_statistics(metadata_df,
+                                                     collection_dates_dict)
+        metadata_df = metadata_df.drop(config.get('drop_cols'), axis=1, inplace=True)
+ 
+        if auxillary_metadata:
+            ## Auxillary metadata are columns that will be added into our
+            ## existing metadata rows. 
+            metadata_df = m_utils.add_auxiliary_metadata(metadata_df,auxillary_metadata)
 
         metadata_df.to_csv(metadata_out_file, index=False)
 
+
     for (data_type, items) in data_files.iteritems():
         metadata_file = tempfile.mkstemp(prefix='%s_metadata_' % data_type,
+                                         suffix='.csv',
                                          dir=temp_dir)[-1]
         pair_identifier = items.get('pair_identifier', '')
         sequence_files = items.get('input')
@@ -317,7 +349,8 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         print out_files
         ## ['/tmp/metaphlan2.out']
     """
-    metadata_df = pd.read_csv(metadata_file, dtype='str')
+    metadata_df = pd.read_csv(metadata_file, dtype='str',
+                              parse_dates=['date_of_receipt'])
     
     def _workflow_add_metadata_to_tsv(task):
         analysis_file = task.depends[0].name
@@ -344,7 +377,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
             pcl_metadata_df.xs(metadata_rows)[0] = id_col
             
             pcl_metadata_df = pcl_metadata_df.T
-            pcl_metadata_df = hmp2_utils.misc.reset_column_headers(pcl_metadata_df)
+            pcl_metadata_df = reset_column_headers(pcl_metadata_df)
 
             analysis_df.drop(analysis_df.index[range(0,metadata_rows)], inplace=True)
             analysis_df.rename(columns=analysis_df.iloc[0], inplace=True)
@@ -374,12 +407,31 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
 
         if aux_files:
             for aux_file in aux_files:
-                aux_df = pd.read_table(aux_file, dtype='str')
+                aux_metadata_df = pd.read_table(aux_file, dtype='str')
+                aux_metadata_cols = aux_metadata_df.columns.tolist()
+                join_id = aux_metadata_cols[0]
 
-                # TODO: This is pretty much hard-coded to handle a specific file 
-                # but needs to be way more generic.
-                subset_metadata_df = pd.merge(subset_metadata_df, aux_df, how='left',
-                                              left_on=id_col, right_on='Sample')
+                ## We need to do this in two stages. If the columns already exist
+                ## here we want to update them. If they do not exist we append
+                ## them.
+                subset_metadata_cols = subset_metadata_df.columns.tolist()
+                new_cols = set(aux_metadata_cols[1:]) - set(subset_metadata_cols)
+                existing_cols = set(aux_metadata_cols[1:]).intersection(subset_metadata_cols)
+
+                if new_cols:
+                    aux_metadata_new_df = aux_metadata_df.filter(items=aux_metadata_cols[:1] + 
+                                                                 list(new_cols))
+                    subset_metadata_df = pd.merge(subset_metadata_df, aux_metadata_new_df, 
+                                                  how='left', on=join_id)
+
+                if existing_cols:
+                    aux_metadata_existing_df = aux_metadata_df.filter(items=aux_metadata_cols[:1] + 
+                                                                      list(existing_cols))
+                    subset_metadata_df.set_index(join_id, inplace=True)
+                    aux_metadata_existing_df.set_index(join_id, inplace=True)
+
+                    subset_metadata_df.update(aux_metadata_existing_df)
+                    subset_metadata_df.reset_index(inplace=True)
 
         if not pcl_metadata_df.empty:
             subset_metadata_df = pd.merge(subset_metadata_df, pcl_metadata_df,
@@ -390,7 +442,7 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
             subset_metadata_df = subset_metadata_df.filter(target_cols)
 
         subset_metadata_df = subset_metadata_df.T
-        subset_metadata_df = hmp2_utils.misc.reset_column_headers(subset_metadata_df)
+        subset_metadata_df = reset_column_headers(subset_metadata_df)
         subset_metadata_df = subset_metadata_df.reset_index()
         subset_metadata_df.fillna('NA', inplace=True)
 
@@ -405,12 +457,16 @@ def add_metadata_to_tsv(workflow, analysis_files, metadata_file, dtype,
         analysis_metadata_df = pd.concat([subset_metadata_df,
                                           analysis_df], axis=0)
         analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
-        analysis_metadata_df.to_csv(pcl_out, index=False, header=header, na_rep=na_rep)
+        analysis_metadata_df.to_csv(pcl_out, 
+                                    index=False, 
+                                    header=header, 
+                                    sep='\t',
+                                    na_rep=na_rep)
 
     output_folder = os.path.dirname(analysis_files[0])
     pcl_files = bb_utils.name_files(analysis_files, 
                                     output_folder, 
-                                    extension="pcl.csv")
+                                    extension="pcl.tsv")
 
     # Because of how YAML inherits lists we'll need to see if we can't 
     # flatten this list out. 

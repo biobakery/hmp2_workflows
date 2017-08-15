@@ -38,11 +38,11 @@ from anadama2 import Workflow
 
 from hmp2_workflows.tasks.metadata import (validate_metadata_file, 
                                            generate_metadata_file)
-#                                           make_metadata_human_readable)
 from hmp2_workflows.tasks.common import stage_files
 
-from hmp2_workflows.utils.misc import (parse_cfg_file)
-                                       #merge_metadata_file)
+from hmp2_workflows.utils.misc import (parse_cfg_file,
+                                       merge_metadata_files,
+                                       make_metadata_human_readable)
 
 
 def parse_cli_arguments():
@@ -72,6 +72,8 @@ def parse_cli_arguments():
     workflow.add_argument('broad-sample-tracking-file', desc='Broad Institute '
                            'sample tracking spreadsheet containing status of '
                            'sequence products generated.')
+    workflow.add_argument('proteomics-metadata', desc='PNNL-supplied metadata '
+                          'spreadsheet.')                           
     workflow.add_argument('auxillary-metadata', action='append', default=[],
                           desc='Any auxillary metadata to be appeneded '
                           'to the final metadata table.')                           
@@ -93,25 +95,31 @@ def main(workflow):
                                config.get('validators').get('studytrax'))
         validate_metadata_file(workflow, args.broad_sample_tracking_file,
                                config.get('validators').get('broad_sample_status'))
+        validate_metadata_file(workflow, args.proteomics_metadata,
+                               config.get('validators').get('proteomics'))                               
         
         metadata_file = None
         metadata_dir = os.path.join(config.get('public_dir'), 
                                     config.get('project'), 
                                     'metadata')
 
-        manifest_metadata_df = generate_metadata_file(workflow,
-                                                      config,
-                                                      data_files,
-                                                      args.studytrax_metadata_file,
-                                                      args.broad_sample_tracking_file,
-                                                      args.auxillary_metadata)
+        new_metadata_files = generate_metadata_file(workflow,
+                                                    config,
+                                                    data_files,
+                                                    args.studytrax_metadata_file,
+                                                    args.broad_sample_tracking_file,
+                                                    args.auxillary_metadata)
+
+        metadata_file = merge_metadata_files(new_metadata_files, metadata_dir)
 
         if args.metadata_file:
-            metadata_df = pd.read_csv(args.metadata_file)
-            #metadata_file = merge_metadata_file(manifest_metadata_df, 
-            #                                    metadata_df)
+            metadata_file = merge_metadata_files([args.metadata_file] +
+                                                 metadata_file,
+                                                 metadata_dir)
 
-        #metadata_file = make_metadata_human_readable(metadata_file)
+        final_metadata_file = make_metadata_human_readable(metadata_file)
+        validate_metadata_file(workflow, final_metadata_file,
+                               config.get('validators').get('hmp2_metadata'))
 
         #pub_metadata_file = stage_files(workflow, metadata_file,
         #                                metadata_dir)

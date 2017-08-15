@@ -222,8 +222,7 @@ def main(workflow):
                                                 'metagenomics',
                                                 conf_mgx.get('metadata_id_col'),
                                                 conf_mgx.get('analysis_col_patterns'),
-                                                conf_mgx.get('target_metadata_cols'),
-                                                aux_files=[knead_read_counts])
+                                                conf_mgx.get('target_metadata_cols'))
                                       
                 func_tar_files_wgs = []
                 for (sample, gene_file, ecs_file, path_file) in zip(sample_names_wgs,
