@@ -65,8 +65,6 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
                            'for the provided data files.', default=None)
-    workflow.add_argument('broad-data-sheet', desc='Master sample data sheet '
-                          'tracking all samples and their reception dates.')
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
 
@@ -82,7 +80,6 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
 
     metadata_df = pd.read_csv(args.metadata_file)
-    coll_df = pd.read_csv(args.broad_data_sheet)
     md5sums_map = {}
 
     ## For every set of data files we're going to want to iterate over each  
@@ -106,7 +103,7 @@ def main(workflow):
 
             input_files = data_files[data_type]['input']
             output_files = data_files.get(data_type, {}).get('output')
-            md5sums_file = data_files.get(data_type).get('md5sums_file')
+            md5sums_file = data_files.get(data_type).get('')
 
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
@@ -118,7 +115,8 @@ def main(workflow):
             ## be different. We need to account for this and create a map 
             ## of the 'universal ID' back to the specific file it references
             id_cols = conf['metadata_id_mappings'][data_type]
-            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files)
+            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=['_1_sequence', 
+                                                                                   '_2_sequence'])
  
             sample_ids = seq_fname_map.keys()
             dtype_name = data_type_mapping.get(data_type)
@@ -140,6 +138,7 @@ def main(workflow):
 
             ## Add an extra column to our sample metadata with the corresponding sequence file 
             ## for easy access later on.
+            sample_metadata_df['seq_file'] = None
             sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
                                                           args=(id_col, seq_fname_map, 
                                                                 is_proteomics),
@@ -149,6 +148,8 @@ def main(workflow):
             if output_files:
                 ## Do a bunch of stuff here since we have output files
                 out_fname_map = dcc.create_seq_fname_map(data_type, output_files)
+
+                sample_metadata_df['out_file'] = None
                 sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
                                                               args=(id_col, out_fname_map,
                                                                     is_proteomics, 
@@ -184,27 +185,28 @@ def main(workflow):
                                                              conf,
                                                              row)
 
-                    to_upload = []
                     data_file = row.get('seq_file')
                     output_file = row.get('out_file')
                     if data_file:
                         data_filename = os.path.basename(data_file)
-                        file_md5sum = md5sums_map.get(data_filename)
+                        file_md5sum = md5sums_map.get(os.path.basename(data_filename))
                         
                         if not file_md5sum:
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
 
                         if data_type == "MBX": 
-                            dcc_prep = dcc.create_or_update_microbiome_prep(dcc_sample,
-                                                                            conf.get('data_study'),
-                                                                            conf.get(data_type),
-                                                                            row)
-                            dcc_seq_obj = dcc.create_or_update_proteome(dcc_prep,
-                                                                        file_md5sum,
-                                                                        dcc_sample.name,
-                                                                        dtype_metadata,
-                                                                        row)
-
+                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample,
+                                                                conf.get('data_study'),
+                                                                data_type,
+                                                                dtype_metadata,
+                                                                row)
+                            dcc_seq_obj = dcc.crud_abundance_matrix(session,
+                                                                    dcc_prep,
+                                                                    file_md5sum,
+                                                                    dcc_sample.name,
+                                                                    conf.get('data_study'),
+                                                                    conf.get(data_type,
+                                                                    row))
                         elif data_type == "TX":
                             dcc_prep = dcc.create_or_update_host_seq_prep(dcc_sample,
                                                                           conf.get('data_study'),
@@ -214,15 +216,23 @@ def main(workflow):
                                                                                    file_md5sum,
                                                                                    dcc_sample.name,
                                                                                    conf.get(data_type),
-                                                                                   row)                                                                          
+                                                                                   row)
                         elif data_type == "MTX":
-                            #dcc_prep = dcc.create_or_update_mtx_rna_prep(dcc_sample,
-                            #                                             conf,
-                            #                                             row)
-                            pass
-                        elif data_type == "WGS":
                             dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
                                                                          conf.get('data_study'),
+                                                                         data_type,
+                                                                         dtype_metadata,
+                                                                         row)
+                            dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
+                                                                                      file_md5sum,
+                                                                                      dcc_sample.name,
+                                                                                      dtype_metadata,
+                                                                                      row)
+                                                                         
+                        elif data_type == "MGX":
+                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
+                                                                         conf.get('data_study'),
+                                                                         data_type,
                                                                          dtype_metadata,
                                                                          row)
                             dcc_seq_obj = dcc.create_or_update_wgs_raw_seq_set(dcc_prep,
@@ -230,13 +240,24 @@ def main(workflow):
                                                                                dcc_sample.name,
                                                                                dtype_metadata,
                                                                                row)
+                        elif data_type == "MVX":
+                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
+                                                                         conf.get('data_study'),
+                                                                         data_type,
+                                                                         dtype_metadata,
+                                                                         row) 
+                            dcc_seq_obj = dcc.crud_viral_seq_set(dcc_prep,
+                                                                 file_md5sum,
+                                                                 dcc_sample.name,
+                                                                 dtype_metadata,
+                                                                 row)
                         elif data_type == "16S":
                             #dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
                             #                                             conf,
                             #                                             row)
                             pass
 
-                        to_upload.append(dcc_seq_obj)
+                        uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
 
                         ## The only output type currently supported are AbundanceMatrices 
                         ## so those are the only we will work with. Short-sided and 
@@ -244,6 +265,7 @@ def main(workflow):
                         if output_file:
                             output_filename = os.path.basename(output_file)
                             output_md5sum = md5sums_map.get(output_filename)
+                            dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
 
                             if not output_md5sum:
                                 raise ValueError("Could not find md5sum for file", output_filename)
@@ -252,11 +274,12 @@ def main(workflow):
                                                                     dcc_seq_obj,
                                                                     output_md5sum,
                                                                     dcc_sample.name,
+                                                                    conf.get('data_study'),
                                                                     dtype_metadata,
                                                                     row)
-                            to_upload.append(dcc_seq_out)                                                                    
 
-                        uploaded_files = upload_data_files(workflow, to_upload)
+                            uploaded_file = upload_data_files(workflow, [dcc_seq_out])
+
      
     workflow.go()
 

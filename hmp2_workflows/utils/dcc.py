@@ -28,6 +28,8 @@ furnished to do so, subject to the following conditions:
     THE SOFTWARE.
 """
 
+
+import importlib
 import itertools
 import operator
 import os
@@ -109,7 +111,7 @@ def group_osdf_objects(osdf_collection, group_by_field):
     return grouped_dict
 
 
-def create_seq_fname_map(data_type, data_files):
+def create_seq_fname_map(data_type, data_files, tags=[]):
     """Creates a mapping of the sequences files to sample identifiers 
     derived from the data file name.
 
@@ -120,7 +122,8 @@ def create_seq_fname_map(data_type, data_files):
             Depending on the source of the file (Broad, PNNL etc.) naming 
             schemes for files are different and not to be handled on a case
             by case basis.
-
+        tag (list): A list of tags that should be removed from sample 
+ 
     Requires:
         None
 
@@ -149,12 +152,17 @@ def create_seq_fname_map(data_type, data_files):
 
         (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
-
         if data_type == 'proteomics':
             sample_id = "%s-%s" % ('SM', 
                                    file_name.replace('_', '-').split('-')[2])
         else:
             sample_id = file_name
+            
+            ## TODO: This shouldn't be hardcoded
+            sample_id = sample_id.replace('_taxonomic_profile', '')
+    
+        for tag in tags:
+            sample_id = sample_id.replace(tag, '')
 
         sample_id_map[sample_id] = data_file
 
@@ -230,12 +238,12 @@ def get_fields_to_update(new_metadata, osdf_object):
     if 'mixs' in required_fields:
         if not osdf_object.mixs:
             updated_fields.append('mixs')
-        else:            
+        else:
             required_fields.remove('mixs')
             mixs_new = sorted(new_metadata.get('mixs').values())
             mixs_curr = sorted(osdf_object.mixs.values())
 
-            if mixs_new != mixs_curr: 
+            if mixs_new != mixs_curr:
                 updated_fields.append('mixs')
 
     if 'checksums' in required_fields:
@@ -254,8 +262,8 @@ def get_fields_to_update(new_metadata, osdf_object):
 
         ## Most of the objects we deal with will be single files so we only
         ## need to check a single checksum
+        osdf_checksum = osdf_object.checksums.get('md5') if osdf_object.checksums else None
         new_checksum = new_metadata['checksums']['md5']
-        osdf_checksum = osdf_object.checksums.get('md5')
 
         if new_checksum != osdf_checksum:
             updated_fields.extend(['checksums', local_file_field])
@@ -266,7 +274,44 @@ def get_fields_to_update(new_metadata, osdf_object):
     return np.unique(updated_fields).tolist()
 
 
-def get_wgs_raw_seq_set_abund_matrices(osdf, seq_set_id):
+def _get_host_assay_prep_abund_matrices(sessions, prep_id):
+    """Returns an iterator of all AbundanceMatrix nodes connnected to the
+    provided HostAssayPrep node.
+
+    Args:
+        session (cutlass.Session): The current OSDF session object.
+        prep_id (string): The prep ID to retrieve any associated AbundanceMatrix
+            nodes from.
+
+    Requires:
+        None
+
+    Returns:
+        Iterator: An iterator containing all children connected to the 
+            supplied OSDF object.                    
+    """
+    query = osdf.get_odsf().oql_query
+    linkage_query = ('"abundance_matrix"[node_type] && '
+                     '"{}"[linkage.computed_from]'.format(prep_id))
+
+    from cutlass.AbundanceMatrix import AbundanceMatrix
+    from cutlass.HostAssayPrep import HostAssayPrep
+
+    for page_no in itertools.count(1):
+        res = query(WgsRawSeqSet.namespace, linkage_query,
+                    page=page_no)
+        res_count = res['result_count']
+
+        for doc in res['results']:
+            yield AbundanceMatrix.load_abundance_matrix(doc)
+
+        res_count -= len(res['results'])
+
+        if res_count < 1:
+            break
+
+
+def _get_wgs_raw_seq_set_abund_matrices(session, seq_set_id):
     """
     Returns an iterator of all AbundanceMatrix nodes connected to 
     the WgsRawSeqSet ID provided.
@@ -283,25 +328,26 @@ def get_wgs_raw_seq_set_abund_matrices(osdf, seq_set_id):
         iterator: An iterator containing all found abundance matrices.                            
 
     """
-    query = osdf.get_osdf().oql_query
-    linkage_query = ('"abundance_matrix"[node_type] && "' 
-                        '"%s"[linkage.computed_from]' % seq_set_id)
+    if seq_set_id:
+        query = osdf.get_osdf().oql_query
+        linkage_query = ('"abundance_matrix"[node_type] && ' 
+                         '"{}"[linkage.computed_from]'.format(seq_set_id))
 
-    from cutlass.AbundanceMatrix import AbundanceMatrix
-    from cutlass.WgsRawSeqSet import WgsRawSeqSet            
+        from cutlass.AbundanceMatrix import AbundanceMatrix
+        from cutlass.WgsRawSeqSet import WgsRawSeqSet            
 
-    for page_no in count(1):
-        res = query(WgsRawSeqSet.namespace, linkage_query,
-                    page=page_no)
-        res_count = res['result_count']
+        for page_no in itertools.count(1):
+            res = query(WgsRawSeqSet.namespace, linkage_query,
+                        page=page_no)
+            res_count = res['result_count']
 
-        for doc in res['results']:
-            yield AbundanceMatrix.load_abundance_matrix(doc)
+            for doc in res['results']:
+                yield AbundanceMatrix.load_abundance_matrix(doc)
 
-        res_count -= len(res['results'])
+            res_count -= len(res['results'])
 
-        if res_count < 1:
-            break
+            if res_count < 1:
+                break
 
 
 def get_project(conf, session):
@@ -694,7 +740,7 @@ def create_or_update_sample(samples, sample_id, visit_id, conf, metadata):
     return sample
 
 
-def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
+def create_or_update_wgs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     """Creates an iHMP OSDF WGS DNA Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -703,6 +749,8 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
             associated with.
         study_id (string): The study ID this microbiome assay prep is
             assocaited with.
+        dtype_abbrev (string): Data type abbreviation to be used in constructing 
+            unique prep ID.            
         conf (dict): Python dictionary representation of the project YAML
             configuration containing project metadata.
         metadata (pandas.Series): The metadata that is assocaited with this 
@@ -715,11 +763,13 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
         cutlass.WgsDNAPrep: The created or updated OSDF 
             MicrobiomeAssayPrep object.
     """
-    wgs_dna_preps = group_osdf_objects(sample.WgsDnaPreps(),
-                                       'prep_id')
-    wgs_dna_prep = wgs_dna_preps.get(metadata['External ID'])
+    prep_id = "%s_%s" % (metadata.get('External ID'), dtype_abbrev)
 
-    if wgs_dna_prep:
+    wgs_dna_preps = group_osdf_objects(sample.wgsDnaPreps(),
+                                       'prep_id')
+    wgs_dna_prep = wgs_dna_preps.get(prep_id)
+
+    if not wgs_dna_prep:
         wgs_dna_prep = cutlass.WgsDnaPrep()
     else:
         wgs_dna_prep = wgs_dna_prep[0]
@@ -730,8 +780,9 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
     req_metadata['mims'] = default_mims_dict()
 
     ## Fill in the remaining pieces of metadata needed from other sources
-    req_metadata['prep_id'] = metadata['External ID']
-    req_metadata['mims'].update(sample_conf.get('mixs'))
+    req_metadata['prep_id'] = prep_id
+    req_metadata['mims'].update(conf.get('mims'))
+    req_metadata['mims']['collection_date'] = metadata['date_of_receipt']
 
     fields_to_update = get_fields_to_update(req_metadata, wgs_dna_prep)
     map(lambda key: setattr(wgs_dna_prep, key, req_metadata.get(key)),
@@ -750,6 +801,67 @@ def create_or_update_wgs_dna_prep(sample, study_id, conf, metadata):
                              wgs_dna_prep.validate())
     
     return wgs_dna_prep
+
+
+def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
+    """Creates an iHMP OSDF Host Assay Prep object if it doesn't exist or 
+    updates an already existing Prep object with the provided metadata. 
+
+    Args:
+        sample (cutlass.Sample): The Sample object that the Prep should be 
+            associated with.
+        study_id (string): The study ID this microbiome assay prep is
+            assocaited with.
+        dtype_abbrev (string): The abbreviation for the data type that 
+            this prep represents (i.e. MGX, MTX, 16S)            
+        conf (dict): Python dictionary representation of the project YAML
+            configuration containing project metadata.
+        metadata (pandas.Series): The metadata that is assocaited with this 
+            Sample/Prep.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.HostAssayPrep: The created or updated OSDF HostAssayPrep 
+            object.
+    """
+    prep_id = "%s_%s" % (metadata.get('External ID'), dtype_abbrev)
+
+    host_assay_preps = group_osdf_objects(sample.hostAssayPreps(),
+                                          'prep_id')
+    host_assay_prep = host_assay_preps.get(prep_id)
+
+    if not host_assay_prep:
+        host_assay_prep = cutlass.HostAssayPrep()
+    else:
+        host_assay_prep = host_assay_prep[0]
+    
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+    req_metadata.update(conf.get('assay'))
+
+    ## Fill in the remaining pieces of metadata needed from other sources
+    req_metadata['prep_id'] = prep_id
+    req_metadata['comment'] = "IBDMDB"
+
+    fields_to_update = get_fields_to_update(req_metadata, host_seq_prep)
+    map(lambda key: setattr(host_seq_prep, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        host_assay_prep.links['prepared_from'] = [sample.id]
+
+        if host_assay_prep.is_valid():
+            success = host_assay_prep.save()
+            if not success:
+                raise ValueError('Saving host seq prep %s failed.' % 
+                                 req_metadata.get('prep_id'))
+        else:
+            raise ValueError('Host seq prep validation failed: %s' % 
+                             host_assay_prep.validate())
+    
+    return host_assay_prep
 
 
 def create_or_update_host_seq_prep(sample, study_id, conf, metadata):
@@ -988,14 +1100,13 @@ def create_or_update_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata
     req_metadata['checksums'] = { "md5": md5sum }
 
     req_metadata['local_raw_file'] = metadata.get('seq_file')
-    req_metadata['size'] = metadata.get('Total Reads')
+    req_metadata['size'] = os.path.getsize(raw_file_name)
 
     req_metadata['tags'] = []
     biopsy_location = metadata.get('biopsy_location')
     req_metadata['tags'].append('biopsy_location: %s' % biopsy_location)
 
     fields_to_update = get_fields_to_update(req_metadata, transcriptome)
-
     map(lambda key: setattr(transcriptome, key, req_metadata.get(key)),
         fields_to_update)
 
@@ -1041,12 +1152,12 @@ def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    metagenomes= group_osdf_objects(prep.wgs_raw_seq_sets(),
-                                    'raw_url')
+    metagenomes= group_osdf_objects(prep.child_seq_sets(),
+                                    'urls')
     metagenomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                           in metagenomes.items())
     
-    metagenome = metagenome.get(raw_file_name)
+    metagenome = metagenomes.get(raw_file_name)
 
     if not metagenome:
         metagenome = cutlass.WgsRawSeqSet()
@@ -1055,38 +1166,99 @@ def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
 
     req_metadata.update(conf.get('metagenome'))
     req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] = metadata.get('Total Reads')
+    req_metadata['size'] = os.path.getsize(raw_file_name)
     req_metadata['checksums'] = { "md5": md5sum }
 
     fields_to_update = get_fields_to_update(req_metadata, metagenome)
-
     map(lambda key: setattr(metagenome, key, req_metadata.get(key)),
         fields_to_update)
 
+    metagenome.updated = False
     if fields_to_update:
+        metagenome.updated = True
         metagenome.links['sequenced_from'] = [prep.id]
 
         if not metagenome.is_valid():
-            raise ValueError('Host transcriptome validation failed: %s' % 
+            raise ValueError('WGS raw seq set validation failed: %s' % 
                              metagenome.validate())
+
+    return metagenome
+
+
+def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+    """Creates an iHMP OSDF MicrobTranscriptomicsRawSeqSet object if it 
+    doesn't exist or updates an already existing object with the provided
+    metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
+            WGSRawSeqSet object will be associated with.
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this transcriptome           
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.MicrobTranscriptomicsRawSeqSet: The Microbe Transcriptomics object.
+    """
+    raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    metatranscriptomes = group_osdf_objects(prep.child_seq_sets(),
+                                            'urls')
+    metatranscriptomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                             in metatranscriptomes.items())
+    
+    metatranscriptome = metatranscriptomes.get(raw_file_name)
+
+    if not metatranscriptome:
+        metatranscriptome = cutlass.MicrobTranscriptomicsRawSeqSet()
     else:
-        ## Really if there are no changes we don't want to save this object so 
-        ## we return None to be handled downstream.
-        metagenome = None            
+        metatranscriptome = metatranscriptome[0]
 
-    return metagenome        
+    req_metadata.update(conf.get('metatranscriptome'))
+    req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['size'] =  os.path.getsize(raw_file_name)
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    fields_to_update = get_fields_to_update(req_metadata, metatranscriptome)
+    map(lambda key: setattr(metatranscriptome, key, req_metadata.get(key)),
+        fields_to_update)
+
+    metatranscriptome.updated = False
+
+    if fields_to_update:
+        metatranscriptome.updated = True
+        metatranscriptome.links['sequenced_from'] = [prep.id]
+
+        if not metatranscriptome.is_valid():
+            raise ValueError('Microbe Transcritpome validation failed: %s' % 
+                             metatranscriptome.validate())
+
+    return metatranscriptome
 
 
-def crud_abundance_matrix(session, seq_set, md5sum, sample_id, 
-                          conf, metadata):
+def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id, 
+                          study_name, conf, metadata):
     """Creates or updates an iHMP OSDF AbundanceMatrix object.
 
     Handles abundance matrices in both BIOM and tab-delimited format.
 
     Args:
         session (cutlass.Session): The OSDF session instance.
-        seq_set (cutlass.<SEQ SET OBJECTS>): Any OSDF sequence set object
-            from which an abundance matrice may be derived. (i.e. WgsRawSeqSet or 
+        dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
+            or an assay prep from which an abundance matrice may be derived.
+             (i.e. WgsRawSeqSet or HostAssayPrep)
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
@@ -1105,8 +1277,13 @@ def crud_abundance_matrix(session, seq_set, md5sum, sample_id,
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    abund_matrices = group_osdf_objects(get_wgs_raw_seq_set_abund_matrices(osdf, seq_set.id),
-                                      'raw_url')
+    if "HostAssayPrep" in dcc_parent.__module__:    
+        abund_matrixs = group_osdf_objects(_get_host_assay_prep_abund_matrices(session, dcc_parent.id),
+                                           '_urls')
+    elif "WgsDnaPrep" in dcc_parent.__module:
+        abund_matrices = group_osdf_objects(_get_wgs_raw_seq_set_abund_matrices(session, dcc_parent.id),
+                                            '_urls')
+
     abund_matrices = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                            in abund_matrices.items())
     abund_matrix = abund_matrices.get(abund_fname)
@@ -1117,34 +1294,98 @@ def crud_abundance_matrix(session, seq_set, md5sum, sample_id,
         abund_matrix = abund_matrix[0]
 
     req_metadata.update(conf.get('abundance_matrix'))
-    req_metadata['local_file'] = abund_matrix.get('seq_file')
+    req_metadata['local_file'] = metadata.get('out_file')
     req_metadata['size'] = os.path.getsize(abund_file)
     req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['study'] = study_name
 
-    if raw_file_name.endswith('biom'):
+    if abund_file.endswith('biom'):
         req_metadata['format'] = "biom"
-    elif raw_file_name.endswith('.tsv'):
+        req_metadata['format_doc'] = "http://biom-format.org/"
+    elif abund_file.endswith('.tsv'):
         req_metadata['format'] = "tbl"
     else:
-        raise ValueError("Unknown abundance matrix type:", raw_file_name)                            
+        raise ValueError("Unknown abundance matrix type:", raw_file_name)
 
     fields_to_update = get_fields_to_update(req_metadata, abund_matrix)
-
     map(lambda key: setattr(abund_matrix, key, req_metadata.get(key)),
         fields_to_update)
 
+    abund_matrix.updated = False
+
     if fields_to_update:
+        abund_matrix.updated = True
         abund_matrix.links['computed_from'] = [seq_set.id]
 
-        if not metagenome.is_valid():
-            raise ValueError('Abundance matrix validation failed: %s' % 
+        if not abund_matrix.is_valid():
+            raise ValueError('Abundance matrix validation failed: %s' %
                              abund_matrix.validate())
     else:
-        ## Really if there are no changes we don't want to save this object so 
-        ## we return None to be handled downstream.
-        abund_matrix = None            
+        abund_matrix.urls = abund_matrix._urls
 
-    return abund_matrix        
+    return abund_matrix
+
+def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
+    """Creates an iHMP OSDF ViralSeqSet object if it doesn't exist or updates 
+    an already existing object with the provided metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
+            ViromicsSetSeq object will be associated with.
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this transcriptome           
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.ViralSeqSet: The ViralSeqSet object to be saved.
+    """
+    raw_file = metadata.get('seq_file')
+    raw_file_name = os.path.splitext(os.path.basename(raw_file))
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    virome = group_osdf_objects(prep.child_seq_sets(),
+                                'urls')
+    virome = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                  in virome.items())
+    
+    virome = virome.get(raw_file_name)
+
+    if not virome:  
+         virome = cutlass.ViralSeqSet()
+    else:
+         virome = virome[0]
+
+    req_metadata.update(conf.get('virome'))
+    req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['local_raw_file'] =  raw_file
+
+    req_metadata['tags'] = []
+
+    fields_to_update = get_fields_to_update(req_metadata, virome)
+    map(lambda key: setattr(virome, key, req_metadata.get(key)),
+        fields_to_update)
+
+    virome.updated = False
+    if fields_to_update:
+        virome.updated = True
+        virome.links['sequenced_from'] = [prep.id]
+
+        if not virome.is_valid():
+            raise ValueError('Virome validation failed: %s' % 
+                             virome.validate())
+
+    return virome       
 
 
 def create_or_update_16s_dna_prep(sample, conf, metadata):

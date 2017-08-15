@@ -51,7 +51,8 @@ def upload_data_files(workflow, dcc_file_objects):
     """
     uploaded_files = []
 
-    def _dcc_upload(task):
+    #def _dcc_upload(task):
+    def _dcc_upload(dcc_file):
         """Invokes upload of sequencing product(s) to the DCC
         making using of Cutlass' aspera transfer functionality.
 
@@ -64,25 +65,32 @@ def upload_data_files(workflow, dcc_file_objects):
         Returns:
             None
         """
-        if dcc_file:
+        if dcc_file.updated:
             success = dcc_file.save()
             if not success:
-                raise ValueError('Saving sequence to DCC failed: %s' % task.depends[0].name)
+                raise ValueError('Saving file to DCC failed:', raw_file)
             else:
-                seq_file = os.path.basename(dcc_file.urls[0])
-                uploaded_files.append(seq_file)
+                uploaded_files.append(dcc_file)
 
     for dcc_file in dcc_file_objects:
         raw_file = getattr(dcc_file, 'local_file', None) 
 
         if not raw_file:
             raw_file = getattr(dcc_file, 'local_raw_file', None)
-
-        workflow.add_task(_dcc_upload,
-                          depends = raw_file,
-                          name = "DCC Upload %s" % raw_file,
-                          time = 2*60,
-                          mem = 1024,
-                          cores = 1)
+                    
+ 
+        if dcc_file.updated:
+            print ("Uploading file %s to DCC...         " % raw_file), 
+            _dcc_upload(dcc_file)
+            print "COMPLETE"
+        else:
+            raw_file = getattr(dcc_file, 'urls')
+            print "SKIPPING FILE DUE TO NO CHANGES:", raw_file
+        #workflow.add_task(_dcc_upload,
+        #                  depends = raw_file,
+        #                  name = "DCC Upload %s" % raw_file,
+        #                  time = 2*60,
+        #                  mem = 1024,
+        #                  cores = 1)
 
     return uploaded_files
