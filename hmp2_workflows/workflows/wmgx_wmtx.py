@@ -106,6 +106,7 @@ def main(workflow):
     if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX').get('input')
         pair_identifier = data_files.get('MTX').get('pair_identifier')
+        input_tax_profiles = []
 
         project_dirs_mtx = create_project_dirs([conf_mtx.get('deposition_dir'),
                                                 conf_mtx.get('processing_dir'),
@@ -132,9 +133,6 @@ def main(workflow):
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
-
-
-
 
         ##########################################
         #          MGX FILE PROCESSING           #
@@ -236,7 +234,6 @@ def main(workflow):
                                             tar_path,
                                             depends=func_profile_outputs_wgs)
                     func_tar_files_wgs.append(func_tar_file)
-
 
         ##########################################
         #          MTX FILE PROCESSING           #
