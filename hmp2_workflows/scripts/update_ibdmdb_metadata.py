@@ -213,12 +213,13 @@ def get_project_id(row):
     type_mapping = {'host_transcriptomics': 'TX',
                     'metatranscriptomics': 'MTX',
                     'metagenomics': 'MGX',
-                    'viromics': 'MVX'}
+                    'viromics': 'MVX',
+                    'host_genome': 'HG'}
 
 
     ## This specific case is applicable to Proteomics data only but the 
     ## function can be expanded to handle other scenarios in the future
-    if project_id is None and row.get('Job') is not None:
+    if pd.isnull(project_id) and not  pd.isnull(row.get('Job')):
         project_id = row['Job']
     else:
         project_id = row.get('Site/Sub/Coll') + '_' + type_mapping.get(row.get('data_type'))
@@ -320,10 +321,14 @@ def _get_non_stool_site_sub_coll(row):
                         'Baseline (IBD and Healthy)': 'BL'}
 
     coll_num = "1"
-    if "Follow-up" in interval_name:
-        coll_num = interval_name.replace('Follow-up (Month ', '').replace(')','')
+    if "follow-up" in interval_name.lower():
+        coll_num = interval_name.lower().replace('follow-up (month ', '').replace(')','')
+        interval_name_recode = "FU"
+    else:
+        interval_name_recode = interval_mapping.get(interval_name)
 
-    return site_mapping.get(site_name) + subj_id + 'C' + interval_mapping.get(interval_name) + coll_num
+    return site_mapping.get(site_name) + subj_id + 'C' + interval_name_recode + coll_num
+
 
 
 def resolve_dupe_ssc_ids(metadata_df):
@@ -367,12 +372,17 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
         pandas.DataFrame: Slice of metadata for files provided.
     """
     metadata_df = None
+
     sample_mapping = dict(zip(bb_utils.sample_names(sequence_files, pair_identifier),
                               map(get_sample_id_from_fname, sequence_files)))
     sample_ids = sample_mapping.values()
-    
+
     if pair_identifier:
        sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
+
+    sample_ids_techreps = [sample_id.replace for sample_id in sample_ids
+                           if "techrep" in sample_ids]
+    sample_ids = set(sample_ids) - set(sample_ids_techreps)
 
     data_type_mapping = config.get('dtype_mapping')
 
@@ -382,6 +392,17 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                                  (sample_df['MbX'].isin(sample_ids)) |
                                  (sample_df['Viromics'].isin(sample_ids)) |
                                  (sample_df['Site/Sub/Coll']).isin(sample_ids)]
+
+    if sample_ids_techreps:
+        sample_ids_techreps = [sample_id.replace('_techrep', '') for sample_id 
+                               in sample_ids_techreps]
+        sample_subset_techreps = sample_df[(sample_df['Parent Sample A'].isin(sample_ids_techreps)) |
+                                 (sample_df['Proteomics'].isin(sample_ids_techreps)) |
+                                 (sample_df['MbX'].isin(sample_ids_techreps)) |
+                                 (sample_df['Viromics'].isin(sample_ids_techreps)) |
+                                 (sample_df['Site/Sub/Coll']).isin(sample_ids_techreps)]
+
+        sample_subset_techreps['External ID'] = sample_subset_techreps['Parent Sample A'].map(lambda sid: sid.replace('-', '') + "_TR")
 
     ## TODO: Figure out if we have any samples that did not have aassociated metadata
     #join_how = 'outer' if full_join else 'left'
@@ -406,14 +427,14 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
         elif data_type == "HG":
+            studytrax_col = "bl_q4"
             hg_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
-            hg_df['External ID'] = tx_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
+            hg_df['External ID'] = hg_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
 
-            metadata_df = pd.concat([sample_subset_df] + transcriptome_dfs, 
+            metadata_df = pd.concat([sample_subset_df, hg_df], 
                                     ignore_index=True)
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
-
     else:
         metadata_df = sample_subset_df.merge(studytrax_df, 
                                              left_on='Parent Sample A',
@@ -425,6 +446,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
         ## replicate them.
         metadata_df.loc[metadata_df['st_q17'].isnull(), 'st_q17'] = metadata_df['Proteomics']
         metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['MbX']
+        metadata_df.loc[metadata_df['st_q12'].isnull(), 'st_q12'] = metadata_df['Viromics']
 
         if proteomics_df is not None:   
             ## In order to merge our proteomics data properly we'll need to 
@@ -447,6 +469,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                                             on='Parent Sample A',
                                             how='left')
     
+    ## Now if we have techreps in our samples we need to add them in.
     metadata_df['data_type'] = data_type_mapping.get(data_type)
 
     return metadata_df
@@ -486,6 +509,7 @@ def generate_external_id(row):
         string: The external ID for the given row of metadata
     """
     stool_id = row['st_q4']
+    blood_id = row['bl_q4']
     external_id  = row.get('External ID')
     base_id = None
 
@@ -493,11 +517,15 @@ def generate_external_id(row):
         base_id = external_id
     elif not pd.isnull(stool_id):
         base_id = stool_id
+    elif not pd.isnull(blood_id):
+        base_id = blood_id
     else:
         raise Exception("Could not generate External ID:", row)
 
     site_sub_coll = row['Site/Sub/Coll ID']
-    return site_sub_coll[0] + base_id.replace('-', '')
+    row['External ID'] = site_sub_coll[0] + base_id.replace('-', '')
+    #eturn site_sub_coll[0] + base_id.replace('-', '')
+    return row
 
 
 def fix_site_sub_coll_id(row, site_mapping):
@@ -543,7 +571,7 @@ def fill_visit_nums(row):
     visit_num = row['visit_num']
     data_type  = row['data_type']
 
-    if np.isnan(visit_num) and data_type not in ['host_transcriptomics']:
+    if np.isnan(visit_num) and data_type not in ['host_transcriptomics', 'host_genome']:
         visit_num = site_sub_coll_id.split('C')[-1]
     
     return visit_num
@@ -595,7 +623,7 @@ def generate_collection_statistics(metadata_df, collection_dict, biopsy_dates=No
         if data_type == 'host_transcriptomics':
             interval_name = row['IntervalName']
             row['week_num'] = biopsy_dates[str(subject_id)][interval_name]
-        else:
+        elif data_type != 'host_genome':
             visit_num = row['visit_num']
             receipt_date = row['Actual Date of Receipt']
 
@@ -778,8 +806,8 @@ def main(args):
  
             new_metadata_df = pd.concat(new_metadata, ignore_index=True)
 
+            new_metadata_df[metadta_df['External ID'].isnull()] = None
             new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
-            #new_metadata_df['Site'] = new_metadata_df['SiteName']
             new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
             new_metadata_df['visit_num'] = new_metadata_df['Collection #']
             new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
@@ -800,6 +828,8 @@ def main(args):
             metadata_df = metadata_df.drop_duplicates(subset=['External ID', 'Site/Sub/Coll ID', 'data_type'], keep='last')
     else:
         metadata_df = new_metadata_df
+
+    metadata_df[metadata_df['External ID'].isnull()] = metadata_df[metadata_df['External ID'].isnull()].apply(generate_external_id, axis=1)
 
     if args.auxillary_metadata:
         for aux_file in args.auxillary_metadata:
@@ -836,7 +866,7 @@ def main(args):
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
 
-    metadata_df['External ID'] = new_metadata_df.apply(generate_external_id, axis=1)
+    metadata_df['hbi_score'] = pd.to_numeric(metadata_df['hbi_score'])
 
     ## Couple small remaining changes
     metadata_df.ix[metadata_df.hbi_score > 900, 'hbi_score'] = None 
@@ -845,6 +875,8 @@ def main(args):
 
     metadata_df = generate_collection_statistics(metadata_df, collection_dates_dict, biopsy_date_map)
     
+    #metadata_df[metadta_df.week_num.isnull()] = generate_collection_statistics(metadata_df[metadta_df.week_num.isnull()],
+    #                                                                           collection_dates_dict)
     metadata_df.drop(['Site'], 1, inplace=True)
 
     metadata_df.to_csv(metadata_file, index=False)
