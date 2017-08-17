@@ -380,8 +380,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     if pair_identifier:
        sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
 
-    sample_ids_techreps = [sample_id.replace for sample_id in sample_ids
-                           if "techrep" in sample_ids]
+    sample_ids_techreps = [sid for (k, sid) in sample_mapping.iteritems() if "techreps" in k]
     sample_ids = set(sample_ids) - set(sample_ids_techreps)
 
     data_type_mapping = config.get('dtype_mapping')
