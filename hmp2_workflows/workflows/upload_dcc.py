@@ -157,33 +157,27 @@ def main(workflow):
                                                               axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
-                dcc_subject = dcc.create_or_update_subject(dcc_subjects,
-                                                           subject_id[1:],
-                                                           dcc_study.id,
-                                                           metadata,
-                                                           conf)
+                dcc_subject = dcc.crud_subject(dcc_subjects, 
+                                               subject_id[1:],
+                                               dcc_study.id,
+                                               metadata,
+                                               conf)
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
                                                     'visit_number')
                 
                 for (idx, row) in metadata.iterrows():
-                    #print "DEBUG: %s - %s - %s" % (row['External ID'], 
-                    #                               row['seq_file'],
-                    #                               row['Tube B:Proteomics'])
-
-                    dcc_visit = dcc.create_or_update_visit(dcc_visits, 
-                                                           int(row.get('visit_num')),
-                                                           dcc_subject.id, 
-                                                           row)
+                    dcc_visit = dcc.crud_visit(dcc_visits, 
+                                               int(row.get('visit_num')),
+                                               dcc_subject.id, 
+                                               row)
 
                     dcc_samples = dcc.group_osdf_objects(dcc_visit.samples(),
                                                          'name')
-                    dcc_sample = dcc.create_or_update_sample(dcc_samples,
-                                                             ## These are on Parent Sample A even though 
-                                                             ## I've been tracking everything of Sample B...
-                                                             row.get('site_sub_coll'),
-                                                             dcc_visit.id, 
-                                                             conf,
-                                                             row)
+                    dcc_sample = dcc.crud_sample(dcc_samples,
+                                                 row.get('site_sub_coll'),
+                                                 dcc_visit.id, 
+                                                 conf,
+                                                 row)
 
                     data_file = row.get('seq_file')
                     output_file = row.get('out_file')
@@ -195,32 +189,35 @@ def main(workflow):
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
 
                         if data_type == "MBX": 
-                            dcc_prep = dcc.create_or_update_microbiome_prep(dcc_sample,
-                                                                            conf.get('data_study'),
-                                                                            conf.get(data_type),
-                                                                            row)
-                            dcc_seq_obj = dcc.create_or_update_proteome(dcc_prep,
-                                                                        file_md5sum,
-                                                                        dcc_sample.name,
-                                                                        dtype_metadata,
-                                                                        row)
+                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
+                                                                conf.get('data_study'),
+                                                                data_type,
+                                                                conf.get(data_type),
+                                                                row)
+                            dcc_seq_obj = dcc.crud_abundance_matrix(session, 
+                                                                    dcc_prep,
+                                                                    file_md5sum,
+                                                                    dcc_sample.name,
+                                                                    conf.get('data_study'),
+                                                                    conf.get(data_type),
+                                                                    row)
 
                         elif data_type == "TX":
-                            dcc_prep = dcc.create_or_update_host_seq_prep(dcc_sample,
-                                                                          conf.get('data_study'),
-                                                                          dtype_metadata,
-                                                                          row)
-                            dcc_seq_obj = dcc.create_or_update_host_tx_raw_seq_set(dcc_prep,
-                                                                                   file_md5sum,
-                                                                                   dcc_sample.name,
-                                                                                   conf.get(data_type),
-                                                                                   row)
+                            dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
+                                                              conf.get('data_study'),
+                                                              dtype_metadata,
+                                                              row)
+                            dcc_seq_obj = dcc.crud_host_tx_raw_seq_set(dcc_prep,
+                                                                       file_md5sum,
+                                                                       dcc_sample.name,
+                                                                       conf.get(data_type),
+                                                                       row)
                         elif data_type == "MTX":
-                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
-                                                                         conf.get('data_study'),
-                                                                         data_type,
-                                                                         dtype_metadata,
-                                                                         row)
+                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                             conf.get('data_study'),
+                                                             data_type,
+                                                             dtype_metadata,
+                                                             row)
                             dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
                                                                                       file_md5sum,
                                                                                       dcc_sample.name,
@@ -228,31 +225,28 @@ def main(workflow):
                                                                                       row)
                                                                          
                         elif data_type == "MGX":
-                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
-                                                                         conf.get('data_study'),
-                                                                         data_type,
-                                                                         dtype_metadata,
-                                                                         row)
-                            dcc_seq_obj = dcc.create_or_update_wgs_raw_seq_set(dcc_prep,
-                                                                               file_md5sum,
-                                                                               dcc_sample.name,
-                                                                               dtype_metadata,
-                                                                               row)
+                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                             conf.get('data_study'),
+                                                             data_type,
+                                                             dtype_metadata,
+                                                             row)
+                            dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
+                                                                   file_md5sum,
+                                                                   dcc_sample.name,
+                                                                   dtype_metadata,
+                                                                   row)
                         elif data_type == "MVX":
-                            dcc_prep = dcc.create_or_update_wgs_dna_prep(dcc_sample,
-                                                                         conf.get('data_study'),
-                                                                         data_type,
-                                                                         dtype_metadata,
-                                                                         row) 
+                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                             conf.get('data_study'),
+                                                             data_type,
+                                                             dtype_metadata,
+                                                             row) 
                             dcc_seq_obj = dcc.crud_viral_seq_set(dcc_prep,
                                                                  file_md5sum,
                                                                  dcc_sample.name,
                                                                  dtype_metadata,
                                                                  row)
                         elif data_type == "16S":
-                            #dcc_prep = dcc.create_or_update_16s_dna_prep(dcc_sample,
-                            #                                             conf,
-                            #                                             row)
                             pass
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])

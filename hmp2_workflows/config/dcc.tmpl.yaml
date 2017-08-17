@@ -80,6 +80,19 @@ sample:
       env_package: "Human-associated"
       rel_to_oxygen: "N/A"
 
+visit_attribute:
+  mesh_map:
+    cd: D003424
+    uc: D003424
+  doid_map: 
+    cd: "DOID:8778"
+    uc: "DOID:8577"
+  col_map:
+    disease_name: diagnosis
+    age: consent_age
+    bowel_day: "Bowel frequency during the day"
+    bowel_night: "Bowel frequency during the night"
+
 16S:
   prep_id: 1
   library_method_text: >-

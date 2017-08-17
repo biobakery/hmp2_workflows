@@ -42,7 +42,7 @@ from cutlass.mixs import MIXS
 from cutlass.mims import MIMS
 
 
-def default_mixs_dict():
+def required_mixs_dict():
     """Generates the default sample mixs dictionary needed when submitting a
     Cutlass Sample object.
 
@@ -61,7 +61,7 @@ def default_mixs_dict():
                    if k in MIXS.required_fields()])
 
 
-def default_mims_dict():
+def required_mims_dict():
     """Generates the default sample mims dictionary needed when submitting a
     Cutlass Sample object.
 
@@ -459,8 +459,7 @@ def get_or_update_study(conf, session, project_id):
     return study
 
 
-def create_or_update_subject(subjects, metadata_subject_id, study_id, 
-                             metadata, conf):
+def crud_subject(subjects, metadata_subject_id, study_id, metadata, conf):
     """Creates an iHMP OSDF Subject object if it does not exist or updates 
     an existing Subject object with new metadata when present.
 
@@ -540,7 +539,7 @@ def create_or_update_subject(subjects, metadata_subject_id, study_id,
     return subject
 
 
-def create_or_update_visit(visits, visit_num, subject_id, metadata):
+def crud_visit(visits, visit_num, subject_id, metadata):
     """Creates an iHMP OSDF Visit object if it does not exist or updates an
     already existing Visit object with the provided metadata.
 
@@ -590,10 +589,83 @@ def create_or_update_visit(visits, visit_num, subject_id, metadata):
         else:
             raise ValueError('Visit validation failed: %s' % visit.validate())
 
+    visit_attr = _crud_visit_attribute()
+
     return visit
 
 
-def _create_or_update_sample_attribute(sample, metadata, conf):
+def _crud_visit_attribute(visit, metadata):
+    """Creates an iHMP OSDF VisitAttribute object if it does not exist or
+    updates an already existing object with the provided metadata.
+
+    Args:
+        sample (cutlass.Visit): The Visit object that this VisitAttribute 
+            object should be linked too.
+        metadata (pandas.Series): A collection of metadata that will be used 
+            to instantiate or update the Sample Attribute Object
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.SampleAttribute: The created or updated OSDF Sample Attribute
+            object.
+    """
+    visit_attrs = visit.VisitAttribute()
+
+    ## We should only ever have one VisitAttr object associated with a Visit
+    ## object so updating shoudl be a little aeasier.
+    visit_attr = next(visit_attrs, None)
+    if not visit_attr:
+        visit_attr = cutlass.VisitAttribute()
+    
+    req_metadata = {}
+    req_metadata['study'] = conf.get('data_study')
+    req_metadata['fecalcal'] = str(metadata['fecalcal'])
+    
+    fields_to_update = get_fields_to_update(req_metadata, sample_attr)
+    map(lambda key: setattr(sample_attr, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        sample_attr.links['associated_with'] = [sample.id]
+
+        if sample_attr.is_valid():
+            success = sample_attr.save()
+            if not success: 
+                raise ValueError('Saving sample attribute for sample %s failed.', 
+                                  sample.id)
+        else:
+            raise ValueError('Sample attribute validationg failed: %s' % 
+                             sample_attr.validate())                   
+
+    return sample_attr
+
+
+def _get_biopsy_location(metadata, body_site_map):
+    """Extracts biopsy location for a given sample by examining the 
+    four biopsy columns available in the HMP2 metadata table. 
+
+    Args:
+        metadata (pandas.DataFrame): DataFrame containing sample metadata
+
+    Requires:
+        None
+
+    Returns:
+        string: The location of the biopsy                
+    """
+    biopsy_location = metadata.get('biopsy_location')
+    
+    if biopsy_location == "Other Inflamed":
+        biopsy_location = metadata.get('Location of inflamed RNA sample:')
+    elif biopsy_location == "Non-inflamed":
+        biopsy_location = metadata.get('Location of non-inflamed DNA/RNA sample:')                
+
+    return body_site_map.get(biopsy_location)
+
+
+def _crud_sample_attribute(sample, metadata, conf):
     """Creates an iHMP OSDF Sample Attribute object if it does not exist or
     updates an already existing object with the provided metadata.
 
@@ -651,30 +723,7 @@ def _create_or_update_sample_attribute(sample, metadata, conf):
     return sample_attr
 
 
-def _get_biopsy_location(metadata, body_site_map):
-    """Extracts biopsy location for a given sample by examining the 
-    four biopsy columns available in the HMP2 metadata table. 
-
-    Args:
-        metadata (pandas.DataFrame): DataFrame containing sample metadata
-
-    Requires:
-        None
-
-    Returns:
-        string: The location of the biopsy                
-    """
-    biopsy_location = metadata.get('biopsy_location')
-    
-    if biopsy_location == "Other Inflamed":
-        biopsy_location = metadata.get('Location of inflamed RNA sample:')
-    elif biopsy_location == "Non-inflamed":
-        biopsy_location = metadata.get('Location of non-inflamed DNA/RNA sample:')                
-
-    return body_site_map.get(biopsy_location)
-
-
-def create_or_update_sample(samples, sample_id, visit_id, conf, metadata):
+def crud_sample(samples, sample_id, visit_id, conf, metadata):
     """Creates an iHMP OSDF Sample object if it doesn't exist or updates 
     an already exisiting Sample object with the provided metadata.
 
@@ -740,7 +789,7 @@ def create_or_update_sample(samples, sample_id, visit_id, conf, metadata):
     return sample
 
 
-def create_or_update_wgs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
+def crud_wgs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     """Creates an iHMP OSDF WGS DNA Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -864,7 +913,7 @@ def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return host_assay_prep
 
 
-def create_or_update_host_seq_prep(sample, study_id, conf, metadata):
+def crud_host_seq_prep(sample, study_id, conf, metadata):
     """Creates an iHMP OSDF Host Seq Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -921,7 +970,7 @@ def create_or_update_host_seq_prep(sample, study_id, conf, metadata):
     return host_seq_prep
 
 
-def create_or_update_microbiome_prep(sample, study_id, conf, metadata):
+def crud_microbiome_prep(sample, study_id, conf, metadata):
     """Creates an iHMP OSDF Microbiome Assay Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -981,7 +1030,7 @@ def create_or_update_microbiome_prep(sample, study_id, conf, metadata):
     return microbiome_prep
 
 
-def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
+def crud_proteome(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF Proteome object if it doesn't exist or updates
     an already existing Proteome object with the provided metadta.
 
@@ -1055,7 +1104,7 @@ def create_or_update_proteome(prep, md5sum, sample_id, conf, metadata):
     return proteome        
 
 
-def create_or_update_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+def crud_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF HostTranscriptomicsRawSeqSet  object if it 
     doesn't exist or updates an already existing object with the provided metadta.
 
@@ -1124,7 +1173,7 @@ def create_or_update_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata
     return transcriptome        
 
 
-def create_or_update_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF WGSRawSeqSet object if it doesn't exist or 
     updates an already existing object with the provided metadta.
 
@@ -1387,6 +1436,3 @@ def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
 
     return virome       
 
-
-def create_or_update_16s_dna_prep(sample, conf, metadata):
-    pass
