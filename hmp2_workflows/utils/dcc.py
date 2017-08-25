@@ -591,9 +591,9 @@ def crud_subjects(subjects, study_id, baseline_metadata, conf):
         req_metadata = {}
         req_metadata['tags'] = []
         req_metadata['rand_subject_id'] = subject_id
-        req_metadata['gender'] = row['sex'].iloc[0].lower().strip()
+        req_metadata['gender'] = row.get('sex').lower()
 
-        race = row['race'].iloc[0].strip()
+        race = row.get('race')
         req_metadata['race'] = race_map.get(race, race.replace(' ', '_'))
 
         fields_to_update = get_fields_to_update(req_metadata, subject)
