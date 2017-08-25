@@ -65,6 +65,8 @@ def parse_cli_arguments():
                           'files to process in this workflow run.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
                            'for the provided data files.', default=None)
+    workflow.add_argument('baseline-metadata-file', desc='Metadata file '
+                          'containing baseline visit metadata per subject.')                           
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
 
@@ -80,6 +82,7 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
 
     metadata_df = pd.read_csv(args.metadata_file)
+    baseline_metadata_df = pd.read_csv(args.baseline_metadata_file)
     md5sums_map = {}
 
     ## For every set of data files we're going to want to iterate over each  
@@ -97,6 +100,10 @@ def main(workflow):
                                             dcc_project.id)
         dcc_subjects = dcc.group_osdf_objects(dcc_study.subjects(),
                                               'rand_subject_id')
+        dcc_subjects = dcc.crud_subjects(dcc_subjects,
+                                         dcc_study.id,
+                                         baseline_metadata_df,
+                                         conf)
 
         for data_type in data_files:
             dtype_metadata = conf.get(data_type)
@@ -124,6 +131,7 @@ def main(workflow):
 
             sample_metadata_df = metadata_df[(metadata_df[id_col].isin(sample_ids)) &
                                              (metadata_df['data_type'] == dtype_name)]
+
 
             ## Just in case there are more samples
             missing_samples = set(sample_ids) - set(sample_metadata_df[id_col].tolist())
@@ -157,11 +165,12 @@ def main(workflow):
                                                               axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
-                dcc_subject = dcc.crud_subject(dcc_subjects, 
-                                               subject_id[1:],
-                                               dcc_study.id,
-                                               metadata,
-                                               conf)
+                dcc_subject = dcc_subjects.get(subject_id)
+                #dcc_subject = dcc.crud_subject(dcc_subjects, 
+                #                               subject_id[1:],
+                #                               dcc_study.id,
+                #                               metadata,
+                #                               conf)
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
                                                     'visit_number')
                 

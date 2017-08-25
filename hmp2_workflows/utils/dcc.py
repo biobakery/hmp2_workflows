@@ -42,6 +42,25 @@ from cutlass.mixs import MIXS
 from cutlass.mims import MIMS
 
 
+def _convert(value, type_):
+    """Casts the provided value to the specified type.
+
+    Args:
+        value (string): The value to be casted.
+        type (string): The type to cast the supplied value too.
+
+    Requires:
+        None
+
+    Returns:
+        <TYPE>: Value casted to the supplied type.
+    """
+    module = importlib.import_module('__builtin__')
+    cls_ = getattr(module, type_)
+
+    return cls_
+
+
 def required_mixs_dict():
     """Generates the default sample mixs dictionary needed when submitting a
     Cutlass Sample object.
@@ -459,17 +478,96 @@ def get_or_update_study(conf, session, project_id):
     return study
 
 
-def crud_subject(subjects, metadata_subject_id, study_id, metadata, conf):
-    """Creates an iHMP OSDF Subject object if it does not exist or updates 
-    an existing Subject object with new metadata when present.
+def _get_medications_list(metadata, med_cols):
+    """Parses the provided metadata collection to retrieve a list of 
+    medications a subject is currently taking.
+
+    Args:
+        metadata (pandas.DataFrame): A collection of technical and clinical
+            metadata for a given subject.
+        med_cols (list): A list of column names that indicate a type of 
+            medication a subject may be currently taking.
+
+    Requires:
+        None
+
+    Returns:
+        string: A string containing a list of medications a subject is 
+            currently taking.        
+    """
+    medications = None
+
+    all_meds_df = metadata.filter(med_cols)
+    curr_meds_df = all_meds_df.apply(lambda row: all_meds_df[row.name] == "Current", axis=1)
+    curr_meds_df = curr_meds_df.any()    
+    medications = ",".join([med_name for (med_name, val) in meds.iteritems() if val])
+
+    return medications
+
+
+def _crud_subject_attribute(subject, metadata, conf):
+    """Creates an iHMP OSDF SubjectAttribute object if it does not exist or
+    updates an already existing object with the provided metadata.
+
+    Args:
+        subject (cutlass.Subject): The Subject object that this SubjectAttribute 
+            object should be linked too.
+        metadata (pandas.DataFrame): A collection of metadata that will be used 
+            to instantiate or update the Sample Attribute Object
+        conf (dict): Python representation of YAML configuration file that 
+            contains 
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.SubjectAttribute: The created or updated OSDF 
+            SubjectAttribute object.
+    """
+    subject_attr = subject.SubjectAttributes()
+    edu_map = conf.get('education_map')
+    sa_col_map = conf.get('col_map')
+
+    subject_attr = next(subject_attrs, None)
+    if not subject_attr:
+        subject_attr = cutlass.SubjectAttribute()
+ 
+    req_metadata = {}
+    req_metadata = dict((k, metadata.get(sa_col_map.get(k))) for k in 
+                        sa_col_map.keys())
+    req_metadata['medications'] = _get_medications_list(metadata)
+    req_metadata = dict((k,v) for k, v in req_metadta.iteritems() if v)
+
+
+    fields_to_update = get_fields_to_update(req_metadata, subject_attr)
+    map(lambda key: setattr(subject_attr, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        subject_attr.links['associated_with'] = [subject.id]
+
+        if subject_attr.is_valid():
+            success = subject_attr.save()
+            if not success: 
+                raise ValueError('Saving subject attribute for subject %s failed.', 
+                                  subject.rand_subject_id)
+        else:
+            raise ValueError('Subject attribute validationg failed: %s' % 
+                             subject_attr.validate())                   
+
+    return subject_attr
+
+
+def crud_subjects(subjects, study_id, baseline_metadata, conf):
+    """Creates iHMP OSDF Subjects objects if they do not exist or 
+    updates an existing Subject object with new metadata when present.
 
     Args:
         subjects (list): A list of OSDF Subject objects
-        metadata_subject_id (string): The subject ID (pulled from the metadata
-            table) to check if an OSDF Subject exists for.
         study_id (string): OSDF Study ID that supplied subject should be 
             linked too.
-        metadata (panda.Series): All metadata for one subject/sample combo
+        baseline_metadata (panda.DataFrame): Collection of metadata containing 
+            baseline metadata for all subjects involved in the project.
         conf (dict): A python dictionary representation of the YAML 
             configuration file containing metadata parameters needed for 
             the DCC upload.
@@ -478,65 +576,46 @@ def crud_subject(subjects, metadata_subject_id, study_id, metadata, conf):
         None
 
     Returns:
-        cutlass.Subject: The created or updated OSDF Subject object.
+        list: A list of OSDF Subject objects key'd on subject ID.
     """
-    subject = subjects.get(metadata_subject_id)
+    for (idx, row) in baseline_metadata.iterrows():
+        subject_id = row.get('ProjectSpecificID')
 
-    if not subject: 
-        subject = cutlass.Subject()
-    else:
-        subject = subject[0]
- 
-    race_map = conf.get('race_map')
-    edu_map = conf.get('education_map')
-    disease_map = conf.get('disease_map')
-
-    req_metadata = {}
-    req_metadata['rand_subject_id'] = metadata_subject_id
-    req_metadata['gender'] = metadata['sex'].iloc[0].lower().strip()
-
-    race = metadata['race'].iloc[0].strip()
-    req_metadata['race'] = race_map.get(race, race.replace(' ', '_'))
-
-    req_metadata['tags'] = []
-    age_at_dx = metadata['Age at diagnosis'].iloc[0]
-    if not np.isnan(age_at_dx):  
-       req_metadata['tags'].append('age_at_dx:%s' % age_at_dx)
-
-    edu_level = metadata['Education Level'].iloc[0]
-    if isinstance(edu_level, str):
-        if edu_level.isdigit():
-            edu_level = edu_map.get(edu_level)
-        else: 
-            edu_level = edu_level.strip()
-
-        req_metadata['tags'].append('highest_education:%s' % edu_level)
-
-    disease_state = (metadata['diagnosis'].iloc[0].strip().lower()
-                                                          .replace('\'', '')
-                                                          .replace(' ', '_'))
-    if disease_state.isdigit():
-        disease_state = disease_map.get(int(disease_state))
-
-    req_metadata['tags'].append('diagnosis:%s' % disease_state)
-
-    fields_to_update = get_fields_to_update(req_metadata, subject)
-    map(lambda key: setattr(subject, key, req_metadata.get(key)),
-        fields_to_update)
-
-    if fields_to_update:
-        subject.links['participates_in'] = [study_id]
-
-        if subject.is_valid():
-            success = subject.save()
-            if not success:
-                raise ValueError('Saving subject %s failed.' % 
-                                 metadata_subject_id)
+        if subject_id in subjects:
+            subject = subjects.get(subject_id)[0]
         else:
-            raise ValueError('Subject validation failed: %s' % 
-                             subject.validate())
+            subject = cutlass.Subject()
+
+        race_map = conf.get('race_map')
+
+        req_metadata = {}
+        req_metadata['tags'] = []
+        req_metadata['rand_subject_id'] = subject_id
+        req_metadata['gender'] = row['sex'].iloc[0].lower().strip()
+
+        race = row['race'].iloc[0].strip()
+        req_metadata['race'] = race_map.get(race, race.replace(' ', '_'))
+
+        fields_to_update = get_fields_to_update(req_metadata, subject)
+        map(lambda key: setattr(subject, key, req_metadata.get(key)),
+            fields_to_update)
+
+        if fields_to_update:
+            subject.links['participates_in'] = [study_id]
+
+            if subject.is_valid():
+                success = subject.save()
+                if not success:
+                    raise ValueError('Saving subject %s failed.' % 
+                                    metadata_subject_id)
+            
+                subject_attr = _crud_subject_attr(subject, metadata, conf)
+                subjects[subject_id] = subject
+            else:
+                raise ValueError('Subject validation failed: %s' % 
+                                subject.validate())
     
-    return subject
+    return subjects
 
 
 def crud_visit(visits, visit_num, subject_id, metadata):
@@ -586,15 +665,68 @@ def crud_visit(visits, visit_num, subject_id, metadata):
             success = visit.save()
             if not success:
                 raise ValueError('Saving visit %s failed.' % visit_num)
+
+            visit_attr = _crud_visit_attribute()
         else:
             raise ValueError('Visit validation failed: %s' % visit.validate())
-
-    visit_attr = _crud_visit_attribute()
 
     return visit
 
 
-def _crud_visit_attribute(visit, metadata):
+def _get_visit_attr_metadata(metadata, visit_attr_conf, req_metadata):
+    """Retrieves all visit attribute metadata from the provided 
+    metadata pandas DataFrame using the mappings found in the 
+    supplied dictionary.
+
+    Args:
+        metadata (pandas.DataFrame): Collection of metadata that will be used
+            to populate VisitAttribute object.
+        visit_attr_conf (dict): Dictionary containing pieces of metadata
+            required by VisitAttribute object.    
+        req_metadat (dict): Dictionary housing all required metadata.            
+
+    Requires:
+        None
+
+    Returns:
+        dict: Dictionary containing metadata required by VisitAttribute
+            object.                            
+    """
+    visit_attr_cols = visit_attr_conf.get('col_map')
+    module = importlib.import_module('__builtin__')
+
+    map(lambda key: setattr(req_metadata, key,
+                            metadata.get(visit_attr_cols.get(key))), 
+                            visit_attr_cols.keys())
+
+    ## Remove any keys that have None as value
+    req_metadata = dict((k,v) for k, v in req_metadta.iteritems() if v)
+
+    ## Out of our metadata dict we will have a bunch of string values 
+    ## that we will need to convert to the proper types for OSDF
+    va_attrs = cutlass.VisitAttribute.__dict__.get('_VisitAttribute__dict')
+
+    ## Wow this is ugly....
+    req_metadata = dict((k, _convert(v, va_attrs.get(k)[0])) for 
+                         k, v in req_metadata.iteritems())
+
+    # for (key, val) in req_metadata.iteritems():
+    #     if key not in va_attrs:
+    #         raise ValueException('Invalid key for VisitAttribute objects:', key)
+
+    #     attr_type = va_attrs.get(key)[0]
+
+    #     if attr_type == "float":
+    #         req_metadata[key] = float(val)
+    #     elif attr_type == "int":
+    #         req_metadata[key] = int(val)
+    #     elif attr_type == "bool":
+    #         req_metadata[key] = True if val.startswith('No') else False
+
+    return req_metadata
+
+
+def _crud_visit_attribute(visit, metadata, conf):
     """Creates an iHMP OSDF VisitAttribute object if it does not exist or
     updates an already existing object with the provided metadata.
 
@@ -603,6 +735,8 @@ def _crud_visit_attribute(visit, metadata):
             object should be linked too.
         metadata (pandas.Series): A collection of metadata that will be used 
             to instantiate or update the Sample Attribute Object
+        conf (dict): Python representation of YAML configuration file that 
+            contains 
 
     Requires:
         None
@@ -618,28 +752,42 @@ def _crud_visit_attribute(visit, metadata):
     visit_attr = next(visit_attrs, None)
     if not visit_attr:
         visit_attr = cutlass.VisitAttribute()
-    
+
     req_metadata = {}
     req_metadata['study'] = conf.get('data_study')
-    req_metadata['fecalcal'] = str(metadata['fecalcal'])
-    
-    fields_to_update = get_fields_to_update(req_metadata, sample_attr)
-    map(lambda key: setattr(sample_attr, key, req_metadata.get(key)),
+ 
+    req_metadata['disease_name'] = disease_name
+    req_metadata['disease_description'] = disease_desc
+    req_metadata['disease_ontology_id'] = disease_doid
+    req_metadata['disease_mesh_id'] = disease_mesh_id
+
+    ## None of our subjects have cancer
+    req_metadata['cancer'] = "No"
+
+    if metadata.get('IntervalName') == "Screening Colonoscopy":
+        req_metadata['colonoscopy'] = True
+
+    req_metadata = _get_visit_attr_metadata(metadata, conf.get('visit_attribute'))
+
+    req_metadata['tags'] = []
+
+    fields_to_update = get_fields_to_update(req_metadata, visit_attr)
+    map(lambda key: setattr(visit_attr, key, req_metadata.get(key)),
         fields_to_update)
 
     if fields_to_update:
-        sample_attr.links['associated_with'] = [sample.id]
+        visit_attr.links['associated_with'] = [sample.id]
 
-        if sample_attr.is_valid():
-            success = sample_attr.save()
+        if visit_attr.is_valid():
+            success = visit_attr.save()
             if not success: 
-                raise ValueError('Saving sample attribute for sample %s failed.', 
-                                  sample.id)
+                raise ValueError('Saving visit attribute for visit %s failed.', 
+                                  visit.id)
         else:
-            raise ValueError('Sample attribute validationg failed: %s' % 
-                             sample_attr.validate())                   
+            raise ValueError('Visit attribute validation failed: %s' % 
+                             visit_attr.validate())                   
 
-    return sample_attr
+    return visit_attr
 
 
 def _get_biopsy_location(metadata, body_site_map):
@@ -781,10 +929,9 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
 
             ## If we successfully create a Sample we need to attach a 
             ## SampleAttribute to it.
+            sample_attr = _create_or_update_sample_attribute(sample, metadata, conf)
         else:
             raise ValueError('Sample validation failed; %s' % sample.validate())
-       
-    sample_attr = _create_or_update_sample_attribute(sample, metadata, conf)
 
     return sample
 

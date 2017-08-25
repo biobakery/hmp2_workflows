@@ -37,6 +37,11 @@ race_map:
   White: caucasian
   "American Indian or Alaska Native": american_indian_or_alaska_native
 
+disease_map:
+  uc: "ulcerative colitis"
+  cd: "Crohn's disease"
+  nonIBD: "Non-IBD"
+
 study:
   name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
   subtype: ibd
@@ -80,18 +85,149 @@ sample:
       env_package: "Human-associated"
       rel_to_oxygen: "N/A"
 
-visit_attribute:
-  mesh_map:
-    cd: D003424
-    uc: D003424
-  doid_map: 
-    cd: "DOID:8778"
-    uc: "DOID:8577"
+
+subject_attribute:
+  meds_cols:
+    - "Lomotil"
+    - "Imodium"
+    - "DTO"
+    - "Asacol (mesalamine)"
+    - "Pentasa (mesalamine)"
+    - "Lialda (mesalamine)"
+    - "Apriso (mesalamine)"
+    - "Colozal (balasalizide)"
+    - "Sulfasalizine (Azulfidine)"
+    - "Dipentum (olsalazine)"
+    - "Rowasa enemas (mesalamine enemas)"
+    - "Canasa suppositories (mesalamine suppositories)"
+    - "Flagyl (Metronidazole)"
+    - "Cipro (Ciprofloxin)"
+    - "Xifaxin (rifaxamin)"
+    - "Levaquin"
+    - "Prednisone"
+    - "Entocort (Budesonide)"
+    - "Solumedrol (Medrol)"
+    - "IV steroids"
+    - "Cortenemas, Cortifoam, Proctofoam"
+    - "Azathioprine (Imuran, Azasan)"
+    - "Methotrexate"
+    - "Mercaptopurine (Purinethol, 6MP)"
+    - "VSL #3"
+    - "FOS"
+    - "Remicade (Infliximab)"
+    - "Humira (Adalimumab)"
+    - "Cimzia (Certlizumab)"
+    - "Tysabri (Natalizumab)"
+    - "Other current IBD medications"
   col_map:
+    occupation: "Occupation"
+    diabetes: "Type I Diabetes (Juvenile Diabetes)"
+    asthma: "Asthma"
+    cad: "Myocarditis"
+    father: "Father"
+    mother: "Mother"
     disease_name: diagnosis
+    abdominal_pain: "Abdominal pain"
+    arthralgia: "Arthralgia"
     age: consent_age
     bowel_day: "Bowel frequency during the day"
     bowel_night: "Bowel frequency during the night"
+    stool_blood: "Blood in the stool"
+    stool_sof: "Number of liquid or very soft stools in the past 24 hours:"
+    urgency_def: "Urgency of defecation"
+    pregnant: "Subject is pregnant:"
+    chemo: "Chemotherapy"
+    immunosupp: "Immunosuppressants (e.g. oral corticosteroids)"
+    abx: "Antibiotics"
+    alcohol: "Alcohol (beer, brandy, spirits, hard liquor, wine, aperitif, etc.)"
+    soda: "Soft drinks, tea or coffee with sugar (corn syrup, maple syrup, cane sugar, etc)"
+    beans: "Beans (tofu, soy, soy burgers, lentils, Mexican beans, lima beans etc)"
+    dairy: "Dairy (milk, cream, ice cream, cheese, cream cheese)"
+    grains: "Whole grains (wheat, oats, brown rice, rye, quinoa, wheat bread, wheat pasta)"
+    eggs: Eggs
+    fish: "Fish (fish nuggets, breaded fish, fish cakes, salmon, tuna, etc.)"
+    fruit: "Fruits (no juice) (Apples, raisins, bananas, oranges, strawberries, blueberries"
+    juice: "Fruit juice (orange, apple, cranberry, prune etc.)"
+    meat_red: "Red meat (beef, hamburger, pork, lamb)"
+    meat_white: "White meat (chicken, turkey, etc.)"
+    probiotic: "Probiotic"
+    shellfish: "Shellfish (shrimp, lobster, scallops, etc.)"
+    sweets: "Sweets (pies, jam, chocolate, cake, cookies, etc.)"
+    veg: "Vegetables (salad, tomatoes, onions, greens, carrots, peppers, green beans, etc)"
+    water: Water
+    yogurt: "Yogurt or other foods containing active bacterial cultures (kefir, sauerkraut)"
+
+visit_attribute:
+  meds_stopped_cols:
+    - "Reason for stopping lomotil:"
+    - "Reason for stopping Imodium:"
+    - "Reason for stopping Asacol:"
+    - "Reason for stopping Pentasa:"
+    - "Reason for stopping Lialda:"
+    - "Reason for stopping Apriso:"
+    - "Reason for stopping Colozal:"
+    - "Reason for stopping Sulfasalazine:"
+    - "Reason for stopping Dipentum:"
+    - "Reason for stopping rowasa enemas:"
+    - "Reason for stopping canasa suppositories:"
+  cancer_cols:
+    - "Cancer - breast"
+    - "Cancer - cholangiocarcinoma"
+    - "Cancer - colon or rectum"
+    - "Cancer - Hodgkin's lymphoma"
+    - "Cancer - liver"
+    - "Cancer - lung"
+    - "Cancer - lymphoma (not otherwise specified)"
+    - "Cancer - Non-Hodkin's lymphoma"
+    - "Cancer - ovarian"
+    - "Cancer - prostate"
+  desc_map:
+    cd: "An intestinal disease that involves inflammation located_in intestine."
+    uc: >- 
+      A colitis that is predominantly confined to the mucosa located_in colon 
+      and includes characteristic ulcers, or open sores.
+  xref_map:
+    cd:
+      DO: "DOID:8778"
+      NCI: "NCI:C35211"
+      MESH: "MESH:D003424"
+      UML: "UMLS_CUI:C0156147"
+    uc:
+      DO: "DOID:8577"
+      NCI: "NCI:C2952"
+      MESH: "MESH:D003093"
+      UML: "UMLS_CUI:C0009324"
+  col_map:
+    disease_name: diagnosis
+    abdominal_pain: "Abdominal pain"
+    arthralgia: "Arthralgia"
+    age: consent_age
+    bowel_day: "Bowel frequency during the day"
+    bowel_night: "Bowel frequency during the night"
+    stool_blood: "Blood in the stool"
+    stool_sof: "Number of liquid or very soft stools in the past 24 hours:"
+    urgency_def: "Urgency of defecation"
+    pregnant: "Subject is pregnant:"
+    chemo: "Chemotherapy"
+    immunosupp: "Immunosuppressants (e.g. oral corticosteroids)"
+    abx: "Antibiotics"
+    alcohol: "Alcohol (beer, brandy, spirits, hard liquor, wine, aperitif, etc.)"
+    soda: "Soft drinks, tea or coffee with sugar (corn syrup, maple syrup, cane sugar, etc)"
+    beans: "Beans (tofu, soy, soy burgers, lentils, Mexican beans, lima beans etc)"
+    dairy: "Dairy (milk, cream, ice cream, cheese, cream cheese)"
+    grains: "Whole grains (wheat, oats, brown rice, rye, quinoa, wheat bread, wheat pasta)"
+    eggs: Eggs
+    fish: "Fish (fish nuggets, breaded fish, fish cakes, salmon, tuna, etc.)"
+    fruit: "Fruits (no juice) (Apples, raisins, bananas, oranges, strawberries, blueberries"
+    juice: "Fruit juice (orange, apple, cranberry, prune etc.)"
+    meat_red: "Red meat (beef, hamburger, pork, lamb)"
+    meat_white: "White meat (chicken, turkey, etc.)"
+    probiotic: "Probiotic"
+    shellfish: "Shellfish (shrimp, lobster, scallops, etc.)"
+    sweets: "Sweets (pies, jam, chocolate, cake, cookies, etc.)"
+    veg: "Vegetables (salad, tomatoes, onions, greens, carrots, peppers, green beans, etc)"
+    water: Water
+    yogurt: "Yogurt or other foods containing active bacterial cultures (kefir, sauerkraut)"
 
 16S:
   prep_id: 1
@@ -180,17 +316,15 @@ MTX:
     seq_meth: "Illumina HiSeq 2000"
     env_package: 'human-associated'
     lib_const_meth: >-
-        Metagenomic DNA samples were quantified by Quant-iT PicoGreen dsDNA
-        Assay (Life Technologies) and normalized to a concentration of
-        50 pg/microliter. Illumina sequencing libraries were prepared from
-        100-250 pg DNA using the Nextera XT DNA Library Preparation
-        kit (Illumina) according to the manufacturer's recommended
-        protocol, with reaction volumes scaled accordingly. Batches of
-        24, 48, or 96 libraries were pooled by transferring equal
-        volumes of each library using a Labcyte Echo 550 liquid
-        handler. Insert sizes and concentrations for each pooled
-        library were determined using an Agilent Bioanalyzer DNA 1000
-        kit (Agilent Technologies).
+        Our method, RNAtag-Seq, utilizes a molecular barcoding strategy
+        that generates multiple libraries in a single reaction, lowers
+        labor and reagent costs per sample, and produces data on
+        prokaryotic and eukaryotic samples that are comparable to
+        those generated by traditional strand-specific RNA-seq
+        approaches.  Barcoding in RNAtag-Seq is achieved through
+        direct ligation of adaptors to RNA, enabling high quality,
+        strand-specific, quantitative sequencing of full-length
+        transcripts in diverse prokaryotic and eukaryotic species.
   metatranscriptome:
     study: ibd
     exp_length: 0
@@ -201,7 +335,6 @@ MTX:
     comment: IBDMDB
   abundance_matrix:
     comment: ""
-
 
 MVX:
   assay:
