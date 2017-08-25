@@ -85,7 +85,6 @@ sample:
       env_package: "Human-associated"
       rel_to_oxygen: "N/A"
 
-
 subject_attribute:
   meds_cols:
     - "Lomotil"
@@ -126,36 +125,11 @@ subject_attribute:
     cad: "Myocarditis"
     father: "Father"
     mother: "Mother"
+    siblings: "Does the subject have a sibling with IBD?"
+    education: "Education Level"
     disease_name: diagnosis
-    abdominal_pain: "Abdominal pain"
-    arthralgia: "Arthralgia"
-    age: consent_age
-    bowel_day: "Bowel frequency during the day"
-    bowel_night: "Bowel frequency during the night"
-    stool_blood: "Blood in the stool"
-    stool_sof: "Number of liquid or very soft stools in the past 24 hours:"
-    urgency_def: "Urgency of defecation"
-    pregnant: "Subject is pregnant:"
-    chemo: "Chemotherapy"
-    immunosupp: "Immunosuppressants (e.g. oral corticosteroids)"
-    abx: "Antibiotics"
     alcohol: "Alcohol (beer, brandy, spirits, hard liquor, wine, aperitif, etc.)"
-    soda: "Soft drinks, tea or coffee with sugar (corn syrup, maple syrup, cane sugar, etc)"
-    beans: "Beans (tofu, soy, soy burgers, lentils, Mexican beans, lima beans etc)"
-    dairy: "Dairy (milk, cream, ice cream, cheese, cream cheese)"
-    grains: "Whole grains (wheat, oats, brown rice, rye, quinoa, wheat bread, wheat pasta)"
-    eggs: Eggs
-    fish: "Fish (fish nuggets, breaded fish, fish cakes, salmon, tuna, etc.)"
-    fruit: "Fruits (no juice) (Apples, raisins, bananas, oranges, strawberries, blueberries"
-    juice: "Fruit juice (orange, apple, cranberry, prune etc.)"
-    meat_red: "Red meat (beef, hamburger, pork, lamb)"
-    meat_white: "White meat (chicken, turkey, etc.)"
-    probiotic: "Probiotic"
-    shellfish: "Shellfish (shrimp, lobster, scallops, etc.)"
-    sweets: "Sweets (pies, jam, chocolate, cake, cookies, etc.)"
-    veg: "Vegetables (salad, tomatoes, onions, greens, carrots, peppers, green beans, etc)"
-    water: Water
-    yogurt: "Yogurt or other foods containing active bacterial cultures (kefir, sauerkraut)"
+    tobacco: "smoking status"
 
 visit_attribute:
   meds_stopped_cols:
