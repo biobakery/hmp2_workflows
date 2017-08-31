@@ -37,6 +37,7 @@ import tempfile
 
 import cutlass
 import numpy as np
+import pandas as pd
 
 from cutlass.mixs import MIXS
 from cutlass.mims import MIMS
@@ -293,7 +294,7 @@ def get_fields_to_update(new_metadata, osdf_object):
     return np.unique(updated_fields).tolist()
 
 
-def _get_host_assay_prep_abund_matrices(sessions, prep_id):
+def _get_host_assay_prep_abund_matrices(session, prep_id):
     """Returns an iterator of all AbundanceMatrix nodes connnected to the
     provided HostAssayPrep node.
 
@@ -309,7 +310,7 @@ def _get_host_assay_prep_abund_matrices(sessions, prep_id):
         Iterator: An iterator containing all children connected to the 
             supplied OSDF object.                    
     """
-    query = osdf.get_odsf().oql_query
+    query = session.get_odsf().oql_query
     linkage_query = ('"abundance_matrix"[node_type] && '
                      '"{}"[linkage.computed_from]'.format(prep_id))
 
@@ -348,7 +349,7 @@ def _get_wgs_raw_seq_set_abund_matrices(session, seq_set_id):
 
     """
     if seq_set_id:
-        query = osdf.get_osdf().oql_query
+        query = session.get_osdf().oql_query
         linkage_query = ('"abundance_matrix"[node_type] && ' 
                          '"{}"[linkage.computed_from]'.format(seq_set_id))
 
@@ -498,14 +499,13 @@ def _get_medications_list(metadata, med_cols):
     medications = None
 
     all_meds_df = metadata.filter(med_cols)
-    curr_meds_df = all_meds_df.apply(lambda row: all_meds_df[row.name] == "Current", axis=1)
-    curr_meds_df = curr_meds_df.any()    
-    medications = ",".join([med_name for (med_name, val) in meds.iteritems() if val])
+    curr_meds = all_meds_df.apply(lambda val: val == "Current")
+    medications = ",".join([med_name for (med_name, val) in curr_meds.iteritems() if val])
 
     return medications
 
 
-def _crud_subject_attribute(subject, metadata, conf):
+def _crud_subject_attribute(subject, metadata, study_id, conf):
     """Creates an iHMP OSDF SubjectAttribute object if it does not exist or
     updates an already existing object with the provided metadata.
 
@@ -513,7 +513,9 @@ def _crud_subject_attribute(subject, metadata, conf):
         subject (cutlass.Subject): The Subject object that this SubjectAttribute 
             object should be linked too.
         metadata (pandas.DataFrame): A collection of metadata that will be used 
-            to instantiate or update the Sample Attribute Object
+            to instantiate or update the SubjectAttribute object
+        study_id (string): The study ID this SubjectAttribte object is 
+            associated with.
         conf (dict): Python representation of YAML configuration file that 
             contains 
 
@@ -524,8 +526,7 @@ def _crud_subject_attribute(subject, metadata, conf):
         cutlass.SubjectAttribute: The created or updated OSDF 
             SubjectAttribute object.
     """
-    subject_attr = subject.SubjectAttributes()
-    edu_map = conf.get('education_map')
+    subject_attrs = subject.attributes()
     sa_col_map = conf.get('col_map')
 
     subject_attr = next(subject_attrs, None)
@@ -535,8 +536,9 @@ def _crud_subject_attribute(subject, metadata, conf):
     req_metadata = {}
     req_metadata = dict((k, metadata.get(sa_col_map.get(k))) for k in 
                         sa_col_map.keys())
-    req_metadata['medications'] = _get_medications_list(metadata)
-    req_metadata = dict((k,v) for k, v in req_metadta.iteritems() if v)
+    req_metadata['rx'] = _get_medications_list(metadata, conf.get('meds_cols'))
+    req_metadata['study'] = study_id
+    req_metadata = dict((k,v) for k, v in req_metadata.iteritems() if v and not pd.isnull(v))
 
 
     fields_to_update = get_fields_to_update(req_metadata, subject_attr)
@@ -558,13 +560,13 @@ def _crud_subject_attribute(subject, metadata, conf):
     return subject_attr
 
 
-def crud_subjects(subjects, study_id, baseline_metadata, conf):
+def crud_subjects(subjects, study, baseline_metadata, conf):
     """Creates iHMP OSDF Subjects objects if they do not exist or 
     updates an existing Subject object with new metadata when present.
 
     Args:
         subjects (list): A list of OSDF Subject objects
-        study_id (string): OSDF Study ID that supplied subject should be 
+        study_id (cutlass.Studdy): OSDF Study that supplied subject should be 
             linked too.
         baseline_metadata (panda.DataFrame): Collection of metadata containing 
             baseline metadata for all subjects involved in the project.
@@ -579,7 +581,7 @@ def crud_subjects(subjects, study_id, baseline_metadata, conf):
         list: A list of OSDF Subject objects key'd on subject ID.
     """
     for (idx, row) in baseline_metadata.iterrows():
-        subject_id = row.get('ProjectSpecificID')
+        subject_id = str(row.get('ProjectSpecificID'))
 
         if subject_id in subjects:
             subject = subjects.get(subject_id)[0]
@@ -591,17 +593,19 @@ def crud_subjects(subjects, study_id, baseline_metadata, conf):
         req_metadata = {}
         req_metadata['tags'] = []
         req_metadata['rand_subject_id'] = subject_id
-        req_metadata['gender'] = row.get('sex').lower()
+        
+        sex = row.get('sex').lower() if not pd.isnull(row.get('sex')) else None
+        req_metadata['gender'] = sex
 
-        race = row.get('race')
-        req_metadata['race'] = race_map.get(race, race.replace(' ', '_'))
+        race = row.get('race') if not pd.isnull(row.get('race')) else None
+        req_metadata['race'] = race_map.get(race)
 
         fields_to_update = get_fields_to_update(req_metadata, subject)
         map(lambda key: setattr(subject, key, req_metadata.get(key)),
             fields_to_update)
 
         if fields_to_update:
-            subject.links['participates_in'] = [study_id]
+            subject.links['participates_in'] = [study.id]
 
             if subject.is_valid():
                 success = subject.save()
@@ -609,16 +613,19 @@ def crud_subjects(subjects, study_id, baseline_metadata, conf):
                     raise ValueError('Saving subject %s failed.' % 
                                     metadata_subject_id)
             
-                subject_attr = _crud_subject_attr(subject, metadata, conf)
                 subjects[subject_id] = subject
             else:
                 raise ValueError('Subject validation failed: %s' % 
                                 subject.validate())
     
+        subject_attr = _crud_subject_attribute(subject, row, 
+                                               conf.get('data_study'),
+                                               conf.get('subject_attribute'))
+
     return subjects
 
 
-def crud_visit(visits, visit_num, subject_id, metadata):
+def crud_visit(visits, visit_num, subject_id, metadata, conf):
     """Creates an iHMP OSDF Visit object if it does not exist or updates an
     already existing Visit object with the provided metadata.
 
@@ -630,6 +637,9 @@ def crud_visit(visits, visit_num, subject_id, metadata):
             associated with.
         metadata (pandas.Series): Metadata that should be associated with 
             this Visit.
+        conf (dict): A python dictionary representation of the YAML 
+            configuration file containing metadata parameters needed for 
+            the DCC upload.
 
     Requires:
         None
@@ -666,9 +676,10 @@ def crud_visit(visits, visit_num, subject_id, metadata):
             if not success:
                 raise ValueError('Saving visit %s failed.' % visit_num)
 
-            visit_attr = _crud_visit_attribute()
         else:
             raise ValueError('Visit validation failed: %s' % visit.validate())
+
+    visit_attr = _crud_visit_attribute(visit, metadata, conf)
 
     return visit
 
@@ -693,35 +704,25 @@ def _get_visit_attr_metadata(metadata, visit_attr_conf, req_metadata):
             object.                            
     """
     visit_attr_cols = visit_attr_conf.get('col_map')
-    module = importlib.import_module('__builtin__')
 
-    map(lambda key: setattr(req_metadata, key,
-                            metadata.get(visit_attr_cols.get(key))), 
-                            visit_attr_cols.keys())
-
-    ## Remove any keys that have None as value
-    req_metadata = dict((k,v) for k, v in req_metadta.iteritems() if v)
+    col_dict = dict(zip(visit_attr_cols.keys(), [metadata.get(k) for k in visit_attr_cols.values()]))
+ 
+     ## Remove any keys that have None as value
+    req_metadata.update(dict((k,v) for k,v in col_dict.iteritems() if not pd.isnull(v)))
 
     ## Out of our metadata dict we will have a bunch of string values 
     ## that we will need to convert to the proper types for OSDF
     va_attrs = cutlass.VisitAttribute.__dict__.get('_VisitAttribute__dict')
 
-    ## Wow this is ugly....
-    req_metadata = dict((k, _convert(v, va_attrs.get(k)[0])) for 
-                         k, v in req_metadata.iteritems())
+    for (key, val) in req_metadata.iteritems():
+        if key.startswith('disease'):
+            continue
 
-    # for (key, val) in req_metadata.iteritems():
-    #     if key not in va_attrs:
-    #         raise ValueException('Invalid key for VisitAttribute objects:', key)
-
-    #     attr_type = va_attrs.get(key)[0]
-
-    #     if attr_type == "float":
-    #         req_metadata[key] = float(val)
-    #     elif attr_type == "int":
-    #         req_metadata[key] = int(val)
-    #     elif attr_type == "bool":
-    #         req_metadata[key] = True if val.startswith('No') else False
+        if key not in va_attrs:
+            raise ValueException('Invalid key for VisitAttribute objects:', key)
+        
+        cls = va_attrs.get(key)[0]
+        req_metadata[key] = cls(val)
 
     return req_metadata
 
@@ -745,7 +746,7 @@ def _crud_visit_attribute(visit, metadata, conf):
         cutlass.SampleAttribute: The created or updated OSDF Sample Attribute
             object.
     """
-    visit_attrs = visit.VisitAttribute()
+    visit_attrs = visit.visit_attributes()
 
     ## We should only ever have one VisitAttr object associated with a Visit
     ## object so updating shoudl be a little aeasier.
@@ -753,13 +754,32 @@ def _crud_visit_attribute(visit, metadata, conf):
     if not visit_attr:
         visit_attr = cutlass.VisitAttribute()
 
+    visit_attr_conf = conf.get('visit_attribute')
+    disease_map = conf.get('disease_map')
+    disease_desc_map = visit_attr_conf.get('desc_map')
+
     req_metadata = {}
-    req_metadata['study'] = conf.get('data_study')
- 
-    req_metadata['disease_name'] = disease_name
-    req_metadata['disease_description'] = disease_desc
-    req_metadata['disease_ontology_id'] = disease_doid
-    req_metadata['disease_mesh_id'] = disease_mesh_id
+    #req_metadata['study'] = conf.get('data_study')
+    req_metadata['comment'] = ""
+
+    diagnosis = metadata.get('diagnosis')
+    if diagnosis != "nonIBD":
+        req_metadata['disease_name'] = disease_map.get(diagnosis)
+        req_metadata['disease_description'] = disease_desc_map.get(diagnosis)
+
+        if diagnosis in ['UC', 'CD']:
+            req_metadata['disease_study_status'] = "affected"
+        elif diagnosis == "nonIBD":
+            req_metadata['disease_study_status'] = "not_affected"
+        else:
+            req_metadata['disease_study_status'] = "unknown"
+
+        xref_map = visit_attr_conf.get('xref_map').get(diagnosis)
+        if xref_map:
+            req_metadata['disease_ontology_id'] = xref_map.get('DO')
+            req_metadata['disease_mesh_id'] = xref_map.get('MESH')
+            req_metadata['disease_nci_id'] = xref_map.get('NCI')
+            req_metadata['disease_umls_concept_id'] = xref_map.get('UML')
 
     ## None of our subjects have cancer
     req_metadata['cancer'] = "No"
@@ -767,16 +787,24 @@ def _crud_visit_attribute(visit, metadata, conf):
     if metadata.get('IntervalName') == "Screening Colonoscopy":
         req_metadata['colonoscopy'] = True
 
-    req_metadata = _get_visit_attr_metadata(metadata, conf.get('visit_attribute'))
+    req_metadata = _get_visit_attr_metadata(metadata,
+                                            visit_attr_conf, 
+                                            req_metadata)
 
     req_metadata['tags'] = []
+
+    if req_metadata.get('hbi_total'):
+        req_metadata['hbi'] = True
+    if req_metadata.get('sccai_total'):
+        req_metadata['sccai'] = True
 
     fields_to_update = get_fields_to_update(req_metadata, visit_attr)
     map(lambda key: setattr(visit_attr, key, req_metadata.get(key)),
         fields_to_update)
 
     if fields_to_update:
-        visit_attr.links['associated_with'] = [sample.id]
+        visit_attr.subtype = conf.get('data_study')
+        visit_attr.links['associated_with'] = [visit.id]
 
         if visit_attr.is_valid():
             success = visit_attr.save()
@@ -904,7 +932,7 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
         sample = sample[0]
     
     req_metadata = {}
-    req_metadata['mixs'] = default_mixs_dict()
+    req_metadata['mixs'] = required_mixs_dict()
     req_metadata['name'] = sample_id
 
     if metadata['data_type'] == 'host_transcriptomics':
@@ -926,13 +954,11 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
             success = sample.save()
             if not success:
                 raise ValueError('Saving sample % failed.' % sample_id)
-
-            ## If we successfully create a Sample we need to attach a 
-            ## SampleAttribute to it.
-            sample_attr = _create_or_update_sample_attribute(sample, metadata, conf)
         else:
             raise ValueError('Sample validation failed; %s' % sample.validate())
 
+    sample_attr = _crud_sample_attribute(sample, metadata, conf)
+    
     return sample
 
 
@@ -973,7 +999,7 @@ def crud_wgs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
     req_metadata.update(conf.get('assay'))
-    req_metadata['mims'] = default_mims_dict()
+    req_metadata['mims'] = required_mims_dict()
 
     ## Fill in the remaining pieces of metadata needed from other sources
     req_metadata['prep_id'] = prep_id
@@ -1362,7 +1388,7 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
 
     req_metadata.update(conf.get('metagenome'))
     req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] = os.path.getsize(raw_file_name)
+    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
     req_metadata['checksums'] = { "md5": md5sum }
 
     fields_to_update = get_fields_to_update(req_metadata, metagenome)
@@ -1470,13 +1496,15 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
     abund_file = metadata.get('out_file')
     abund_fname = os.path.splitext(os.path.basename(abund_file))[0]
 
+    data_type = metadata.get('data_type')
+
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
     if "HostAssayPrep" in dcc_parent.__module__:    
         abund_matrixs = group_osdf_objects(_get_host_assay_prep_abund_matrices(session, dcc_parent.id),
                                            '_urls')
-    elif "WgsDnaPrep" in dcc_parent.__module:
+    elif "WgsRawSeqSet" in dcc_parent.__module__:
         abund_matrices = group_osdf_objects(_get_wgs_raw_seq_set_abund_matrices(session, dcc_parent.id),
                                             '_urls')
 
@@ -1503,6 +1531,24 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
     else:
         raise ValueError("Unknown abundance matrix type:", raw_file_name)
 
+    ## This is really ugly but just about the cleanest way I know to do this..
+    if "taxonomic_profile" in abund_file:
+        if data_type == "metagenomics":
+            req_metadata['matrix_type'] = "wgs_community"
+        elif data_type == "amplicon":
+            req_metadata['matrix_type'] = "16s_community"
+    elif "path" in abund_file or "gene" in abund_file:
+        if data_type == "metatranscriptomics":
+            req_metadata['matrix_type'] = "microb_metatranscriptome"
+        else:            
+            req_metadata['matrix_type'] = "wgs_functional"
+    elif data_type == "host_transcriptome":
+        req_metadata['matrix_type'] = "host_transcriptome"
+    elif data_type == "proteomics":
+        req_metadata['matrix_type'] = "microb_proteomic"
+    elif data_type == "metabolomics":
+        req_metadata['matrix_type'] = "microb_metabolome"
+
     fields_to_update = get_fields_to_update(req_metadata, abund_matrix)
     map(lambda key: setattr(abund_matrix, key, req_metadata.get(key)),
         fields_to_update)
@@ -1511,7 +1557,7 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
 
     if fields_to_update:
         abund_matrix.updated = True
-        abund_matrix.links['computed_from'] = [seq_set.id]
+        abund_matrix.links['computed_from'] = [dcc_parent.id]
 
         if not abund_matrix.is_valid():
             raise ValueError('Abundance matrix validation failed: %s' %

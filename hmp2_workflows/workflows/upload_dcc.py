@@ -29,7 +29,9 @@ THE SOFTWARE.
 """
 
 import itertools
+import logging
 import os
+import sys
 import tempfile
 
 import cutlass
@@ -44,6 +46,19 @@ from biobakery_workflows.utilities import find_files
 
 from hmp2_workflows.utils import dcc
 from hmp2_workflows.tasks.dcc import upload_data_files
+
+
+
+def set_logging():
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    ch.setFormatter(formatter)
+    root.addHandler(ch)
+
+set_logging()
 
 
 def parse_cli_arguments():
@@ -101,7 +116,7 @@ def main(workflow):
         dcc_subjects = dcc.group_osdf_objects(dcc_study.subjects(),
                                               'rand_subject_id')
         dcc_subjects = dcc.crud_subjects(dcc_subjects,
-                                         dcc_study.id,
+                                         dcc_study,
                                          baseline_metadata_df,
                                          conf)
 
@@ -165,12 +180,18 @@ def main(workflow):
                                                               axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
-                dcc_subject = dcc_subjects.get(subject_id)
+                dcc_subject = dcc_subjects.get(subject_id[1:])
+                if dcc_subject:
+                    dcc_subject = dcc_subject[0]
+                else:
+                    raise ValueException('Could not find Subject object for subject ID %s' % subject_id)                        
+
                 #dcc_subject = dcc.crud_subject(dcc_subjects, 
                 #                               subject_id[1:],
                 #                               dcc_study.id,
                 #                               metadata,
                 #                               conf)
+
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
                                                     'visit_number')
                 
@@ -178,7 +199,8 @@ def main(workflow):
                     dcc_visit = dcc.crud_visit(dcc_visits, 
                                                int(row.get('visit_num')),
                                                dcc_subject.id, 
-                                               row)
+                                               row,
+                                               conf)
 
                     dcc_samples = dcc.group_osdf_objects(dcc_visit.samples(),
                                                          'name')
