@@ -76,7 +76,7 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--project', required=True,
                         help='Project that sequence files belong too.')
     parser.add_argument('-d', '--data-type', 
-                        choices=['MGX', 'MBX', '16S', 'MTX', 'TX'],
+                        choices=['MGX', 'MBX', '16S', 'MTX', 'TX', 'BP'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
                         'specified in the input file list.')                        

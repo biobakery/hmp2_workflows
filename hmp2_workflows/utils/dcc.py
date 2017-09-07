@@ -179,7 +179,9 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
             sample_id = file_name
             
             ## TODO: This shouldn't be hardcoded
-            sample_id = sample_id.replace('_taxonomic_profile', '')
+            sample_id = (sample_id.replace('_taxonomic_profile', '')
+                                  .replace('_pathabundance', '')
+                                  .replace('_genefamilies', ''))
     
         for tag in tags:
             sample_id = sample_id.replace(tag, '')
@@ -268,7 +270,7 @@ def get_fields_to_update(new_metadata, osdf_object):
 
     if 'checksums' in required_fields:
         local_files = [(k,v) for (k,v) in new_metadata.iteritems()
-                       if 'local_' in k and 'tmp' not in v]
+                       if 'local_' in k and 'tmp' not in os.path.basename(v)]
 
         ## This is super ugly but going to operate under the assumption that 
         ## we only have on raw file per DCC object.
@@ -358,6 +360,45 @@ def _get_wgs_raw_seq_set_abund_matrices(session, seq_set_id):
 
         for page_no in itertools.count(1):
             res = query(WgsRawSeqSet.namespace, linkage_query,
+                        page=page_no)
+            res_count = res['result_count']
+
+            for doc in res['results']:
+                yield AbundanceMatrix.load_abundance_matrix(doc)
+
+            res_count -= len(res['results'])
+
+            if res_count < 1:
+                break
+
+
+def _get_microb_transcriptomics_raw_seq_set_abund_matrices(session, seq_set_id):
+    """
+    Returns an iterator of all AbundanceMatrix nodes connected to 
+    the MicrobTranscriptomicsRawSeqSet ID provided.
+
+    Args:
+        osdf (cutlass.Session): The current OSDF session
+        seq_set_id (string): The sequence set ID from which to grab 
+            any associated abundance matrices.
+
+    Requires:
+        None
+
+    Returns:
+        iterator: An iterator containing all found abundance matrices.                            
+
+    """
+    if seq_set_id:
+        query = session.get_osdf().oql_query
+        linkage_query = ('"abundance_matrix"[node_type] && ' 
+                         '"{}"[linkage.computed_from]'.format(seq_set_id))
+
+        from cutlass.AbundanceMatrix import AbundanceMatrix
+        from cutlass.MicrobTranscriptomicsRawSeqSet import MicrobTranscriptomicsRawSeqSet   
+
+        for page_no in itertools.count(1):
+            res = query(MicrobTranscriptomicsRawSeqSet.namespace, linkage_query,
                         page=page_no)
             res_count = res['result_count']
 
@@ -1431,7 +1472,8 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     Returns:
         cutlass.MicrobTranscriptomicsRawSeqSet: The Microbe Transcriptomics object.
     """
-    raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
+    seq_file = metadata.get('seq_file')
+    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
@@ -1449,8 +1491,8 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
         metatranscriptome = metatranscriptome[0]
 
     req_metadata.update(conf.get('metatranscriptome'))
-    req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] =  os.path.getsize(raw_file_name)
+    req_metadata['local_file'] = seq_file
+    req_metadata['size'] =  os.path.getsize(seq_file)
     req_metadata['checksums'] = { "md5": md5sum }
 
     fields_to_update = get_fields_to_update(req_metadata, metatranscriptome)
@@ -1506,6 +1548,9 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
                                            '_urls')
     elif "WgsRawSeqSet" in dcc_parent.__module__:
         abund_matrices = group_osdf_objects(_get_wgs_raw_seq_set_abund_matrices(session, dcc_parent.id),
+                                            '_urls')
+    elif "MicrobTranscriptomicsRawSeqSet" in dcc_parent.__module__:
+        abund_matrices = group_osdf_objects(_get_microb_transcriptomics_raw_seq_set_abund_matrices(session, dcc_parent.id),
                                             '_urls')
 
     abund_matrices = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 

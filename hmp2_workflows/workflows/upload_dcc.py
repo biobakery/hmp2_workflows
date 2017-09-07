@@ -278,7 +278,16 @@ def main(workflow):
                                                                  dtype_metadata,
                                                                  row)
                         elif data_type == "16S":
-                            pass
+                            dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
+                                                              conf.get('data_study'),
+                                                              data_type,
+                                                              dtype_metadata,
+                                                              row)
+                            dcc_seq_obj = dcc.crud_raw_sixs_seq_set(dcc_prep,
+                                                                    file_md5sum,
+                                                                    dcc_sample.name,
+                                                                    dtype_metadata.
+                                                                    row)
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
 
