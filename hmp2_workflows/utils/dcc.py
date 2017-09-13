@@ -41,6 +41,7 @@ import pandas as pd
 
 from cutlass.mixs import MIXS
 from cutlass.mims import MIMS
+from cutlass.mimarks import MIMARKS
 
 
 def _convert(value, type_):
@@ -79,6 +80,25 @@ def required_mixs_dict():
     return dict([ (k, v()) for k, v 
                    in MIXS._fields.iteritems() 
                    if k in MIXS.required_fields()])
+
+
+def required_mimarks_dict():
+    """Generates the default mimarks dictionary needed when submitting a
+    SixteenSDnaPrep Cutlass object.
+
+    Args:
+        None
+    
+    Requires:
+        None
+
+    Returns:
+        dictionary: A dictionary containing the fields required for a 
+            SixteenSDnaPrep mimarks parameters.
+    """
+    return dict([ (k, v()) for k, v 
+                   in MIMARKS._fields.iteritems() 
+                   if k in MIMARKS.required_fields()])    
 
 
 def required_mims_dict():
@@ -1066,6 +1086,69 @@ def crud_wgs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return wgs_dna_prep
 
 
+def crud_sixs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
+    """Creates an iHMP OSDF SixteenSDnaPrep if it doesn't exist or 
+    updates an already existing prep object with the provided metadata. 
+
+    Args:
+        sample (cutlass.Sample): The Sample object that the Prep should be 
+            associated with.
+        study_id (string): The study ID this microbiome assay prep is
+            assocaited with.
+        dtype_abbrev (string): Data type abbreviation to be used in constructing 
+            unique prep ID.            
+        conf (dict): Python dictionary representation of the project YAML
+            configuration containing project metadata.
+        metadata (pandas.Series): The metadata that is assocaited with this 
+            Sample/Prep.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.SixteenSDnaPrep: The created or updated OSDF 
+            SixteenSDnaPrep object.
+    """
+    prep_id = "%s_%s" % (metadata.get('External ID'), dtype_abbrev)
+
+    sixs_dna_preps = group_osdf_objects(sample.sixteenSDnaPreps(),
+                                       'prep_id')
+    sixs_dna_prep = sixs_dna_preps.get(prep_id)
+
+    if not sixs_dna_prep:
+        sixs_dna_prep = cutlass.SixteenSDnaPrep()
+    else:
+        sixs_dna_prep = sixs_dna_prep[0]
+    
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+    req_metadata.update(conf.get('assay'))
+    req_metadata['mimarks'] = required_mimarks_dict()
+
+    ## Fill in the remaining pieces of metadata needed from other sources
+    req_metadata['prep_id'] = prep_id
+    req_metadata['mimarks'].update(conf.get('mimarks'))
+    req_metadata['mimarks']['collection_date'] = metadata['date_of_receipt']
+
+    fields_to_update = get_fields_to_update(req_metadata, sixs_dna_prep)
+    map(lambda key: setattr(sixs_dna_prep, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        sixs_dna_prep.links['prepared_from'] = [sample.id]
+
+        if sixs_dna_prep.is_valid():
+            success = sixs_dna_prep.save()
+            if not success:
+                raise ValueError('Saving 16S DNA prep %s failed.' % 
+                                 req_metadata.get('prep_id'))
+        else:
+            raise ValueError('16S DNA prep validation failed: %s' % 
+                             sixs_dna_prep.validate())
+    
+    return sixs_dna_prep
+
+
 def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     """Creates an iHMP OSDF Host Assay Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
@@ -1510,6 +1593,32 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
                              metatranscriptome.validate())
 
     return metatranscriptome
+
+
+def crud_sixs_trimmed_seq_set(session, dcc_parent, md5sum, sample_id,
+                              study_name, conf, metadata):
+    """Creates or updates an iHMP OSDF AbundanceMatrix object.
+
+    Handles abundance matrices in both BIOM and tab-delimited format.
+
+    Args:
+        session (cutlass.Session): The OSDF session instance.
+        dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
+            or an assay prep from which an abundance matrice may be derived.
+             (i.e. WgsRawSeqSet or HostAssayPrep)
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this transcriptome           
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.AbundanceMatrix: The abundance matrice to be saved.
+    """
+    pass
 
 
 def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id, 

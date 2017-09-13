@@ -302,13 +302,22 @@ def main(workflow):
                             if not output_md5sum:
                                 raise ValueError("Could not find md5sum for file", output_filename)
 
-                            dcc_seq_out = dcc.crud_abundance_matrix(session,
-                                                                    dcc_seq_obj,
-                                                                    output_md5sum,
-                                                                    dcc_sample.name,
-                                                                    conf.get('data_study'),
-                                                                    dtype_metadata,
-                                                                    row)
+                            if output_file.endswith('.fastq.') and data_type = "amplicon":
+                                dcc_seq_out = dcc.crud_sixs_trimmed_seq_set(session,
+                                                                            dcc_seq_obj,
+                                                                            output_md5sum,
+                                                                            dcc_sample.name,
+                                                                            conf.get('data_study')
+                                                                            dtype_metadata,
+                                                                            row)
+                            else:    
+                                dcc_seq_out = dcc.crud_abundance_matrix(session,
+                                                                        dcc_seq_obj,
+                                                                        output_md5sum,
+                                                                        dcc_sample.name,
+                                                                        conf.get('data_study'),
+                                                                        dtype_metadata,
+                                                                        row)
 
                             uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
