@@ -192,7 +192,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
 
         (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
-        if data_type == 'proteomics':
+        if data_type == 'foo':
             sample_id = "%s-%s" % ('SM', 
                                    file_name.replace('_', '-').split('-')[2])
         else:
@@ -210,6 +210,32 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
 
     return sample_id_map
     
+
+def create_output_file_map(data_type, output_files):
+    """Create a dictionary containing all output files keyed on an identifier
+    can be mapped back to the corresponding input files.
+
+    Args:
+        data_type (string): Data type for output files
+        output_files (list): List of output files to group together.
+    
+    Requires:
+        None
+
+    Returns: 
+        dict: A dictionary containing output files grouped by an identifier
+    """
+    output_map = {}       
+    
+    for output_file in output_files:
+        basename = os.path.splitext(os.path.basename(output_file))[0]
+        ## We are assuming here that our basename split on '_' is going to 
+        ## provide us with our sample name.
+        sample_id = basename.split('_')[0]
+        output_map.setdefault(sample_id, []).append(output_file)
+    
+    return output_map
+
 
 def map_sample_id_to_file(row, id_col, fname_map, is_proteomics, out_col='seq_file'):
     """Given a a row from a pandas DataFrame, map the sample identifier 
@@ -420,6 +446,43 @@ def _get_microb_transcriptomics_raw_seq_set_abund_matrices(session, seq_set_id):
         for page_no in itertools.count(1):
             res = query(MicrobTranscriptomicsRawSeqSet.namespace, linkage_query,
                         page=page_no)
+            res_count = res['result_count']
+
+            for doc in res['results']:
+                yield AbundanceMatrix.load_abundance_matrix(doc)
+
+            res_count -= len(res['results'])
+
+            if res_count < 1:
+                break
+
+
+def _get_abund_matrices(session, seq_set_id):
+    """
+    Returns an iterator of all AbundanceMatrix nodes connected to 
+    the cutlass ID provided.
+
+    Args:
+        osdf (cutlass.Session): The current OSDF session
+        seq_set_id (string): The sequence set ID from which to grab 
+            any associated abundance matrices.
+
+    Requires:
+        None
+
+    Returns:
+        iterator: An iterator containing all found abundance matrices.                            
+
+    """
+    if seq_set_id:
+        query = session.get_osdf().oql_query
+        linkage_query = ('"abundance_matrix"[node_type] && ' 
+                         '"{}"[linkage.computed_from]'.format(seq_set_id))
+
+        from cutlass.AbundanceMatrix import AbundanceMatrix
+
+        for page_no in itertools.count(1):
+            res = query('ihmp', linkage_query, page=page_no)
             res_count = res['result_count']
 
             for doc in res['results']:
@@ -1267,7 +1330,7 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
     return host_seq_prep
 
 
-def crud_microbiome_prep(sample, study_id, conf, metadata):
+def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     """Creates an iHMP OSDF Microbiome Assay Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -1276,6 +1339,8 @@ def crud_microbiome_prep(sample, study_id, conf, metadata):
             associated with.
         study_id (string): The study ID this microbiome assay prep is
             assocaited with.
+        dtype_abbrev (string): The abbreviation for the data type that 
+            this prep represents (i.e. MGX, MTX, 16S)            
         conf (dict): Python dictionary representation of the project YAML
             configuration containing project metadata.
         metadata (pandas.Series): The metadata that is assocaited with this 
@@ -1288,9 +1353,11 @@ def crud_microbiome_prep(sample, study_id, conf, metadata):
         cutlass.MicrobiomeAssayPrep: The created or updated OSDF 
             MicrobiomeAssayPrep object.
     """
+    prep_id = "%s_%s" % (metadata.get('External ID'), dtype_abbrev)
+
     microbiome_preps = group_osdf_objects(sample.microbAssayPreps(),
                                           'prep_id')
-    microbiome_prep = microbiome_preps.get(metadata['Project'])
+    microbiome_prep = microbiome_preps.get(prep_id)
 
     if not microbiome_prep:
         microbiome_prep = cutlass.MicrobiomeAssayPrep()
@@ -1302,11 +1369,13 @@ def crud_microbiome_prep(sample, study_id, conf, metadata):
     req_metadata.update(conf.get('assay'))
 
     ## Fill in the remaining pieces of metadata needed from other sources
-    req_metadata['prep_id'] = metadata['Project']
-    req_metadata['pride_id'] = 'PRIDE ID'
+    req_metadata['prep_id'] = prep_id
     req_metadata['sample_name'] = sample.name
     req_metadata['study'] = study_id
     req_metadata['comment'] = "IBDMDB"
+
+    if dtype_abbrev == "MPX":
+        req_metadata['pride_id'] = 'NA'
 
     fields_to_update = get_fields_to_update(req_metadata, microbiome_prep)
     map(lambda key: setattr(microbiome_prep, key, req_metadata.get(key)),
@@ -1376,6 +1445,7 @@ def crud_proteome(prep, md5sum, sample_id, conf, metadata):
 
     req_metadata.update(conf.get('proteome'))
 
+    req_metadata['subtype'] = "microbiome"
     req_metadata['pride_id'] = "NA"
     req_metadata['sample_name'] = sample_id
     req_metadata['checksums'] = { "md5": md5sum }
@@ -1387,16 +1457,15 @@ def crud_proteome(prep, md5sum, sample_id, conf, metadata):
     map(lambda key: setattr(proteome, key, req_metadata.get(key)),
         fields_to_update)
 
+    proteome.updated = False
     if fields_to_update:
         proteome.links['derived_from'] = [prep.id]
 
         if not proteome.is_valid():
             raise ValueError('Proteome validation failed: %s' % 
                              proteome.validate())
-    else:
-        ## Really if there are no changes we don't want to save this object so 
-        ## we return None to be handled downstream.
-        proteome = None            
+
+        proteome.updated = True
 
     return proteome        
 
@@ -1621,8 +1690,8 @@ def crud_sixs_trimmed_seq_set(session, dcc_parent, md5sum, sample_id,
     pass
 
 
-def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id, 
-                          study_name, conf, metadata):
+def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id, 
+                          study_name, conf, metadata, url_param='_urls'):
     """Creates or updates an iHMP OSDF AbundanceMatrix object.
 
     Handles abundance matrices in both BIOM and tab-delimited format.
@@ -1632,11 +1701,14 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
         dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
             or an assay prep from which an abundance matrice may be derived.
              (i.e. WgsRawSeqSet or HostAssayPrep)
+        abund_file (string): Path to abundance matrix to be uploaded.             
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all transcriptomes
         metadata (pandas.Series): Metadata associated with this transcriptome
+        url_params (string): Parameter name that will house URL to abundance
+            matrices.
 
     Requires:
         None
@@ -1644,7 +1716,6 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
     Returns:
         cutlass.AbundanceMatrix: The abundance matrice to be saved.
     """
-    abund_file = metadata.get('out_file')
     abund_fname = os.path.splitext(os.path.basename(abund_file))[0]
 
     data_type = metadata.get('data_type')
@@ -1652,15 +1723,19 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    if "HostAssayPrep" in dcc_parent.__module__:    
-        abund_matrixs = group_osdf_objects(_get_host_assay_prep_abund_matrices(session, dcc_parent.id),
-                                           '_urls')
-    elif "WgsRawSeqSet" in dcc_parent.__module__:
-        abund_matrices = group_osdf_objects(_get_wgs_raw_seq_set_abund_matrices(session, dcc_parent.id),
-                                            '_urls')
-    elif "MicrobTranscriptomicsRawSeqSet" in dcc_parent.__module__:
-        abund_matrices = group_osdf_objects(_get_microb_transcriptomics_raw_seq_set_abund_matrices(session, dcc_parent.id),
-                                            '_urls')
+    abund_matrices = group_osdf_objects(_get_abund_matrices(session, dcc_parent.id), url_param)
+
+    #if "HostAssayPrep" in dcc_parent.__module__:    
+    #    abund_matrixs = group_osdf_objects(_get_host_assay_prep_abund_matrices(session, dcc_parent.id),
+    #                                       '_urls')
+    #elif "WgsRawSeqSet" in dcc_parent.__module__:
+    #    abund_matrices = group_osdf_objects(_get_wgs_raw_seq_set_abund_matrices(session, dcc_parent.id),
+    #                                        '_urls')
+    #elif "MicrobTranscriptomicsRawSeqSet" in dcc_parent.__module__:
+    #    abund_matrices = group_osdf_objects(_get_microb_transcriptomics_raw_seq_set_abund_matrices(session, dcc_parent.id),
+    #                                        '_urls')
+    #elfif "Proteome" in dcc_parent.__module__:
+    #    abund_matrices = group_osdf_objects(_get_proteome_abund_matrices(session, dcc_parent.id), '_raw_url')
 
     abund_matrices = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                            in abund_matrices.items())
@@ -1672,7 +1747,7 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
         abund_matrix = abund_matrix[0]
 
     req_metadata.update(conf.get('abundance_matrix'))
-    req_metadata['local_file'] = metadata.get('out_file')
+    req_metadata['local_file'] = abund_file
     req_metadata['size'] = os.path.getsize(abund_file)
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['study'] = study_name
@@ -1682,10 +1757,11 @@ def crud_abundance_matrix(session, dcc_parent, md5sum, sample_id,
         req_metadata['format_doc'] = "http://biom-format.org/"
     elif abund_file.endswith('.tsv'):
         req_metadata['format'] = "tbl"
+        req_metadata['format_doc'] = "https://en.wikipedia.org/wiki/Tab-separated_values"
     else:
         raise ValueError("Unknown abundance matrix type:", raw_file_name)
 
-    ## This is really ugly but just about the cleanest way I know to do this..
+    ## TODO: Figure out a better way to take care of this
     if "taxonomic_profile" in abund_file:
         if data_type == "metagenomics":
             req_metadata['matrix_type'] = "wgs_community"

@@ -78,19 +78,15 @@ def upload_data_files(workflow, dcc_file_objects):
         if not raw_file:
             raw_file = getattr(dcc_file, 'local_raw_file', None)
                     
- 
         if dcc_file.updated:
-            print ("Uploading file %s to DCC...         " % raw_file), 
+            print "Uploading file %s to DCC...  " % raw_file, 
             _dcc_upload(dcc_file)
             print "COMPLETE"
         else:
-            raw_file = getattr(dcc_file, 'urls')
+            raw_file = getattr(dcc_file, 'urls', None)
+            if not raw_file:
+                raw_file = getattr(dcc_file, 'raw_url')
+            
             print "SKIPPING FILE DUE TO NO CHANGES:", raw_file
-        #workflow.add_task(_dcc_upload,
-        #                  depends = raw_file,
-        #                  name = "DCC Upload %s" % raw_file,
-        #                  time = 2*60,
-        #                  mem = 1024,
-        #                  cores = 1)
 
     return uploaded_files

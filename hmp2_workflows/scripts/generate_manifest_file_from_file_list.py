@@ -64,7 +64,12 @@ def parse_cli_arguments():
                                      'file containing a list of data files.')
     parser.add_argument('-i', '--input-file-list', required=True,
                         help='A list of data files to use as the basis for '
-                        'a manifest file.')                                     
+                        'a manifest file.')
+    parser.add_argument('-m', '--md5sums-file', required=True,
+                        help='MD5sums file for all files provided.')
+    parser.add_argument('-of', '--output-file-list',
+                        help='A list of output files to add to the manifest '
+                        'file.')
     parser.add_argument('-oi', '--origin-institute', required=True,
                         help='Name of institute submitting new files '
                         'to be processed.')
@@ -76,7 +81,7 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--project', required=True,
                         help='Project that sequence files belong too.')
     parser.add_argument('-d', '--data-type', 
-                        choices=['MGX', 'MBX', '16S', 'MTX', 'TX', 'BP'],
+                        choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX', 'BP'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
                         'specified in the input file list.')                        
@@ -86,10 +91,10 @@ def parse_cli_arguments():
     return parser.parse_args()
 
 
-def parse_input_file_list(input_file_list, data_type):
+def parse_file_list(file_list, data_type):
     """Parses an list of data files, one per line, and returns a dictionary
     containing files grouped by data type (one of mgx (Metagenome), 
-    mbx (Metabolome), mtx (Metatranscriptome), 16s (16S) or prot (Proteome)).
+    mbx (Metabolome), mtx (Metatranscriptome), 16s (16S) or mpx (Proteome)).
 
     An example of an input file can be seen below:
 
@@ -105,7 +110,7 @@ def parse_input_file_list(input_file_list, data_type):
     /local/data/mgx/sample3.bam
 
     Args:
-        input_file_list (string): A path to a text file containing a list of 
+        file_list (string): A path to a text file containing a list of 
             data files to generate a manifest file for.
         data_type (string): A data-type to apply to any file in the supplied 
             input file list that does not have an explicit data-type specified.
@@ -120,7 +125,7 @@ def parse_input_file_list(input_file_list, data_type):
     """
     files_dict = {}
 
-    with open(input_file_list, 'r') as input_fh:
+    with open(file_list, 'r') as input_fh:
         for line in input_fh:
             file_elts = line.strip().split(';')
 
@@ -137,8 +142,8 @@ def parse_input_file_list(input_file_list, data_type):
     return files_dict
 
 
-def generate_yaml_dict(data_files, origin_institute, origin_contact, 
-                       origin_contact_email, project_name):
+def generate_yaml_dict(data_files, md5sums_file, origin_institute,
+                       origin_contact, origin_contact_email, project_name):
     """Generates a YAML-dictionary representation that will compose a project 
     MANIFEST file. An example MANIFEST file is shown below:
 
@@ -179,6 +184,8 @@ def generate_yaml_dict(data_files, origin_institute, origin_contact,
     Args: 
         data_files (dict): DataFrame containing Broad data product 
             tracking information.
+        md5sums_file (string): Path to a file containing md5 checksums for 
+            all files to be in our manifest file.
         origin_institute (string): Name of institute where these files 
             originated            
         origin_contact (string): Name of contact person for origin institute.
@@ -201,18 +208,35 @@ def generate_yaml_dict(data_files, origin_institute, origin_contact,
     data_dict['submitted_files'] = {}
     data_dict['submission_date'] = now.strftime('%Y-%m-%d')
 
-    for (data_type, input_files) in data_files.iteritems():
+    for (data_type, files) in data_files.iteritems():
         data_dict['submitted_files'].setdefault(data_type, {})
-        data_dict['submitted_files'][data_type].setdefault('input_files', [])
-        data_dict['submitted_files'][data_type]['input'] = input_files
+        data_dict['submitted_files'][data_type]['md5sums_file'] = md5sums_file
+        data_dict['submitted_files'][data_type].setdefault('input', [])
+        data_dict['submitted_files'][data_type]['input'] = files.get('input')
+
+        if 'output' in files:
+            data_dict['submitted_files'][data_type].setdefault('output', [])
+            data_dict['submitted_files'][data_type]['output'] = files.get('output')
 
     return data_dict
 
 
 def main(args):
-    input_files_dict = parse_input_file_list(args.input_file_list,
+    input_files_dict = parse_file_list(args.input_file_list,
                                              args.data_type)
-    yaml_file = generate_yaml_dict(input_files_dict,
+    output_files_dict = parse_file_list(args.output_file_list,
+                                        args.data_type)
+    files_dict = {}
+
+    for data_type in input_files_dict.keys():
+        files_dict.setdefault(data_type, {})
+        files_dict[data_type].setdefault('input', input_files_dict[data_type])
+      
+        if data_type in output_files_dict:
+           files_dict[data_type].setdefault('output', output_files_dict[data_type])
+
+    yaml_file = generate_yaml_dict(files_dict,
+                                   args.md5sums_file,
                                    args.origin_institute,
                                    args.origin_contact,
                                    args.origin_contact_email,

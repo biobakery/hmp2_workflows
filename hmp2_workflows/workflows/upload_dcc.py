@@ -170,14 +170,15 @@ def main(workflow):
             
             if output_files:
                 ## Do a bunch of stuff here since we have output files
-                out_fname_map = dcc.create_seq_fname_map(data_type, output_files)
+                output_files_map = dcc.create_output_file_map(data_type, output_files)
+                #out_fname_map = dcc.create_seq_fname_map(data_type, output_files)
 
-                sample_metadata_df['out_file'] = None
-                sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
-                                                              args=(id_col, out_fname_map,
-                                                                    is_proteomics, 
-                                                                    'out_file'),
-                                                              axis=1)
+                #sample_metadata_df['out_file'] = None
+                #sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
+                #                                              args=(id_col, out_fname_map,
+                #                                                    is_proteomics, 
+                #                                                    'out_file'),
+                #                                              axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 dcc_subject = dcc_subjects.get(subject_id[1:])
@@ -211,11 +212,11 @@ def main(workflow):
                                                  row)
 
                     data_file = row.get('seq_file')
-                    output_file = row.get('out_file')
                     if data_file:
                         data_filename = os.path.basename(data_file)
                         file_md5sum = md5sums_map.get(os.path.basename(data_filename))
-                        
+                        url_param = "_urls"
+
                         if not file_md5sum:
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
 
@@ -232,7 +233,18 @@ def main(workflow):
                                                                     conf.get('data_study'),
                                                                     conf.get(data_type),
                                                                     row)
-
+                        elif data_type == "MPX":
+                            url_param = '_raw_url'
+                            dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
+                                                                  conf.get('data_study'),
+                                                                  data_type,
+                                                                  conf.get(data_type),
+                                                                  row)
+                            dcc_seq_obj = dcc.crud_proteome(dcc_prep,
+                                                            file_md5sum,
+                                                            dcc_sample.name,
+                                                            dtype_metadata,
+                                                            row) 
                         elif data_type == "TX":
                             dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                               conf.get('data_study'),
@@ -277,7 +289,7 @@ def main(workflow):
                                                                  dcc_sample.name,
                                                                  dtype_metadata,
                                                                  row)
-                        elif data_type == "16S":
+                        elif data_type == '16S':
                             dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
                                                               conf.get('data_study'),
                                                               data_type,
@@ -294,32 +306,35 @@ def main(workflow):
                         ## The only output type currently supported are AbundanceMatrices 
                         ## so those are the only we will work with. Short-sided and 
                         ## ugly but can re-work this later.
-                        if output_file:
-                            output_filename = os.path.basename(output_file)
-                            output_md5sum = md5sums_map.get(output_filename)
+                        if row.get('External ID') in output_files_map:
+                            seq_out_files = output_files_map.get(row.get('External ID'))
                             dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
+                            
+                            def _process_output(output_file):
+                                output_filename = os.path.basename(output_file)
+                                output_md5sum = md5sums_map.get(output_filename)
 
-                            if not output_md5sum:
-                                raise ValueError("Could not find md5sum for file", output_filename)
+                                if not output_md5sum:
+                                    raise ValueError("Could not find md5sum for file", output_filename)
 
-                            if output_file.endswith('.fastq.') and data_type = "amplicon":
-                                dcc_seq_out = dcc.crud_sixs_trimmed_seq_set(session,
+                                ## 16S data is a bit trickier here so we need to handle
+                                ## it like so...
+                                if data_type == "16S":
+                                    pass
+                                else:
+                                    dcc_seq_out = dcc.crud_abundance_matrix(session,
                                                                             dcc_seq_obj,
+                                                                            output_file,
                                                                             output_md5sum,
                                                                             dcc_sample.name,
-                                                                            conf.get('data_study')
+                                                                            conf.get('data_study'),
                                                                             dtype_metadata,
-                                                                            row)
-                            else:    
-                                dcc_seq_out = dcc.crud_abundance_matrix(session,
-                                                                        dcc_seq_obj,
-                                                                        output_md5sum,
-                                                                        dcc_sample.name,
-                                                                        conf.get('data_study'),
-                                                                        dtype_metadata,
-                                                                        row)
+                                                                            row,
+                                                                            url_param)
 
-                            uploaded_file = upload_data_files(workflow, [dcc_seq_out])
+                                uploaded_file = upload_data_files(workflow, [dcc_seq_out])
+
+                            map(lambda out_file: _process_output(out_file), seq_out_files)
 
      
     workflow.go()
