@@ -115,10 +115,7 @@ def main(workflow):
                                             dcc_project.id)
         dcc_subjects = dcc.group_osdf_objects(dcc_study.subjects(),
                                               'rand_subject_id')
-        dcc_subjects = dcc.crud_subjects(dcc_subjects,
-                                         dcc_study,
-                                         baseline_metadata_df,
-                                         conf)
+        dcc_subjects = dcc.crud_subjects(dcc_subjects, dcc_study, baseline_metadata_df, conf)
 
         for data_type in data_files:
             dtype_metadata = conf.get(data_type)
@@ -147,7 +144,6 @@ def main(workflow):
             sample_metadata_df = metadata_df[(metadata_df[id_col].isin(sample_ids)) &
                                              (metadata_df['data_type'] == dtype_name)]
 
-
             ## Just in case there are more samples
             missing_samples = set(sample_ids) - set(sample_metadata_df[id_col].tolist())
             if missing_samples:
@@ -171,14 +167,6 @@ def main(workflow):
             if output_files:
                 ## Do a bunch of stuff here since we have output files
                 output_files_map = dcc.create_output_file_map(data_type, output_files)
-                #out_fname_map = dcc.create_seq_fname_map(data_type, output_files)
-
-                #sample_metadata_df['out_file'] = None
-                #sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
-                #                                              args=(id_col, out_fname_map,
-                #                                                    is_proteomics, 
-                #                                                    'out_file'),
-                #                                              axis=1)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 dcc_subject = dcc_subjects.get(subject_id[1:])
@@ -187,21 +175,17 @@ def main(workflow):
                 else:
                     raise ValueException('Could not find Subject object for subject ID %s' % subject_id)                        
 
-                #dcc_subject = dcc.crud_subject(dcc_subjects, 
-                #                               subject_id[1:],
-                #                               dcc_study.id,
-                #                               metadata,
-                #                               conf)
-
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
-                                                    'visit_number')
+                                                    'visit_id')
                 
                 for (idx, row) in metadata.iterrows():
                     dcc_visit = dcc.crud_visit(dcc_visits, 
                                                int(row.get('visit_num')),
-                                               dcc_subject.id, 
+                                               dcc_subject.id,
+                                               data_type,
                                                row,
                                                conf)
+                    dcc_visits.setdefault(dcc_visit.visit_id, []).append(dcc_visit)
 
                     dcc_samples = dcc.group_osdf_objects(dcc_visit.samples(),
                                                          'name')
@@ -245,7 +229,7 @@ def main(workflow):
                                                             dcc_sample.name,
                                                             dtype_metadata,
                                                             row) 
-                        elif data_type == "TX":
+                        elif data_type == "HTX":
                             dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                               conf.get('data_study'),
                                                               dtype_metadata,
@@ -298,7 +282,7 @@ def main(workflow):
                             dcc_seq_obj = dcc.crud_raw_sixs_seq_set(dcc_prep,
                                                                     file_md5sum,
                                                                     dcc_sample.name,
-                                                                    dtype_metadata.
+                                                                    dtype_metadata,
                                                                     row)
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
@@ -317,20 +301,27 @@ def main(workflow):
                                 if not output_md5sum:
                                     raise ValueError("Could not find md5sum for file", output_filename)
 
-                                ## 16S data is a bit trickier here so we need to handle
-                                ## it like so...
                                 if data_type == "16S":
+                                    ## When we have 16S data we first need to associate a trimmed 
+                                    ## 16S dataset with our raw 16S dataset and then attach 
+                                    ## abundance matrices to the trimmed dataset.
+
+                                    ## Going to make another big assumption here that if we have a FASTQ
+                                    ## file in our output section for a 16S dataset it is a trimmed 
+                                    ## file.
                                     pass
-                                else:
-                                    dcc_seq_out = dcc.crud_abundance_matrix(session,
-                                                                            dcc_seq_obj,
-                                                                            output_file,
-                                                                            output_md5sum,
-                                                                            dcc_sample.name,
-                                                                            conf.get('data_study'),
-                                                                            dtype_metadata,
-                                                                            row,
-                                                                            url_param)
+
+
+
+                                dcc_seq_out = dcc.crud_abundance_matrix(session,
+                                                                        dcc_seq_obj,
+                                                                        output_file,
+                                                                        output_md5sum,
+                                                                        dcc_sample.name,
+                                                                        conf.get('data_study'),
+                                                                        dtype_metadata,
+                                                                        row,
+                                                                        url_param)
 
                                 uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
