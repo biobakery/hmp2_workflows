@@ -279,7 +279,7 @@ def main(workflow):
                                                               data_type,
                                                               dtype_metadata,
                                                               row)
-                            dcc_seq_obj = dcc.crud_raw_sixs_seq_set(dcc_prep,
+                            dcc_seq_obj = dcc.crud_sixs_raw_seq_set(dcc_prep,
                                                                     file_md5sum,
                                                                     dcc_sample.name,
                                                                     dtype_metadata,
@@ -292,8 +292,26 @@ def main(workflow):
                         ## ugly but can re-work this later.
                         if row.get('External ID') in output_files_map:
                             seq_out_files = output_files_map.get(row.get('External ID'))
-                            dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
-                            
+ 
+                            if data_type == "16S":
+                                ## When we have 16S data we first need to associate a trimmed 
+                                ## 16S dataset with our raw 16S dataset and then attach 
+                                ## abundance matrices to the trimmed dataset.
+
+                                ## Going to make another big assumption here that if we have a FASTQ
+                                ## file in our output section for a 16S dataset it is a trimmed 
+                                ## file.
+                                trimmed_fastq = [trim for trim in seq_out_files if 'fastq' in trim]
+                                trim_seq_obj = dcc.crud_sixs_trimmed_seq_set(dcc_seq_obj,
+                                                                             file_md5sum,
+                                                                             dcc_sample.name,
+                                                                             dtype_metadata,
+                                                                             row)
+                                dcc_seq_obj = upload_data_files(workflow, [trim_seq_obj])
+
+                            else:
+                                dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
+
                             def _process_output(output_file):
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)
@@ -301,15 +319,6 @@ def main(workflow):
                                 if not output_md5sum:
                                     raise ValueError("Could not find md5sum for file", output_filename)
 
-                                if data_type == "16S":
-                                    ## When we have 16S data we first need to associate a trimmed 
-                                    ## 16S dataset with our raw 16S dataset and then attach 
-                                    ## abundance matrices to the trimmed dataset.
-
-                                    ## Going to make another big assumption here that if we have a FASTQ
-                                    ## file in our output section for a 16S dataset it is a trimmed 
-                                    ## file.
-                                    pass
 
 
 
@@ -322,6 +331,7 @@ def main(workflow):
                                                                         dtype_metadata,
                                                                         row,
                                                                         url_param)
+
 
                                 uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
