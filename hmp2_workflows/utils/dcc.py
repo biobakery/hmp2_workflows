@@ -1762,19 +1762,13 @@ def crud_viral_seq_set(input_file, md5sum, sample_id, conf, metadata):
     return metatranscriptome
 
 
-def crud_sixs_trimmed_seq_set(session, dcc_parent, md5sum, sample_id,
-                              study_name, conf, metadata):
-    """Creates or updates an iHMP OSDF AbundanceMatrix object.
-
-    Handles abundance matrices in both BIOM and tab-delimited format.
+def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
+    """Creates or updates an iHMP OSDF 16SRawSeqSet object.
 
     Args:
-        session (cutlass.Session): The OSDF session instance.
-        dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
-            or an assay prep from which an abundance matrice may be derived.
-             (i.e. WgsRawSeqSet or HostAssayPrep)
+        prep (cutlass.16sDnaPrep): The 16sDnaPrep object that this 
+            seq set object will be associated with.
         md5sum (string): md5 checksum for the associated sequence file.
-        sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all transcriptomes
         metadata (pandas.Series): Metadata associated with this transcriptome
@@ -1783,9 +1777,107 @@ def crud_sixs_trimmed_seq_set(session, dcc_parent, md5sum, sample_id,
         None
 
     Returns:
+        cutlass.16sRawSeqSet: The 16S raw seq set to be saved.
+    """
+    seq_file = metadata.get('seq_file')
+    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    sixs_raw_seqs = group_osdf_objects(prep.child_seq_sets(),
+                                       'urls')
+    sixs_raw_seqs = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                          in sixs_raw_seqs.items())
+    sixs_raw_seq = sixs_raw_seqs.get(raw_file_name)
+
+    if not sixs_raw_seq:
+        sixs_raw_seq = cutlass.SixteenSRawSeqSet()
+    else:
+        sixs_raw_seq = sixs_raw_seqs[0]
+
+    req_metadata.update(conf.get('amplicon'))
+    req_metadata['local_file'] = seq_file
+    req_metadata['size'] =  os.path.getsize(seq_file)
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    fields_to_update = get_fields_to_update(req_metadata, sixs_raw_seq)
+    map(lambda key: setattr(sixs_raw_seq, key, req_metadata.get(key)),
+        fields_to_update)
+
+    sixs_raw_seq.updated = False
+    if fields_to_update:
+        sixs_raw_seq.updated = True
+        sixs_raw_seq.links['sequenced_from'] = [prep.id]
+
+        if not sixs_raw_seq.is_valid():
+            raise ValueError('16S raw sequence set validation failed: %s' % 
+                             sixs_raw_seq.validate())
+
+    return sixs_raw_seq
+
+
+def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 
+                              url_param='_urls')
+    """Creates or updates an iHMP OSDF AbundanceMatrix object.
+
+    Handles abundance matrices in both BIOM and tab-delimited format.
+
+    Args:
+        dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
+            or an assay prep from which an abundance matrice may be derived.
+             (i.e. WgsRawSeqSet or HostAssayPrep)
+        seq_file (string): Path to the trimmed 16S seq set to submit
+        md5sum (string): md5 checksum for the associated sequence file.
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+        url_params (string): Parameter name that will house URL to 16S trimmed 
+            sequences.
+
+    Requires:
+        None
+
+    Returns:
         cutlass.AbundanceMatrix: The abundance matrice to be saved.
     """
-    pass
+    req_metadata = {}
+
+    sixs_trimmed_fname = os.path.splitext(os.path.basename(seq_file))[0]
+    data_type = metadata.get('data_type')
+
+    sixs_trimmed_seqs = group_osdf_objects([trim_seq for trim_seq in dcc_parent.children() if 
+                                            isinstance(trim_seq, cutlass.SixteensTrimmedSeqSet)], 
+                                           url_param)
+    sixs_trimmed_seqs = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v)
+                             in sixs_trimmed_seqs.items())
+    sixs_trimmed_seq = sixs_trimmed_seqs.get(sixs_trimmed_fname)
+
+    if sixs_trimmed_seq:
+        sixs_trimmed_seq = sixs_trimmed_seq[0]
+    else:
+        sixs_trimmed_seq = cutlass.SixteensTrimmedSeqSet()
+
+    req_metadata.update(conf.get('amplicon'))
+
+    req_metadata['local_file'] = seq_file
+    req_metadata['size'] =  os.path.getsize(seq_file)
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    fields_to_update = get_fields_to_update(req_metadata, sixs_trimmed_seq)
+    map(lambda key: setattr(sixs_trimmed_seq, key, req_metadata.get(key)),
+        fields_to_update)
+
+    sixs_trimmed_seq.updated = False
+    if fields_to_update:
+        sixs_trimmed_seq.updated = True
+        sixs_trimmed_seq.links['computed_from'] = [dcc_parent.id]
+
+        if not sixs_trimmed_seq.is_valid():
+            raise ValueError('16S trimmed sequence set validation failed: %s' % 
+                             sixs_trimmed_seq.validate())
+
+    return sixs_trimmed_seq
 
 
 def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id, 
@@ -1815,7 +1907,6 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
         cutlass.AbundanceMatrix: The abundance matrice to be saved.
     """
     abund_fname = os.path.splitext(os.path.basename(abund_file))[0]
-
     data_type = metadata.get('data_type')
 
     ## Setup our 'static' metadata pulled from our YAML config

@@ -65,7 +65,7 @@ def parse_cli_arguments():
     parser.add_argument('-i', '--input-file-list', required=True,
                         help='A list of data files to use as the basis for '
                         'a manifest file.')
-    parser.add_argument('-m', '--md5sums-file', required=True,
+    parser.add_argument('-m', '--md5sums-file', default=None,
                         help='MD5sums file for all files provided.')
     parser.add_argument('-of', '--output-file-list',
                         help='A list of output files to add to the manifest '
@@ -81,7 +81,8 @@ def parse_cli_arguments():
     parser.add_argument('-p', '--project', required=True,
                         help='Project that sequence files belong too.')
     parser.add_argument('-d', '--data-type', 
-                        choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX', 'BP'],
+                        choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX', 
+                                 'BP', 'RRBS'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
                         'specified in the input file list.')                        
@@ -210,10 +211,12 @@ def generate_yaml_dict(data_files, md5sums_file, origin_institute,
 
     for (data_type, files) in data_files.iteritems():
         data_dict['submitted_files'].setdefault(data_type, {})
-        data_dict['submitted_files'][data_type]['md5sums_file'] = md5sums_file
         data_dict['submitted_files'][data_type].setdefault('input', [])
         data_dict['submitted_files'][data_type]['input'] = files.get('input')
 
+
+        if md5sums_file:
+           data_dict['submitted_files'][data_type]['md5sums_file'] = md5sums_file
         if 'output' in files:
             data_dict['submitted_files'][data_type].setdefault('output', [])
             data_dict['submitted_files'][data_type]['output'] = files.get('output')
@@ -224,15 +227,18 @@ def generate_yaml_dict(data_files, md5sums_file, origin_institute,
 def main(args):
     input_files_dict = parse_file_list(args.input_file_list,
                                              args.data_type)
-    output_files_dict = parse_file_list(args.output_file_list,
-                                        args.data_type)
+
+    output_files_dict = None
+    if args.output_file_list:
+        output_files_dict = parse_file_list(args.output_file_list,
+                                            args.data_type)
     files_dict = {}
 
     for data_type in input_files_dict.keys():
         files_dict.setdefault(data_type, {})
         files_dict[data_type].setdefault('input', input_files_dict[data_type])
       
-        if data_type in output_files_dict:
+        if output_files_dict and data_type in output_files_dict:
            files_dict[data_type].setdefault('output', output_files_dict[data_type])
 
     yaml_file = generate_yaml_dict(files_dict,
