@@ -11,6 +11,9 @@ This is a bit of a stop-gap script as the metadata pipeline will do this
 properly.
 """
 
+import sys
+sys.path.insert(1, '/n/home07/carze/.local/lib/python2.7/site-packages/')
+
 import argparse
 import re
 
@@ -43,6 +46,7 @@ def populate_value_lookup(row, lookup):
     that will be used in creating our human readable metadata file.
     """
     code_col = row.get('Code')
+    #code_col = row.get('Variable Name')
     raw_values = row.get('Pick Lists  (Value, Missing, Name)')
     values = raw_values.split('\r\n')
 
@@ -50,6 +54,17 @@ def populate_value_lookup(row, lookup):
     for value in values:
         (code_val, _null, human_val) = value.split(',', 2)
         lookup[code_col][str(code_val)] = human_val.replace(':', '').strip()
+        lookup[code_col][str(float(code_val))] = human_val.replace(':', '').strip()
+
+        if code_col == "Sex":
+            lookup.setdefault('sex', {})
+            lookup['sex'][str(code_val)] = human_val.replace(':', '').strip()
+            lookup['sex'][str(float(code_val))] = human_val.replace(':', '').strip()
+
+        if code_col == "Race":
+            lookup.setdefault('race', {})
+            lookup['race'][str(code_val)] = human_val.replace(':', '').strip()
+            lookup['race'][str(float(code_val))] = human_val.replace(':', '').strip()
 
 
 def main(args):
@@ -69,7 +84,6 @@ def main(args):
     value_field_lookup = {}
     dictionary_df[dictionary_df['Pick Lists  (Value, Missing, Name)'].notnull()].apply(populate_value_lookup, axis=1, args=(value_field_lookup,))
 
-    ## Need to account for one pesky case here
     value_field_lookup['diagnosis'] = dict((key.replace('.0', ''), val) for (key, val) in value_field_lookup['diagnosis'].iteritems())
 
     ## Replace coded values

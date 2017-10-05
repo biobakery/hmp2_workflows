@@ -191,13 +191,13 @@ def get_sample_id_from_fname(filename):
     ## Just in-case we don't have a basename here; get our basename
     filename = os.path.basename(filename)
 
-    pattern = re.compile('.*[-|_]?(SM-?[0-9a-zA-Z]{5})[-|_]?.*')
+    pattern = re.compile('.*[-|_]?(S[M|m]-?[0-9a-zA-Z]{4,5})[-|_]?.*')
     matches = re.match(pattern, filename)
     if matches:
         sample_id = matches.group(1)
-        sample_id = (sample_id.replace('SM', 'SM-') if '-' not in sample_id 
+        sample_id = (sample_id.replace(sample_id[:2], sample_id[:2] + '-') if '-' not in sample_id
                      else sample_id)
-    else: 
+    else:
         sample_id = os.path.splitext(filename)[0]
 
     return sample_id

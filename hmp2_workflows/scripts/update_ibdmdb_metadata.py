@@ -45,7 +45,7 @@ furnished to do so, subject to the following conditions:
 """
 
 import sys
-sys.path.insert(1, '/n/home07/carze/.local/lib/python2.7/site-packages/')
+#sys.path.insert(1, '/n/home07/carze/.local/lib/python2.7/site-packages/')
 
 import argparse
 import collections
@@ -101,6 +101,11 @@ def parse_cli_arguments():
     parser.add_argument('-d', '--biopsy-dates', 
                         help='Spreadsheet containg metadata for any 16S'
                         'biopsy data.')
+    parser.add_argument('-as', '--add-all-stool-collections', required=False,
+                        action='store_true', default=False,
+                        help='OPTIONAL. Add in all stool '
+                        'collections to the metadata file regardless of whether  '
+                        'or not a data product was generated.')
     parser.add_argument('-a', '--auxillary-metadata', action='append',
                         default=[], help='Additional auxillary metadata '
                         'to use in populating the HMP2 metadata table.')
@@ -211,10 +216,12 @@ def get_project_id(row):
     """
     project_id = row.get('Project')
     type_mapping = {'host_transcriptomics': 'TX',
+                    'biopsy_16S': 'BP',
                     'metatranscriptomics': 'MTX',
                     'metagenomics': 'MGX',
                     'viromics': 'MVX',
-                    'host_genome': 'HG'}
+                    'host_genome': 'HG',
+                    'methylome': 'RRBS' }
 
 
     ## This specific case is applicable to Proteomics data only but the 
@@ -280,7 +287,6 @@ def get_data_type(row):
     return data_type
 
 
-
 def get_biopsy_site_sub_coll(row):
     subj_id = row.get('ProjectSpecificID')
     interval_name = row.get('IntervalName')
@@ -295,11 +301,8 @@ def get_biopsy_site_sub_coll(row):
     if studytrax_df['Site/Sub/Coll'].isin(site_sub_coll):
         coll_num = studytrax_df[studytrax_df['Site/Sub/Coll ID'] == site_sub_coll][-1]  
         new_coll_num = int(coll_num) + 1
-        #site_sub_coll = site_sub_coll +
 
     return site_sub_coll
-
-
 
 
 def _get_non_stool_site_sub_coll(row):
@@ -330,13 +333,12 @@ def _get_non_stool_site_sub_coll(row):
     return site_mapping.get(site_name) + subj_id + 'C' + interval_name_recode + coll_num
 
 
-
 def resolve_dupe_ssc_ids(metadata_df):
     prev_ssc = None
     counter = 1
 
     ids = metadata_df['Site/Sub/Coll']
-    for (idx, row) in metadata_df[ids.isin(ids[ids.duplicated()])].sort("Site/Sub/Coll").iterrows():
+    for (idx, row) in metadata_df[ids.isin(ids[ids.duplicated()])].sort_values("Site/Sub/Coll").iterrows():
         ssc_id = row.get('Site/Sub/Coll')
         if ssc_id != prev_ssc:
             prev_ssc = ssc_id
@@ -349,7 +351,66 @@ def resolve_dupe_ssc_ids(metadata_df):
     return metadata_df
 
 
-def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df, 
+def add_all_stool_collections(metadata_df, studytrax_df, broad_df):
+    """Adds any of the missing stool sample collections for which a product was not
+    generated.
+
+    Args:
+        metadata_df (pandas.DataFrame): All existing metadata in a pandas DataFrame.
+        studytrax_df (pandas.DataFrame): StudyTrax clinical metadata.
+        broad_df (pandas.DataFrame): Broad sample spreadsheet metadata.
+
+    Requires:
+        None
+
+    Returns:
+        pandas.DataFrame: An updated dataframe containing all stool samples that 
+        haven't been associated with a data type.
+    """
+    site_mapping = {'Cincinnati': 'H',
+                    'Massachusetts General Hospital': 'M',
+                    'Emory': 'E',
+                    'MGH Pediatrics': 'P',
+                    'Cedars-Sinai': 'C'}
+
+    def _gen_site_sub_coll(row):
+        site_abbrev = site_mapping.get(row.get('SiteName'))
+        coll_num = row.get('IntervalName').replace('Stool Collection #', '')
+        subject_id = row.get('ProjectSpecificID')
+        return site_abbrev + subject_id + "C" + coll_num
+
+
+    ## This is a temporary hack that allows us to loop in all the stool 
+    ## samples that were received but did not have a corresponding data point
+
+    ## In order to collect these we need to create a new temporary row that 
+    ## is going to be similar to our Site/Sub/Coll ID's
+    metadata_stool_df = metadata_df[metadata_df['IntervalName'].str.startswith('Stool')]
+    studytrax_stool_df = studytrax_df[studytrax_df['IntervalName'].str.startswith('Stool')]
+    broad_subset_df = broad_df.filter(['Site/Sub/Coll', 'Actual Date of Receipt'])
+
+    tmp_stool_ids = ["%s_%s" % (x,y) for (x,y) in zip(metadata_stool_df['ProjectSpecificID'],
+                                                      metadata_stool_df['IntervalSequence'])]
+    tmp_stool_ids = list(set(tmp_stool_ids))
+
+    studytrax_stool_df['stool_id'] = studytrax_stool_df.apply(lambda row: "%s_%s" % (row['ProjectSpecificID'],
+                                                                                     row['IntervalSequence']), axis=1)
+    studytrax_stool_df['Site/Sub/Coll ID'] = studytrax_stool_df.apply(_gen_site_sub_coll, axis=1)
+    studytrax_noprod_df = studytrax_stool_df[-studytrax_stool_df['stool_id'].isin(tmp_stool_ids)]
+    studytrax_noprod_df['data_type'] = "noproduct"
+    studytrax_noprod_df['ProjectSpecificID'].astype('int')
+    studytrax_noprod_df = studytrax_noprod_df.merge(broad_subset_df, left_on='Site/Sub/Coll ID', right_on='Site/Sub/Coll', how='left')
+    studytrax_noprod_df['Site'] = studytrax_noprod_df['SiteName']
+
+    studytrax_noprod_df = studytrax_noprod_df.drop('stool_id', 1)
+    studytrax_noprod_df = studytrax_noprod_df.drop('Site/Sub/Coll', 1)
+    
+    metadata_df = pd.concat([metadata_df, studytrax_noprod_df], ignore_index=True)
+
+    return metadata_df
+
+
+def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                       data_type, sequence_files, pair_identifier):
     """Extracts metadata from the supplied sources of metadata for the
     provided sequence files. 
@@ -380,7 +441,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     if pair_identifier:
        sample_ids = [sid.replace(pair_identifier, '') for sid in sample_ids]
 
-    sample_ids_techreps = [sid for (k, sid) in sample_mapping.iteritems() if "techreps" in k]
+    sample_ids_techreps = [sid for (k, sid) in sample_mapping.iteritems() if "techrep" in k]
     sample_ids = set(sample_ids) - set(sample_ids_techreps)
 
     data_type_mapping = config.get('dtype_mapping')
@@ -402,40 +463,95 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                                  (sample_df['Site/Sub/Coll']).isin(sample_ids_techreps)]
 
         sample_subset_techreps['External ID'] = sample_subset_techreps['Parent Sample A'].map(lambda sid: sid.replace('-', '') + "_TR")
+        sample_subset_techreps['External ID'] = sample_subset_techreps.apply(lambda row: row.get('Site/Sub/Coll')[0] + 
+                                                                                         row.get('External ID'), axis=1)
+        sample_subset_df = pd.concat([sample_subset_df, sample_subset_techreps],
+                                     ignore_index=True)
 
     ## TODO: Figure out if we have any samples that did not have aassociated metadata
     #join_how = 'outer' if full_join else 'left'
     if len(sample_subset_df) == 0:
+        other_loc_map = {'0': 'Terminal ileum',
+                         '1': 'Neo-ileum',
+                         '2': 'Ileocecal Valve',
+                         '3': 'Cecum',
+                         '4': 'Ascending (right-sided) colon',
+                         '5': 'Transverse colon',
+                         '6': 'Descending (left-sided) colon',
+                         '7': 'Sigmoid Colon',
+                         '8': 'Rectum'}
+
+        if data_type == "TX" or data_type == "RRBS":
         # TODO: Add these to config file
-        tx_map = {'bx_q5': 'Rectum', 
-                  'bx_q6': 'Ileum',
-                  'bx_q7': 'Other Inflamed',
-                  'bx_q9': 'Non-inflamed'}
+            biopsy_map = {'bx_q5': 'Rectum',
+                          'bx_q6': 'Ileum',
+                          'bx_q7': 'Other Inflamed',
+                          'bx_q9': 'Non-inflamed'}
 
-        if data_type == "TX":
-            transcriptome_dfs = []
-            for (studytrax_col, location) in tx_map.iteritems():
-                tx_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
-                tx_df['biopsy_location'] = location
-                tx_df['External ID'] = tx_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
-                transcriptome_dfs.append(tx_df)
+            new_meta_dfs = []
+            for (studytrax_col, location) in biopsy_map.iteritems():
+                new_meta_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
+                new_meta_df['biopsy_location'] = location
+                new_meta_df['External ID'] = new_meta_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
 
-            metadata_df = pd.concat([sample_subset_df] + transcriptome_dfs, 
-                                    ignore_index=True)
+                if not new_meta_df['biopsy_location'].empty:
+                    if location == "Other Inflamed":
+                        new_loc_col = "bx_q8"
+                    elif location == "Non-inflamed":
+                        new_loc_col = "bx_q10"
+                    if not location in ['Rectum', 'Ileum']:
+                        new_meta_df['biopsy_location'] = [other_loc_map.get(x) for x in new_meta_df[new_loc_col]]
+
+                new_meta_dfs.append(new_meta_df)
+
+            if data_type == "RRBS":
+                blood_df = studytrax_df[studytrax_df['bl_q4'].isin(sample_ids)]
+                blood_df['External ID'] = blood_df['bl_q4'].map(lambda sid: sid.replace('-', ''))
+                new_meta_dfs.append(blood_df)
+
+            metadata_df = pd.concat([sample_subset_df] + new_meta_dfs, ignore_index=True)
             metadata_df = metadata_df.drop_duplicates(subset=['External ID', 'biopsy_location'], keep='first')
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
         elif data_type == "HG":
             studytrax_col = "bl_q4"
-            hg_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
-            hg_df['External ID'] = hg_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
+            blood_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
+            blood_df['External ID'] = blood_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
 
-            metadata_df = pd.concat([sample_subset_df, hg_df], 
+            metadata_df = pd.concat([sample_subset_df, blood_df],
                                     ignore_index=True)
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
+        elif data_type == "BP":
+            biopsy_map = {'bx_q13': 'Rectum',
+                          'bx_q14': 'Ileum',
+                          'bx_q15': 'Other Inflamed',
+                          'bx_q17': 'Non-inflamed'}
+
+            biopsy_dfs = []
+            for (studytrax_col, location) in biopsy_map.iteritems():
+                biopsy_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
+                biopsy_df['biopsy_location'] = location
+                biopsy_df['External ID'] = biopsy_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
+
+                if not biopsy_df['biopsy_location'].empty:
+                    if location == "Other Inflamed":
+                        new_loc_col = "bx_q16"
+                    elif location == "Non-inflamed":
+                        new_loc_col = "bx_q18"
+                        
+                    if not location in ['Rectum', 'Ileum']:
+                        biopsy_df['biopsy_location'] = [other_loc_map.get(x) for x in biopsy_df[new_loc_col]]
+
+                biopsy_dfs.append(biopsy_df)
+
+            metadata_df = pd.concat([sample_subset_df] + biopsy_dfs, ignore_index=True)
+            metadata_df.drop_duplicates(subset=['External ID', 'biopsy_location'], keep='first')
+            metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
+            resolve_dupe_ssc_ids(metadata_df)
+
     else:
-        metadata_df = sample_subset_df.merge(studytrax_df, 
+        metadata_df = sample_subset_df.merge(studytrax_df,
                                              left_on='Parent Sample A',
                                              right_on='st_q4',
                                              how='left')
@@ -447,7 +563,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
         metadata_df.loc[metadata_df['st_q11'].isnull(), 'st_q11'] = metadata_df['MbX']
         metadata_df.loc[metadata_df['st_q12'].isnull(), 'st_q12'] = metadata_df['Viromics']
 
-        if proteomics_df is not None:   
+        if proteomics_df is not None:
             ## In order to merge our proteomics data properly we'll need to 
             ## first create a subset of our Broad sample tracking sheet 
             ## that isolates just rows related to Proteomics data (the column 
@@ -512,18 +628,20 @@ def generate_external_id(row):
     external_id  = row.get('External ID')
     base_id = None
 
-    if not pd.isnull(external_id):
-        base_id = external_id
-    elif not pd.isnull(stool_id):
-        base_id = stool_id
-    elif not pd.isnull(blood_id):
-        base_id = blood_id
-    else:
-        raise Exception("Could not generate External ID:", row)
+    if row.get('data_type') != "noproduct":
+        if not pd.isnull(external_id):
+            base_id = external_id
+        elif not pd.isnull(stool_id):
+            base_id = stool_id
+        elif not pd.isnull(blood_id):
+            base_id = blood_id
+        else:
+            raise Exception("Could not generate External ID:", row)
 
-    site_sub_coll = row['Site/Sub/Coll ID']
-    row['External ID'] = site_sub_coll[0] + base_id.replace('-', '')
-    #eturn site_sub_coll[0] + base_id.replace('-', '')
+        site_sub_coll = row['Site/Sub/Coll ID']
+        row['External ID'] = site_sub_coll[0] + base_id.replace('-', '')
+        #eturn site_sub_coll[0] + base_id.replace('-', '')
+        
     return row
 
 
@@ -570,7 +688,8 @@ def fill_visit_nums(row):
     visit_num = row['visit_num']
     data_type  = row['data_type']
 
-    if np.isnan(visit_num) and data_type not in ['host_transcriptomics', 'host_genome']:
+    if np.isnan(visit_num) and data_type not in ['host_transcriptomics', 'host_genome',
+                                                 'biopsy_16S', 'methylome']:
         visit_num = site_sub_coll_id.split('C')[-1]
     
     return visit_num
@@ -613,15 +732,14 @@ def generate_collection_statistics(metadata_df, collection_dict, biopsy_dates=No
         participant_id = row['Site/Sub/Coll ID'][:5]
         row['Participant ID'] = participant_id
         subject_id = int(row['Participant ID'][1:])
-
-        if pd.isnull(row['Site']):
-            row['Site'] = row['SiteName']
-        elif pd.isnull(row['SiteName']):
-            row['SiteName'] = row['Site']
-
-        if data_type == 'host_transcriptomics':
+        
+        if data_type in ['host_transcriptomics', 'biopsy_16S', 'methylome']:
             interval_name = row['IntervalName']
-            row['week_num'] = biopsy_dates[str(subject_id)][interval_name]
+            
+            if "Baseline" in interval_name:
+                row['week_num'] = "0"
+            elif not  "Follow" in interval_name:
+                row['week_num'] = biopsy_dates[str(subject_id)][interval_name]
         elif data_type != 'host_genome':
             visit_num = row['visit_num']
             receipt_date = row['Actual Date of Receipt']
@@ -635,12 +753,13 @@ def generate_collection_statistics(metadata_df, collection_dict, biopsy_dates=No
             elif pd.isnull(row['SiteName']):
                 row['SiteName'] = row['Site']
 
-
-            if pd.isnull(row['week_num']):
+            if pd.isnull(row['week_num']) and not pd.isnull(receipt_date):
+                #print row
                 collection_dates = collection_dict.get(subject_id)
+                #print "DEBUG:", collection_dates, visit_num
                 initial_visit_date = collection_dates.iloc[0]['Actual Date of Receipt']
-                subj_collection_row = collection_dates[collection_dates['Collection #'] 
-                                                       == visit_num]
+                subj_collection_row = collection_dates[collection_dates['Collection #']
+                                                       == int(visit_num)]
                 prev_visit_date = subj_collection_row['prev_coll_date'].values[0]
 
                 if pd.isnull(prev_visit_date):
@@ -652,21 +771,21 @@ def generate_collection_statistics(metadata_df, collection_dict, biopsy_dates=No
         return row
 
     metadata_df = metadata_df.apply(_add_collection_columns, axis=1)
-
-    #metadata_df = add_host_transcriptomics_visit_num(metadata_df)
+    metadata_df = add_biopsy_visit_num(metadata_df)
 
     return metadata_df
 
 
-def add_host_transcriptomics_visit_num(metadata_df):
+def add_biopsy_visit_num(metadata_df):
     """
     """
-    for (idx, row) in metadata_df[metadata_df['data_type'] == 'host_transcriptomics'].iterrows():
+    for (idx, row) in metadata_df[metadata_df['data_type'].isin(['host_transcriptomics', 'biopsy_16S', 'methylome'])].iterrows():
         week_num = row.get('week_num')
+        visit_num = row.get('visit_num')
         participant_id = row.get('Participant ID')
 
-        if row['Site/Sub/Coll ID'] == "C3023CSC1":
-            print "DEBUG"
+        if not pd.isnull(visit_num):
+            continue
 
         if pd.isnull(week_num) or week_num == '':
             visit_num = 1
@@ -674,14 +793,14 @@ def add_host_transcriptomics_visit_num(metadata_df):
             ## Do we have an exact match somewhere?
             match = metadata_df.loc[(metadata_df['Participant ID'] == participant_id) &
                                     (metadata_df['week_num'] == week_num) &
-                                    (metadata_df['data_type'] != "host_transcriptomics")]
+                                    (-metadata_df['data_type'].isin(['host_transcriptomics', 'biopsy_16S', 'methylome']))]
 
             if not match.empty:
-                visit_num = match.get('visit_num').values[0]    
+                visit_num = match.get('visit_num').values[0]
             else:
                 ## If not then we are going to try to get as close as possible here...
                 subject_rows = metadata_df.loc[(metadata_df['Participant ID'] == participant_id) &
-                                               (metadata_df['data_type'] != "host_transcriptomics")]
+                                               (-metadata_df['data_type'].isin(['host_transcriptomics', 'biopsy_16S', 'methylome']))]
                 subject_rows['week_num'] = pd.to_numeric(subject_rows['week_num'])
                 matches = subject_rows.iloc[(subject_rows['week_num']-float(week_num)).abs().argsort()[:2]]
 
@@ -694,6 +813,27 @@ def add_host_transcriptomics_visit_num(metadata_df):
         metadata_df.loc[idx] = row
     
     return metadata_df
+
+
+def fix_site_name(metadata_nosite_df):
+    """
+    """
+    site_mapping = {'H': 'Cincinnati',
+                    'M': 'Massachusetts General Hospital',
+                    'E': 'Emory',
+                    'P': 'MGH Pediatrics',
+                    'C': 'Cedars-Sinai'}
+
+    def _fix_site_name(row):
+        site_sub_coll = row.get('Site/Sub/Coll ID')
+        site_abbrev = site_sub_coll[0]
+        row['SiteName'] = site_mapping.get(site_abbrev)
+        row['Site'] = row['SiteName']
+        return row
+
+    metadata_nosite_df = metadata_nosite_df.apply(_fix_site_name, axis=1)
+
+    return metadata_nosite_df
 
 
 def reorder_columns(metadata_df, cols_to_move):
@@ -745,7 +885,7 @@ def get_no_sequence_metadata(metadata_df, clinical_df):
 
 
 def main(args):
-    config = parse_cfg_file(args.config)  
+    config = parse_cfg_file(args.config) 
 
     study_trax_df = pd.read_csv(args.studytrax_metadata, dtype='str')
     broad_sample_df = pd.read_csv(args.broad_sample_tracking,
@@ -755,10 +895,8 @@ def main(args):
     metadata_df = None
     
     date_today = datetime.date.today()
-    metadata_file = os.path.join(args.output_dir, 
+    metadata_file = os.path.join(args.output_dir,
                                  'hmp2_metadata_%s.csv' % date_today)
-    no_seq_metadata = os.path.join(args.output_dir,
-                                   'hmp2_metadata_no_sequence_%s.csv' % date_today)
 
     ## Before we filter our metadata rows down to just to rows associated
     ## with the files we have present, we'll want a list of all the collection
@@ -767,7 +905,6 @@ def main(args):
 
     if args.proteomics_metadata:
         proteomics_df = pd.read_table(args.proteomics_metadata)
-
     if args.biopsy_dates:
         biopsy_date_map = parse_biopsy_dates(args.biopsy_dates)
 
@@ -805,11 +942,13 @@ def main(args):
  
             new_metadata_df = pd.concat(new_metadata, ignore_index=True)
 
-            new_metadata_df[metadta_df['External ID'].isnull()] = None
+            new_metadata_df[new_metadata_df['External ID'].isnull()] = None
             new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
             new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
             new_metadata_df['visit_num'] = new_metadata_df['Collection #']
             new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
+            new_metadata_df['ProjectSpecificID'] = pd.to_numeric(new_metadata_df['ProjectSpecificID'])
+            new_metadata_df['Site'] = new_metadata_df['SiteName']
 
             new_metadata_df = remove_columns(new_metadata_df, config.get('drop_cols'))
 
@@ -817,7 +956,7 @@ def main(args):
         metadata_df = pd.read_csv(args.metadata_file, parse_dates=['Actual Date of Receipt'])
     
         site_mapping = config.get('site_map')
-        metadata_df['Site/Sub/Coll ID'] = metadata_df.apply(fix_site_sub_coll_id, 
+        metadata_df['Site/Sub/Coll ID'] = metadata_df.apply(fix_site_sub_coll_id,
                                                             args=(site_mapping,),
                                                             axis=1)
         metadata_df['PDO Number'] = metadata_df.apply(get_pdo_number, axis=1)
@@ -861,11 +1000,14 @@ def main(args):
                 metadata_df.update(supp_existing_df)
                 metadata_df.reset_index(inplace=True)
 
+    if args.add_all_stool_collections:
+        metadata_df = add_all_stool_collections(metadata_df, study_trax_df, broad_sample_df)
+
     metadata_df['Actual Date of Receipt'] = pd.to_datetime(metadata_df['Actual Date of Receipt'])
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
-    metadata_df = reorder_columns(metadata_df, config.get('col_order'))
 
     metadata_df['hbi_score'] = pd.to_numeric(metadata_df['hbi_score'])
+    metadata_df['SiteName'] = metadata_df['Site']
 
     ## Couple small remaining changes
     metadata_df.ix[metadata_df.hbi_score > 900, 'hbi_score'] = None 
@@ -873,15 +1015,15 @@ def main(args):
     metadata_df['Research Project'] = "ibdmdb"
 
     metadata_df = generate_collection_statistics(metadata_df, collection_dates_dict, biopsy_date_map)
-    
+
     #metadata_df[metadta_df.week_num.isnull()] = generate_collection_statistics(metadata_df[metadta_df.week_num.isnull()],
     #                                                                           collection_dates_dict)
+    metadata_df[metadata_df['SiteName'].isnull()] = fix_site_name(metadata_df[metadata_df['SiteName'].isnull()])
+    metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.drop(['Site'], 1, inplace=True)
 
     metadata_df.to_csv(metadata_file, index=False)
 
-    no_seq_files_metadata_df = get_no_sequence_metadata(metadata_df, study_trax_df)
-    no_seq_files_metadata_df.to_csv(no_seq_metadata, index=False)
 
 
 if __name__ == "__main__":

@@ -30,21 +30,23 @@ base: &base
         humann2_nt: /PATH/TO/HUMANN2/DB/chocophlan
         humann2_p: /PATH/TO/HUMANN2/DB/uniref
 
+    data_type_mapping:
+        MBX: "metabolomics"
+        MGX: "metagenomics"
+        16S: "amplicon"
+        MPX: "proteomics"
+        MTX: "metatranscriptomics"
+        HTX: "host_transcriptomics"
+
     target_metadata_cols: &metadata_cols
         - site_sub_coll
         - site_name
         - sex
         - race
         - consent_age
-        - visit_num
         - week_num
-        - date_of_receipt
-        - antibiotics
         - diagnosis
         - baseline_montreal_location
-        - sccai
-        - hbi
-        - fecalcal
 
     analysis_col_patterns:
         - _taxonomic_profile
@@ -67,7 +69,7 @@ base: &base
 # PER-DATATYPE  PARAMETERS #
 ############################
 
-Proteomics: &proteomics
+MPX: &proteomics
     <<: *base
     
     metadata_id_col: Job
@@ -86,6 +88,9 @@ MGX: &mgx
 
     target_metadata_cols:
         - *metadata_cols
+        - sccai
+        - hbi
+        - fecalcal
         - filtered_read_counts
 
 16S: &16S
@@ -96,7 +101,14 @@ MGX: &mgx
     maxee: 1
     trunc_len_max: 150
     min_size: 2
-    percent_identity: 0.97        
+    percent_identity: 0.97
+
+    target_metadata_cols:
+        - *metadata_cols
+        - sccai
+        - hbi
+        - fecalcal
+        - filtered_read_counts
 
 MTX: &mtx
     <<: *base
@@ -109,7 +121,23 @@ MTX: &mtx
 
     target_metadata_cols:
         - *metadata_cols
+        - sccai
+        - hbi
+        - fecalcal
         - filtered_read_counts
+
+MVX: &mvx
+    <<: *base
+    
+    metadata_id_col: "External ID"
+
+    target_metadata_cols:
+        - *metadata_cols
+        - sccai
+        - hbi
+        - fecalcal
+        - filtered_read_counts
+        - raw_read_counts
 
 MBX: &mbx
     <<: *base
@@ -118,12 +146,15 @@ MBX: &mbx
 
     target_metadata_cols:
         - *metadata_cols
+        - sccai
+        - hbi
+        - fecalcal
         - Injection Order
         - Date extracted
         - Date injected 
         - Column
 
-TX: &tx
+HTX: &htx
     <<: *base
 
     metadata_id_col: "External ID"
