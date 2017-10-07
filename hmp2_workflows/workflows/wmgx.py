@@ -47,7 +47,7 @@ from hmp2_workflows.tasks.common import (verify_files,
                                          stage_files,
                                          tar_files,
                                          make_files_web_visible)
-from hmp2_workflows.tasks.file_conv import batch_convert_tsv_to_biom
+from hmp2_workflows.tasks.file_conv import (batch_convert_tsv_to_biom, bam_to_fastq)
 from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.utils.misc import (parse_cfg_file, 
                                        create_merged_md5sum_file)
@@ -97,10 +97,12 @@ def main(workflow):
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
     contaminate_db = conf.get('databases').get('knead_dna')
+    adapter_sequences = conf.get('adapter_sequences')
 
     if data_files and data_files.get('MGX'):
         input_files = data_files.get('MGX').get('input')
         sample_names = get_sample_names(input_files)
+        pair_identifier = data_files.get('MGX').get('pair_identifier')
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
                                             conf.get('processing_dir'),
@@ -120,12 +122,23 @@ def main(workflow):
                                       deposition_dir,
                                       symlink=True)
 
+        paired_end_seqs = bam_to_fastq(workflow, 
+                                        deposited_files, 
+                                        processing_dir, 
+                                        paired_end=True,
+                                        compress=False,
+                                        threads=args.threads)
+
+
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
+        adapter_trim_opts = " --trimmomatic-options \"%s:2:30:10\" " % adapter_sequences
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
-                                                        deposited_files, 
+                                                        paired_end_seqs,
                                                         processing_dir,
                                                         qc_threads,
                                                         contaminate_db,
+                                                        pair_identifier="_R1",
+                                                        additional_options=adapter_trim_opts,
                                                         remove_intermediate_output=True)
         
         ## Generate taxonomic profile output. Output are stored in a list 
