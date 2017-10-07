@@ -32,7 +32,6 @@ furnished to do so, subject to the following conditions:
 # solution a shot.
 
 import sys
-sys.path.insert(1, '/n/home07/carze/.local/lib/python2.7/site-packages/')
 
 import argparse
 import funcy
@@ -70,7 +69,7 @@ def parse_cli_arguments():
                         help='Config file containing project config parameters.')
     parser.add_argument('-d', '--data-type', choices=['MGX', 'MTX', 'HTX',
                                                       'MVX', 'MPX', 'MBX',
-                                                      '16S'],
+                                                      '16S', 'RRBS', 'SER'],
                         required=True,
                         help='Data type of data used to generate analysis '
                         'file.')

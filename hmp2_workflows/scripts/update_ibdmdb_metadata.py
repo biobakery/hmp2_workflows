@@ -45,7 +45,6 @@ furnished to do so, subject to the following conditions:
 """
 
 import sys
-#sys.path.insert(1, '/n/home07/carze/.local/lib/python2.7/site-packages/')
 
 import argparse
 import collections
@@ -135,7 +134,19 @@ def _add_previous_collection_date(dataframe):
 
 
 def parse_biopsy_dates(biopsy_dates):
-    """
+    """Parses the supplementary Studytrax biopsy dates to allow for 
+    attaching dates to any samples of type 'Screening Colonoscopy' or 
+    'Additional Biopsy'
+
+    Args:
+        biopsy_dates (string): The path to the file containing biopsy dates.
+
+    Requires:
+        None
+
+    Returns:
+        dict: A dictionary containing biopsy dates keyed on subject ID and 
+            sample type (i.e. Screening Colonoscopy)
     """
     biopsy_dict = {}
 
@@ -221,7 +232,8 @@ def get_project_id(row):
                     'metagenomics': 'MGX',
                     'viromics': 'MVX',
                     'host_genome': 'HG',
-                    'methylome': 'RRBS' }
+                    'methylome': 'RRBS',
+                    'serology': 'SER' }
 
 
     ## This specific case is applicable to Proteomics data only but the 
@@ -410,6 +422,29 @@ def add_all_stool_collections(metadata_df, studytrax_df, broad_df):
     return metadata_df
 
 
+def _clean_blood_sample_ids(sample_id):
+    """Cleans up some of the funny looking sample IDs in the bl_q5 column 
+    used to map serology samples to the StudyTrax metadata
+
+    Args:
+        sample_id (string): A sample ID in the Stuydtrax bl_q5 column to 
+            clean-up
+
+    Requires: None
+
+    Returns: 
+        string: Cleaned sample ID.            
+    """
+    if not pd.isnull(sample_id):
+        sample_id = (sample_id.replace(' 1', '')
+                                .replace('-1', '')
+                                .replace('s1', '')
+                                .replace('S1', '')
+                                .replace('.1', ''))
+
+    return sample_id
+
+
 def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                       data_type, sequence_files, pair_identifier):
     """Extracts metadata from the supplied sources of metadata for the
@@ -520,6 +555,22 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
 
             metadata_df = pd.concat([sample_subset_df, blood_df],
                                     ignore_index=True)
+            metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
+            resolve_dupe_ssc_ids(metadata_df)
+        elif data_type == "SER":
+            new_metadata_dfs = []
+            studytrax_cols = {'bl_q5': None}
+
+            # We get some really weird stuff going on in the studytrax mapping column here so let's 
+            # clean things up first
+            studytrax_df['bl_q5'] = studytrax_df['bl_q5'].map(_clean_blood_sample_ids)
+
+            for (col, label) in studytrax_cols.iteritems():
+                new_metadata_df = studytrax_df[studytrax_df[col].isin(sample_ids)]
+                new_metadata_df['External ID'] = new_metadata_df[col]
+                new_metadata_dfs.append(new_metadata_df)
+
+            metadata_df = pd.concat([sample_subset_df] + new_metadata_dfs, ignore_index=True)
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
         elif data_type == "BP":

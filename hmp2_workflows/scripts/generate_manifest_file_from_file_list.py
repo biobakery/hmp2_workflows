@@ -56,7 +56,7 @@ def parse_cli_arguments():
         None
 
     Returns:
-        argparse.ArgumentParser: argparse object containing the arguments 
+        argparse.ArgumentParser: argparse object containing the arguments
             passed in by the user.
     """
     parser = argparse.ArgumentParser('Generates a MANIFEST file used by the '
@@ -80,12 +80,12 @@ def parse_cli_arguments():
                         help='Contact email for contact person.')
     parser.add_argument('-p', '--project', required=True,
                         help='Project that sequence files belong too.')
-    parser.add_argument('-d', '--data-type', 
-                        choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX', 
-                                 'BP', 'RRBS'],
+    parser.add_argument('-d', '--data-type',
+                        choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX',
+                                 'BP', 'RRBS', 'SER'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
-                        'specified in the input file list.')                        
+                        'specified in the input file list.')
     parser.add_argument('-o', '--output-manifest', required=True,
                         help='Path to desired output manifest file.')
 

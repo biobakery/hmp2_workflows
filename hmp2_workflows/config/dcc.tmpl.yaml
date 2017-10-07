@@ -14,6 +14,8 @@ metadata_id_mappings:
   MTX: External ID
   TX: External ID
   MVX: Viromics
+  RRBS: External ID
+  SER: External ID
 
 datatype_mapping:
   MGX: metagenomics
@@ -22,6 +24,8 @@ datatype_mapping:
   16S: amplicon
   MTX: metatranscriptomics
   TX: host_transcriptomics
+  RRBS: methylome
+  SER: serology
 
 metadata_to_tracking_mapping: "Sample ID: Tube B (No preservative)"
 tracking_id_col: Parent Sample B       

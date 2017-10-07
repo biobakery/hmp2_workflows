@@ -37,6 +37,8 @@ base: &base
         MPX: "proteomics"
         MTX: "metatranscriptomics"
         HTX: "host_transcriptomics"
+        SER: "serology"
+        RRBS: "methylome"
 
     target_metadata_cols: &metadata_cols
         - site_sub_coll
@@ -158,3 +160,13 @@ HTX: &htx
     <<: *base
 
     metadata_id_col: "External ID"
+
+RRBS: &rrbs
+    <<: *base
+
+    metadata_id_col: "External ID"
+
+SER: &ser
+    <<: *base
+
+    metadata_id_col: "External ID"    
