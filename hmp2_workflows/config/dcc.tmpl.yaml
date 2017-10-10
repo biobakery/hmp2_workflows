@@ -12,7 +12,8 @@ metadata_id_mappings:
   MGX: External ID
   16S: External ID
   MTX: External ID
-  TX: External ID
+  HTX: External ID
+  HG: External ID
   MVX: Viromics
   RRBS: External ID
   SER: External ID
@@ -23,7 +24,8 @@ datatype_mapping:
   MPX: proteomics
   16S: amplicon
   MTX: metatranscriptomics
-  TX: host_transcriptomics
+  HTX: host_transcriptomics
+  HG: host_genome
   RRBS: methylome
   SER: serology
 
@@ -260,22 +262,76 @@ MGX:
     comment: ""
     format: "biom"
 
-TX:
+HTX:
   assay:
-      sequencing_center: Center Name
-      sequencing_contact: "contact@email.com"
-      lib_layout: ""
-      lib_selection: ""
-      ncbi_taxon_id: 9606
-      storage_duration: ""
+    sequencing_center: Center Name
+    sequencing_contact: "contact@email.com"
+    lib_layout: ""
+    lib_selection: ""
+    ncbi_taxon_id: 9606
+    storage_duration: ""
   host_transcriptome:
-      study: ibd
-      format: fastq
-      format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
-      sequence_type: "nucleotide"
-      seq_model: ""
-      exp_length: 0
-      comment: IBDMDB
+    study: ibd
+    format: fastq
+    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+    sequence_type: "nucleotide"
+    seq_model: ""
+    exp_length: 0
+    comment: IBDMDB
+
+HG: 
+  assay:
+    sequencing_center: Center Name
+    sequencing_contact: "contact@email.com"
+    lib_layout: ""
+    lib_selection: ""
+    ncbi_taxon_id: 9606
+    storage_duration: ""
+  host_genome:
+    study: ibd
+    format: fastq
+    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+    sequence_type: "nucleotide"
+    exp_length: 0
+    comment: IBDMDB
+
+RRBS:
+  assay:
+    sequencing_center: Center Name
+    sequencing_contact: "contact@email.com"
+    lib_layout: ""
+    lib_selection: ""
+    ncbi_taxon_id: 9606
+    storage_duration: ""
+  methylome:
+    study: ibd
+    format: fastq
+    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+    sequence_type: "nucleotide"
+    exp_length: 0
+    comment: IBDMDB
+  abundance_matrix:
+    comment: ""
+    format: "table"    
+
+SER:
+  assay:
+    sequencing_center: Center Name
+    sequencing_contact: "contact@email.com"
+    lib_layout: ""
+    lib_selection: ""
+    ncbi_taxon_id: 9606
+    storage_duration: ""
+  serology:
+    study: ibd
+    format: fastq
+    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+    sequence_type: "nucleotide"
+    exp_length: 0
+    comment: IBDMDB
+  abundance_matrix:
+    comment: ""
+    format: "table"    
 
 MTX:
   assay:

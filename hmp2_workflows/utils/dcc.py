@@ -1494,6 +1494,75 @@ def crud_proteome(prep, md5sum, sample_id, conf, metadata):
     return proteome        
 
 
+def crud_host_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+    """Creates an iHMP OSDF HostWgsRawSeqSet object if it 
+    doesn't exist or updates an already existing object with the provided metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        prep (cutlass.HostSeqPrep): The HostSeqPrep object that this 
+            HostWgsRawSeqSet object will be associated with.
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this HostWgsRawSeqSet          
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all HostWgsRawSeqSets
+        metadata (pandas.Series): Metadata associated with this HostWgsRawSeqSet
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.HostWgsRawSeqSet: The HostWgsRawSeqSet object to be saved.
+    """
+    raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    ## By setting our files to private (required) we lose the ability to parse
+    ## out the filenames from the existing transcriptomics sequence sets so we 
+    ## need to store this information somewhere else; the comment.
+    wgs_raw_seq_sets = group_osdf_objects(prep.derivations(),
+                                          'comment')
+    wgs_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                             in wgs_raw_seq_sets.items())
+    
+    wgs_raw_seq_set = wgs_raw_seq_sets.get(raw_file_name)
+
+    if wgs_raw_seq_set:
+        wgs_raw_seq_set = cutlass.WgsRawSeqSet()
+    else:
+        wgs_raw_seq_set = wgs_raw_seq_set[0]
+
+    req_metadata.update(conf.get('host_genome'))
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    req_metadata['local_raw_file'] = metadata.get('seq_file')
+    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
+    req_metadata['private_files'] = True
+    req_metadata['comment'] = raw_file_name
+    req_metadata['tags'] = []
+
+    fields_to_update = get_fields_to_update(req_metadata, wgs_raw_seq_set)
+    map(lambda key: setattr(wgs_raw_seq_set, key, req_metadata.get(key)),
+        fields_to_update)
+
+    wgs_raw_seq_set.updated = False
+    if fields_to_update:
+        wgs_raw_seq_set.links['sequenced_from'] = [prep.id]
+
+        if not wgs_raw_seq_set.is_valid():
+            raise ValueError('HostWgsRawSeqSet validation failed: %s' % 
+                             wgs_raw_seq_set.validate())
+
+        wgs_raw_seq_set.updated = True
+
+    return wgs_raw_seq_set
+
+
 def crud_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF HostTranscriptomicsRawSeqSet  object if it 
     doesn't exist or updates an already existing object with the provided metadta.
@@ -1561,10 +1630,6 @@ def crud_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
                              transcriptome.validate())
 
         transcriptome.updated = True
-    else:
-        ## Really if there are no changes we don't want to save this object so 
-        ## we return None to be handled downstream.
-        proteome = None            
 
     return transcriptome        
 
