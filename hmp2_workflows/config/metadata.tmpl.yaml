@@ -119,6 +119,29 @@ value_recode:
         "Ulcerative colitis": "UC"
         "Healthy control": "nonIBD"
 
+biopsy_col_to_location:
+    "bx_q5": "Rectum"
+    "bx_q6": "Ileum"
+    "bx_q7": "Other Inflamed"
+    "bx_q9": "Non-inflamed"
+
+biopsy_flora_col_to_location:
+    "bx_q13": "Rectum"
+    "bx_q14": "Ileum"
+    "bx_q15": "Other Inflamed"
+    "bx_q17": "Non-inflamed"
+
+biopsy_other_location:
+    "0": "Terminal ileum"
+    "1": "Neo-ileum"
+    "2": "Ileocecal Valve"
+    "3": "Cecum"
+    "4": "Ascending (right-sided) colon"
+    "5": "Transverse colon"
+    "6": "Descending (left-sided) colon"
+    "7": "Sigmoid Colon"
+    "8": "Rectum"
+
 ## The cutplace CID files to use against our metadata files.
 validators:
     studytrax: /Users/cesararze/Documents/work/hutlab/projects/hmp2_workflows/hmp2_workflows/config/validation/studytrax.cid

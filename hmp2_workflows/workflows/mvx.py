@@ -31,6 +31,7 @@ import os
 
 from anadama2 import Workflow
 
+from biobaker_workflows.tasks import shotgun
 from biobakery_workflows.utilities import (find_files, create_folders,
                                            paired_files, sample_names)
 
@@ -67,6 +68,7 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
     conf = parse_cfg_file(args.config_file, section='MVX')
+    knead_human_genome_db = conf.get('databases').get('knead_dna')
 
     ## Parse the manifest file containing all data files from this submission
     manifest = parse_cfg_file(args.manifest_file)
@@ -90,6 +92,15 @@ def main(workflow):
                                       symlink=True)       
         paired_fastq_files = paired_files(deposited_files, pair_identifier)  
 
+        mvx_qc_output = shotgun.quality_control(workflow,
+                                                input_files,
+                                                project_dirs[1],
+                                                args.threads,
+                                                [knead_human_genome_db],
+                                                pair_identifier=pair_identifier,
+                                                remove_intermediate_output=True)
+
+        
         paired_fastq_tars = []
         for (mate_1, mate_2) in zip(paired_fastq_files[0], paired_fastq_files[1]):
             sample_name = sample_names(mate_1, pair_identifier=pair_identifier)
