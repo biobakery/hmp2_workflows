@@ -82,7 +82,7 @@ def parse_cli_arguments():
                         help='Project that sequence files belong too.')
     parser.add_argument('-d', '--data-type',
                         choices=['MGX', 'MBX', '16S', 'MTX', 'MPX', 'TX',
-                                 'BP', 'RRBS', 'SER'],
+                                 'BP', 'HG', 'RRBS', 'SER'],
                         help='A blanket data-type to apply to all files in '
                         'the input file list. Over-riden by any data type '
                         'specified in the input file list.')
