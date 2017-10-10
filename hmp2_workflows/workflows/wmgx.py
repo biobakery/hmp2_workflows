@@ -116,19 +116,16 @@ def main(workflow):
         manifest_file = stage_files(workflow,
                                     [args.manifest_file],
                                     base_depo_dir)
-
         deposited_files = stage_files(workflow,
                                       input_files,
                                       deposition_dir,
                                       symlink=True)
-
         paired_end_seqs = bam_to_fastq(workflow, 
                                         deposited_files, 
                                         processing_dir, 
                                         paired_end=True,
                                         compress=False,
                                         threads=args.threads)
-
 
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
         adapter_trim_opts = " --trimmomatic-options \"%s:2:30:10\" " % adapter_sequences

@@ -48,7 +48,6 @@ from hmp2_workflows.utils import dcc
 from hmp2_workflows.tasks.dcc import upload_data_files
 
 
-
 def set_logging():
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
@@ -284,6 +283,12 @@ def main(workflow):
                                                                     dcc_sample.name,
                                                                     dtype_metadata,
                                                                     row)
+                        elif data_type == 'RRBS':
+                            dcc_prep = None
+                            dcc_seq_obj = None
+                        elif data_type == 'SER':
+                            dcc_prep = None
+                            dcc_seq_obj = None
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
 

@@ -163,12 +163,12 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
         mate_1_files = [fname.replace('.fastq_R1', '_R1.fastq') for fname in mate_1_files]
         mate_2_files = [fname.replace('.fastq_R2', '_R2.fastq') for fname in mate_2_files]
         output_files = zip(mate_1_files, mate_2_files)
-        bedtools_cmd += "-fq [targets[0]] -fq2 [targets[1]]"
+        bedtools_cmd += " -fq [targets[0]] -fq2 [targets[1]] "
     else:
         output_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
                                            extension=".fastq")
-        bedtools_cmd += "-fq [targets[0]]"                                           
+        bedtools_cmd += " -fq [targets[0]] "
 
     workflow.add_task_group_gridable(bedtools_cmd,
                                      depends=input_files,
@@ -191,7 +191,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                 targets=sorted_bams,
                                 depends=fastq_files_compress)
 
-    return output_files
+    return list(chain.from_iterable(output_files))
 
 
 def excel_to_csv(workflow, input_files, output_dir):
