@@ -39,6 +39,7 @@ base: &base
         HTX: "host_transcriptomics"
         SER: "serology"
         RRBS: "methylome"
+        HG: "host_genome"
 
     target_metadata_cols: &metadata_cols
         - site_sub_coll
@@ -155,6 +156,11 @@ MBX: &mbx
         - Date extracted
         - Date injected 
         - Column
+
+HG: &hg
+    <<: *base
+
+    metadata_id_col: "External ID"
 
 HTX: &htx
     <<: *base
