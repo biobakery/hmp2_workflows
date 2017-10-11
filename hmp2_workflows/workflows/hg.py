@@ -96,10 +96,12 @@ def main(workflow):
                                    input_files,
                                    project_dirs[1],
                                    paired_end=True,
-                                   threads=args.threads)
+                                   threads=args.threads,
+                                   compress=False)
+        paired_fastq_files = paired_files(fastq_files, '_R1')
 
         paired_fastq_tars = []
-        for (mate_1, mate_2) in zip(paired_files(fastq_files, "_R1")):
+        for (mate_1, mate_2) in zip(paired_fastq_files[0], paired_fastq_files[1]):
             sample_name = sample_names(mate_1, pair_identifier="_R1")
             tar_path = os.path.join(project_dirs[-1], "%s.tar" % sample_name)
             paired_fastq_tar = tar_files(workflow, 

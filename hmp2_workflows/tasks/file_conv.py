@@ -176,7 +176,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                      time=10*60,
                                      mem=4098)
 
-    fastq_files = chain.from_iterable(output_files) if paired_end else output_files
+    fastq_files = list(chain.from_iterable(output_files)) if paired_end else output_files
 
     if compress:
         fastq_files_compress = ["%s.gz" % fastq_file for fastq_file in fastq_files]
@@ -189,9 +189,9 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                          mem=4098)
         fastq_files = fastq_files_compress
     
-        #workflow.add_task_group("rm -rf [targets[0]]",
-        #                        targets=sorted_bams,
-        #                        depends=fastq_files_compress)
+        workflow.add_task_group("rm -rf [targets[0]]",
+                                targets=sorted_bams,
+                                depends=fastq_files_compress)
 
     return fastq_files
 
