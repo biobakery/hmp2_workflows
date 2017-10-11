@@ -28,6 +28,14 @@ datatype_mapping:
   HG: host_genome
   RRBS: methylome
   SER: serology
+  16SBP: biopsy_16S
+
+nonstool_datatype:
+  - HTX
+  - HG
+  - RRBS
+  - SER
+  - 16SBP
 
 metadata_to_tracking_mapping: "Sample ID: Tube B (No preservative)"
 tracking_id_col: Parent Sample B       

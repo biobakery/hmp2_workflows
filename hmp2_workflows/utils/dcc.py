@@ -781,6 +781,7 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
         interval_name = metadata.get('IntervalName')
         interval_abbrev = "".join(item[0].upper() for item in interval_name.split())
         visit_id += "_%s" % interval_abbrev
+        visit_num = 0
     
     visit = visits.get(visit_id)
     
@@ -791,7 +792,7 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
         visit = visit[0]
         
     req_metadata = {}
-    req_metadata['visit_number'] = visit_num
+    req_metadata['visit_number'] = int(visit_num)
 
     req_metadata['visit_id'] = visit_id
 
@@ -1883,7 +1884,7 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
 
 
 def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 
-                              url_param='_urls')
+                              url_param='_urls'):
     """Creates or updates an iHMP OSDF AbundanceMatrix object.
 
     Handles abundance matrices in both BIOM and tab-delimited format.

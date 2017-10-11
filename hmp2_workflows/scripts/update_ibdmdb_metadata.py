@@ -552,9 +552,10 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
             studytrax_col = "bl_q4"
             blood_df = studytrax_df[studytrax_df[studytrax_col].isin(sample_ids)]
             blood_df['External ID'] = blood_df[studytrax_col].map(lambda sid: sid.replace('-', ''))
-
+ 
             metadata_df = pd.concat([sample_subset_df, blood_df],
                                     ignore_index=True)
+ 
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
         elif data_type == "SER":
@@ -739,8 +740,8 @@ def fill_visit_nums(row):
     visit_num = row['visit_num']
     data_type  = row['data_type']
 
-    if np.isnan(visit_num) and data_type not in ['host_transcriptomics', 'host_genome',
-                                                 'biopsy_16S', 'methylome']:
+    if pd.isnull(visit_num) and data_type not in ['host_transcriptomics', 'host_genome',
+                                                  'biopsy_16S', 'methylome']:
         visit_num = site_sub_coll_id.split('C')[-1]
     
     return visit_num
@@ -1000,6 +1001,7 @@ def main(args):
             new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
             new_metadata_df['ProjectSpecificID'] = pd.to_numeric(new_metadata_df['ProjectSpecificID'])
             new_metadata_df['Site'] = new_metadata_df['SiteName']
+            new_metadata_df = new_metadata_df.apply(generate_external_id, axis=1)
 
             new_metadata_df = remove_columns(new_metadata_df, config.get('drop_cols'))
 

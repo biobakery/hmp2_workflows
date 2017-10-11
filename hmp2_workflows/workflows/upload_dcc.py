@@ -179,7 +179,7 @@ def main(workflow):
                 
                 for (idx, row) in metadata.iterrows():
                     dcc_visit = dcc.crud_visit(dcc_visits, 
-                                               int(row.get('visit_num')),
+                                               row.get('visit_num'),
                                                dcc_subject.id,
                                                data_type,
                                                row,
