@@ -229,7 +229,7 @@ MGX:
     ncbi_taxon_id: 408170 
     lib_layout: fragment
     lib_selection: Random
-    storage_duration: "365"
+    storage_duration: 365
     comment: IBDMDB
   mims:
     biome: "terrestrial biome [ENVO:00000446]"
@@ -268,8 +268,31 @@ HTX:
     sequencing_contact: "contact@email.com"
     lib_layout: ""
     lib_selection: ""
-    ncbi_taxon_id: 9606
-    storage_duration: ""
+    ncbi_taxon_id: "9606"
+    storage_duration: 0
+  mims:
+    geo_loc_name: "United States of America"
+    lat_lon: Unknown
+    biome: "terrestrial biome [ENVO:00000446]"
+    feature: "human-associated habitat [ENVO:00009003]"
+    env_package: human-associated
+    collection_date: Unknown
+    seq_meth: "Sequencing by Synthesis"
+    lib_const_meth: >-
+        Total RNA was quantified using the Quant-iT RiboGreen RNA Assay Kit
+        and normalized to 5ng/ul. Following plating, 2 uL of ERCC controls
+        (using a 1:1000 dilution) were spiked into each sample.  An aliquot of
+        200ng for each sample was transferred into library preparation which was
+        an automated variant of the Illumina TruSeq Stranded mRNA Sample Preparation
+        Kit.  This method preserves strand orientation of the RNA transcript. It uses
+        oligo dT beads to select mRNA from the total RNA sample. It is followed by heat
+        fragmentation and cDNA synthesis from the RNA template. The resultant 500bp cDNA
+        then goes through library preparation (end repair, base A addition, adapter ligation,
+        and enrichment) using Broad designed indexed adapters substituted in for multiplexing.
+        After enrichment the libraries were quantified using Quant-iT PicoGreen (1:200 dilution).
+        After normalizing samples to 5 ng/uL, the set was pooled and quantified using the KAPA
+        Library Quantification Kit for Illumina Sequencing Platforms.  The entire process is in
+        96-well format and all pipetting is done by either Agilent Bravo or Hamilton Starlet.
   host_transcriptome:
     study: ibd
     format: fastq
@@ -285,8 +308,38 @@ HG:
     sequencing_contact: "contact@email.com"
     lib_layout: ""
     lib_selection: ""
-    ncbi_taxon_id: 9606
-    storage_duration: ""
+    ncbi_taxon_id: "9606"
+    storage_duration: 0
+  mims:
+    geo_loc_name: "United States of America"
+    lat_lon: Unknown
+    biome: "terrestrial biome [ENVO:00000446]"
+    feature: "human-associated habitat [ENVO:00009003]"
+    env_package: human-associated
+    collection_date: Unknown
+    seq_meth: "Sequencing by Synthesis"
+    lib_const_meth: >-
+        Library construction was performed as described by Fisher et al. with some slight 
+        modifications. Initial genomic DNA input into shearing was reduced from 3µg to 50ng 
+        in 10µL of solution and enzymatically sheared. In addition, for adapter ligation,
+        dual-indexed Illumina paired end adapters were replaced with palindromic forked 
+        adapters with unique 8 base index sequences embedded within the adapter and added
+        to each end.
+
+        In-solution hybrid selection was performed using the Illumina Rapid Capture Exome 
+        enrichment kit with 38Mb target erritory (29Mb baited). The targeted region includes 
+        98.3% of the intervals in the Refseq exome database. Dual-indexed libraries are 
+        pooled into groups of up to 96 samples prior to hybridization. The liquid handling 
+        is automated on a Hamilton Starlet. The enriched library pools are quantified via 
+        PicoGreen after elution from  streptavadin beads and then normalized to a range 
+        compatible with sequencing template denature protocols.
+
+        Following sample preparation, the libraries prepared using forked, indexed adapters
+        were quantified using quantitative PCR (purchased from KAPA biosystems), 
+        normalized to 2 nM using the Hamilton Starlet Liquid Handling system, and pooled
+        by equal volume using the Hamilton Starlet Liquid Handling system. Pools were 
+        then denatured using 0.1 N NaOH. Denatured samples were diluted into strip 
+        tubes using the the Hamilton Starlet Liquid Handling system.
   host_genome:
     study: ibd
     format: fastq

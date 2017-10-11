@@ -65,7 +65,7 @@ def verify_files(workflow, input_files, checksums_file):
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/tmp/foo_checksums.txt)
     """
-    checksums_dict = hmp_utils.parse_checksums_file(checksums_file)
+    checksums_dict = hmp_utils.misc.parse_checksums_file(checksums_file)
 
     for input_file in input_files:
         md5sum = checksums_dict.get(os.path.basename(input_file))
@@ -249,3 +249,41 @@ def tar_files(workflow, files, output_tarball, depends, compress=True):
                       args = [tmp_dir])
 
     return output_tarball
+
+
+def generate_md5_checksums(workflow, files):
+    """Generates MD5 checksums for the provided set of files. All checksums 
+    are written to a file containing the same name as the input but with the 
+    "md5" extension appended.
+
+    Args:
+        workflow (anadama2.Workflow): The workflow object.
+        files (list): A list of files to package together into a tarball.
+        output_tarball (string): The desired output tarball file.
+
+    Requires:
+        None
+
+    Returns:
+        list: A list of the generated md5 checksum files.
+
+    Example:
+        from anadama2 import Workflow
+        from hmp2_workflows.tasks import common
+
+        workflow = anadama2.Workflow()
+
+        files = ['/tmp/foo.txt', '/tmp/bar.txt']
+
+        md5sum_files = common.generate_md5_checksums(workflow, files)
+    """
+    output_dir = os.path.dirname(files[0])
+    checksum_files = bb_utils.name_files(bb_utils.sample_names(files),
+                                         output_dir,
+                                         extension=".md5")
+
+    workflow.add_task_gridable('md5sum [[depends[0]] > [[targets0]]',
+                               depends=files,
+                               targets=checksum_files)
+
+    return checksum_files

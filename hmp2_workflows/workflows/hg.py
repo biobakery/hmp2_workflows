@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-hmp2_workflows.workflows.mvx
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hmp2_workflows.workflows.hg
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An AnADAMA2 workflow that handles HMP2 viromics data.
+An AnADAMA2 workflow that handles HMP2 Exome data.
 
 Copyright (c) 2017 Harvard School of Public Health
 
@@ -27,17 +27,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
+
 import os
 
 from anadama2 import Workflow
 
-from biobaker_workflows.tasks import shotgun
 from biobakery_workflows.utilities import (find_files, create_folders,
                                            paired_files, sample_names)
 
-from hmp2_workflows.tasks.common import verify_files, stage_files, tar_files
+from hmp2_workflows.tasks.common import (verify_files, stage_files, 
+                                         tar_files, generate_md5_checksums)
 from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
-from hmp2_workflows.tasks.file_conv import bam_to_fastq, deinterleave_fastq
+from hmp2_workflows.tasks.file_conv import bam_to_fastq
 
 from hmp2_workflows.utils.files import create_project_dirs
 from hmp2_workflows.utils.misc import parse_cfg_file
@@ -55,20 +56,21 @@ def parse_cli_arguments():
         AnaDAMA2.cli.Configuration: Arguments passed into this workflow.
     """
     workflow = Workflow(version='0.1', description='A workflow to handle HMP2 '
-                        'viromics data.',
+                        'host exome data.',
                         remove_options=['input', 'output'])
     workflow.add_argument('manifest-file', desc='Manifest file containing '
                           'files to process in this workflow run.')
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
+    workflow.add_argument('threads', desc='Number of threads to use in '
+                          'workflow processing', default=1)
 
     return workflow
 
 
 def main(workflow):
     args = workflow.parse_args()
-    conf = parse_cfg_file(args.config_file, section='MVX')
-    knead_human_genome_db = conf.get('databases').get('knead_dna')
+    conf = parse_cfg_file(args.config_file, section='HG')
 
     ## Parse the manifest file containing all data files from this submission
     manifest = parse_cfg_file(args.manifest_file)
@@ -76,47 +78,41 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
     submission_date = manifest.get('submission_date')
 
-    if data_files and data_files.get('MVX', {}).get('input'):    
-        input_files = data_files.get('MVX').get('input')
-        pair_identifier = data_files.get('MVX').get('pair_identifier')
+    if data_files and data_files.get('HG', {}).get('input'):
+        input_files = data_files.get('HG').get('input')
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
                                             conf.get('processing_dir'),
                                             conf.get('public_dir')],
-                                           project,
-                                           submission_date,
-                                           'MVX')
+                                            project,
+                                            submission_date,
+                                            'HG')
 
         deposited_files = stage_files(workflow,
                                       input_files,
                                       project_dirs[0],
-                                      symlink=True)       
-
-        mvx_qc_output = shotgun.quality_control(workflow,
-                                                input_files,
-                                                project_dirs[1],
-                                                args.threads,
-                                                [knead_human_genome_db],
-                                                pair_identifier=pair_identifier,
-                                                remove_intermediate_output=True)
-
-        paired_fastq_files = deinterleave_fastq(workflow,
-                                                input_files, 
-                                                project_dirs[1])
+                                      symlink=True)
+        fastq_files = bam_to_fastq(workflow,
+                                   input_files,
+                                   project_dirs[1],
+                                   paired_end=True,
+                                   threads=args.threads)
 
         paired_fastq_tars = []
-        for (mate_1, mate_2) in zip(paired_fastq_files[0], paired_fastq_files[1]):
-            sample_name = sample_names(mate_1, pair_identifier=pair_identifier)
+        for (mate_1, mate_2) in zip(paired_files(fastq_files, "_R1")):
+            sample_name = sample_names(mate_1, pair_identifier="_R1")
             tar_path = os.path.join(project_dirs[-1], "%s.tar" % sample_name)
             paired_fastq_tar = tar_files(workflow, 
                                          [mate_1, mate_2],
                                          tar_path,
-                                         depends=[mate_1, mate_2],
-                                         compress=False)                                             
+                                         depends=[mate_1, mate_2])
             paired_fastq_tars.append(paired_fastq_tar)
 
-    workflow.go()
+        md5sum_files = generate_md5_checksums(workflow, paired_fastq_tars)
+
+        workflow.go()
 
 
 if __name__ == "__main__":
-    main(parse_cli_arguments()) 
+    main(parse_cli_arguments())                          
+
