@@ -147,7 +147,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                      depends=input_files,
                                      targets=[os.path.splitext(bam)[0] for bam in sorted_bams],
                                      args=[threads],
-                                     time=10*60,
+                                     time=30*60,
                                      mem=4098)
 
     bedtools_cmd = "bedtools bamtofastq -i [depends[0]]"
@@ -155,11 +155,15 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
         mate_1_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
                                            tag="R1",
-                                           extension="fastq")
+                                           subfolder="fastq"
+                                           extension="fastq",
+                                           create_folder=True)
         mate_2_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
                                            tag="R2",
-                                           extension="fastq")
+                                           subfolder="fastq"
+                                           extension="fastq",
+                                           create_folder=True)
 
         mate_1_files = [fname.replace('.fastq_R1', '_R1.fastq') for fname in mate_1_files]
         mate_2_files = [fname.replace('.fastq_R2', '_R2.fastq') for fname in mate_2_files]
@@ -174,7 +178,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
     workflow.add_task_group_gridable(bedtools_cmd,
                                      depends=input_files,
                                      targets=output_files,
-                                     time=10*60,
+                                     time=20*60,
                                      mem=4098)
 
     fastq_files = list(chain.from_iterable(output_files)) if paired_end else output_files
