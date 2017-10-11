@@ -282,7 +282,7 @@ def generate_md5_checksums(workflow, files):
                                          output_dir,
                                          extension=".md5")
 
-    workflow.add_task_gridable('md5sum [[depends[0]] > [[targets0]]',
+    workflow.add_task_gridable('md5sum [depends[0]] > [targets[0]]',
                                depends=files,
                                targets=checksum_files)
 

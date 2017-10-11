@@ -137,12 +137,13 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
     sample_names = bb_utils.sample_names(input_files)
     sorted_bams = bb_utils.name_files(sample_names, 
                                       output_dir, 
-                                      subfolder="sort", 
-                                      tag="qsort", 
-                                      extension="bam")
+                                      subfolder="sort",
+                                      tag="sorted", 
+                                      extension="bam",
+                                      create_folder=True)
 
     ## Gotta make sure our BAM file is sorted first
-    workflow.add_task_group_gridable("samtools -@ [args[0]] -n [depends[0]] [targets[0]]",
+    workflow.add_task_group_gridable("samtools sort -@ [args[0]] -o [targets[0]] -n [depends[0]]",
                                      depends=input_files,
                                      targets=[os.path.splitext(bam)[0] for bam in sorted_bams],
                                      args=[threads],
