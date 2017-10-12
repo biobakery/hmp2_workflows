@@ -1082,7 +1082,7 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
 
     if metadata['data_type'] == 'host_transcriptomics':
         req_metadata['body_site'] = _get_biopsy_location(metadata, body_site_map)
-    elif metadata['data_type'] == 'host_genome':
+    elif metadata['data_type'] in ['host_genome', 'serology']:
         req_metadata['body_site'] = "blood"
     else:        
         req_metadata['body_site'] = "stool"
@@ -1276,9 +1276,11 @@ def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     ## Fill in the remaining pieces of metadata needed from other sources
     req_metadata['prep_id'] = prep_id
     req_metadata['comment'] = "IBDMDB"
+    req_metadata['sample_name'] = sample.name
+    req_metadata['study'] = study_id
 
-    fields_to_update = get_fields_to_update(req_metadata, host_seq_prep)
-    map(lambda key: setattr(host_seq_prep, key, req_metadata.get(key)),
+    fields_to_update = get_fields_to_update(req_metadata, host_assay_prep)
+    map(lambda key: setattr(host_assay_prep, key, req_metadata.get(key)),
         fields_to_update)
 
     if fields_to_update:
@@ -1287,10 +1289,10 @@ def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
         if host_assay_prep.is_valid():
             success = host_assay_prep.save()
             if not success:
-                raise ValueError('Saving host seq prep %s failed.' % 
+                raise ValueError('Saving host assay prep %s failed.' % 
                                  req_metadata.get('prep_id'))
         else:
-            raise ValueError('Host seq prep validation failed: %s' % 
+            raise ValueError('Host assay prep validation failed: %s' % 
                              host_assay_prep.validate())
     
     return host_assay_prep
@@ -2033,6 +2035,8 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
             req_metadata['matrix_type'] = "wgs_functional"
     elif data_type == "host_transcriptomics":
         req_metadata['matrix_type'] = "host_transcriptome"
+    elif data_type == "serology":
+        req_metadata['matrix_type'] = "host_proteomic"
     elif data_type == "proteomics":
         req_metadata['matrix_type'] = "microb_proteomic"
     elif data_type == "metabolomics":

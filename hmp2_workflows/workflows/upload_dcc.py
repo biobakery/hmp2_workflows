@@ -308,13 +308,15 @@ def main(workflow):
                                                                 data_type,
                                                                 conf.get(data_type),
                                                                 row)
-                            dcc_seq_obj = dcc.crud_abundance_matrix(session, 
+                            dcc_seq_obj = dcc.crud_abundance_matrix(session,
                                                                     dcc_prep,
+                                                                    row.get('seq_file'),
                                                                     file_md5sum,
                                                                     dcc_sample.name,
                                                                     conf.get('data_study'),
-                                                                    conf.get(data_type),
-                                                                    row)
+                                                                    dtype_metadata,
+                                                                    row,
+                                                                    url_param)
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
 
