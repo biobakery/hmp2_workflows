@@ -163,6 +163,7 @@ def main(workflow):
                                                           axis=1)
             sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
             
+            output_files_map = None
             if output_files:
                 ## Do a bunch of stuff here since we have output files
                 output_files_map = dcc.create_output_file_map(data_type, output_files)
@@ -179,7 +180,7 @@ def main(workflow):
                 
                 for (idx, row) in metadata.iterrows():
                     dcc_visit = dcc.crud_visit(dcc_visits, 
-                                               row.get('visit_num'),
+                                               row.get('visit_num', ""),
                                                dcc_subject.id,
                                                data_type,
                                                row,
@@ -320,7 +321,7 @@ def main(workflow):
                         ## The only output type currently supported are AbundanceMatrices 
                         ## so those are the only we will work with. Short-sided and 
                         ## ugly but can re-work this later.
-                        if row.get('External ID') in output_files_map:
+                        if output_files_map and row.get('External ID') in output_files_map:
                             seq_out_files = output_files_map.get(row.get('External ID'))
  
                             if data_type == "16S":
@@ -368,7 +369,7 @@ def main(workflow):
                             map(lambda out_file: _process_output(out_file), seq_out_files)
 
      
-    workflow.go()
+    #workflow.go()
 
 
 if __name__ == "__main__":

@@ -772,16 +772,20 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
     Returns:
         cutlass.Visit: The created or updated OSDF Visit object.
     """
-    visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), visit_num)
 
     ## These specific types of data are going to be categorized into 
     ## their own visits since they are separate from our stool collection 
     ## visits.
     if dtype_abbrev in conf.get('nonstool_datatypes'):
-        interval_name = metadata.get('IntervalName')
+        interval_name = (metadata.get('IntervalName')
+                                 .replace('-', ' ')
+                                 .replace('(', '')
+                                 .replace(')', ''))
         interval_abbrev = "".join(item[0].upper() for item in interval_name.split())
-        visit_id += "_%s" % interval_abbrev
-        visit_num = 0
+        visit_id  = "%s_%s" % (metadata.get('ProjectSpecificID'), interval_abbrev)
+        visit_num = 1
+    else:
+        visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), visit_num)
     
     visit = visits.get(visit_id)
     
@@ -793,13 +797,14 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
         
     req_metadata = {}
     req_metadata['visit_number'] = int(visit_num)
-
     req_metadata['visit_id'] = visit_id
-
     req_metadata['interval'] = (int(metadata['interval_days']) 
                                 if not np.isnan(metadata['interval_days']) else 0)
     ## This is hard-coded to meet HIPAA compliance.
     req_metadata['date'] = "2000-01-01"     
+    
+    req_metadata['tags'] = []
+    req_metadata['tags'].append('IntervalName: %s' % metadata.get('IntervalName'))
 
     fields_to_update = get_fields_to_update(req_metadata, visit)
     map(lambda key: setattr(visit, key, req_metadata.get(key)), 
@@ -1077,11 +1082,12 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
 
     if metadata['data_type'] == 'host_transcriptomics':
         req_metadata['body_site'] = _get_biopsy_location(metadata, body_site_map)
+    elif metadata['data_type'] == 'host_genome':
+        req_metadata['body_site'] = "blood"
     else:        
         req_metadata['body_site'] = "stool"
 
     req_metadata['fma_body_site'] = fma_body_site_map.get(req_metadata['body_site'], "")
-
     req_metadata['mixs'].update(sample_conf.get('mixs'))
 
     fields_to_update = get_fields_to_update(req_metadata, sample)
@@ -1327,7 +1333,9 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
     req_metadata['mims'] = required_mims_dict()
     req_metadata['mims'].update(conf.get('mims'))
 
-    if metadata.get('biopsy_location') == "Rectum":
+    if not metadata.get('biopsy_locaiton'):
+        req_metadata['mims']['material'] = "blood [UBERON_0000178]"
+    elif metadata.get('biopsy_location') == "Rectum":
         req_metadata['mims']['material'] = "mucosa of rectum [UBERON_0003346]"
     else:
         req_metadata['mims']['material'] = "colonic mucosa [UBERON_0000317]"
@@ -1335,6 +1343,8 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
     ## Fill in the remaining pieces of metadata needed from other sources
     req_metadata['prep_id'] = metadata['External ID']
     req_metadata['comment'] = "IBDMDB"
+
+    req_metadata['mims']['lib_const_meth'] = str(req_metadata['mims']['lib_const_meth'])
 
     fields_to_update = get_fields_to_update(req_metadata, host_seq_prep)
     map(lambda key: setattr(host_seq_prep, key, req_metadata.get(key)),
@@ -1526,17 +1536,17 @@ def crud_host_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     ## By setting our files to private (required) we lose the ability to parse
     ## out the filenames from the existing transcriptomics sequence sets so we 
     ## need to store this information somewhere else; the comment.
-    wgs_raw_seq_sets = group_osdf_objects(prep.derivations(),
-                                          'comment')
-    wgs_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
-                             in wgs_raw_seq_sets.items())
+    host_wgs_raw_seq_sets = group_osdf_objects(prep.derivations(),
+                                               'comment')
+    host_wgs_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                                 in host_wgs_raw_seq_sets.items())
     
-    wgs_raw_seq_set = wgs_raw_seq_sets.get(raw_file_name)
+    host_wgs_raw_seq_set = host_wgs_raw_seq_sets.get(raw_file_name)
 
-    if wgs_raw_seq_set:
-        wgs_raw_seq_set = cutlass.WgsRawSeqSet()
+    if not host_wgs_raw_seq_set:
+        host_wgs_raw_seq_set = cutlass.HostWgsRawSeqSet()
     else:
-        wgs_raw_seq_set = wgs_raw_seq_set[0]
+        host_wgs_raw_seq_set = host_wgs_raw_seq_set[0]
 
     req_metadata.update(conf.get('host_genome'))
     req_metadata['checksums'] = { "md5": md5sum }
@@ -1547,21 +1557,21 @@ def crud_host_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     req_metadata['comment'] = raw_file_name
     req_metadata['tags'] = []
 
-    fields_to_update = get_fields_to_update(req_metadata, wgs_raw_seq_set)
-    map(lambda key: setattr(wgs_raw_seq_set, key, req_metadata.get(key)),
+    fields_to_update = get_fields_to_update(req_metadata, host_wgs_raw_seq_set)
+    map(lambda key: setattr(host_wgs_raw_seq_set, key, req_metadata.get(key)),
         fields_to_update)
 
-    wgs_raw_seq_set.updated = False
+    host_wgs_raw_seq_set.updated = False
     if fields_to_update:
-        wgs_raw_seq_set.links['sequenced_from'] = [prep.id]
+        host_wgs_raw_seq_set.links['sequenced_from'] = [prep.id]
 
-        if not wgs_raw_seq_set.is_valid():
+        if not host_wgs_raw_seq_set.is_valid():
             raise ValueError('HostWgsRawSeqSet validation failed: %s' % 
-                             wgs_raw_seq_set.validate())
+                             host_wgs_raw_seq_set.validate())
 
-        wgs_raw_seq_set.updated = True
+        host_wgs_raw_seq_set.updated = True
 
-    return wgs_raw_seq_set
+    return host_wgs_raw_seq_set
 
 
 def crud_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
