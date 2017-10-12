@@ -87,6 +87,7 @@ sample:
     'terminal_ileum': 'FMA:14966'
     'ileum': 'FMA:7208'
     'stool': 'FMA:64183'
+    'blood': 'FMA:9670'
   mixs:            
       project_name: "iHMP"
       samp_size: "N/A"
@@ -328,8 +329,8 @@ HG:
     seq_meth: "Sequencing by Synthesis"
     lib_const_meth: >-
         Library construction was performed as described by Fisher et al. with some slight 
-        modifications. Initial genomic DNA input into shearing was reduced from 3µg to 50ng 
-        in 10µL of solution and enzymatically sheared. In addition, for adapter ligation,
+        modifications. Initial genomic DNA input into shearing was reduced from 3ug to 50ng 
+        in 10uL of solution and enzymatically sheared. In addition, for adapter ligation,
         dual-indexed Illumina paired end adapters were replaced with palindromic forked 
         adapters with unique 8 base index sequences embedded within the adapter and added
         to each end.
@@ -353,6 +354,7 @@ HG:
     format: fastq
     format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
     sequence_type: "nucleotide"
+    seq_model: "Illumina HiSeq 4000"
     exp_length: 0
     comment: IBDMDB
 
@@ -379,17 +381,35 @@ SER:
   assay:
     sequencing_center: Center Name
     sequencing_contact: "contact@email.com"
-    lib_layout: ""
-    lib_selection: ""
-    ncbi_taxon_id: 9606
-    storage_duration: ""
-  serology:
-    study: ibd
-    format: fastq
-    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
-    sequence_type: "nucleotide"
-    exp_length: 0
-    comment: IBDMDB
+    storage_duration: 0
+    pride_id: ""
+    species: ""
+    tissue: ""
+    title: ""
+    experiment_type: "Targeted Immunoproteomics"
+    protocol_steps: >-
+        DNA was extracted via the Chemagic MSM I with the Chemagic DNA Blood Kit-96 from Perkin Elmer.
+        This kit combines a chemical and mechanical lysis with magnetic bead-based purification.
+
+        Whole Blood samples were incubated at 37C for 5-10 minutes to thaw.  The blood was then
+        transferred to a deep well plate with protease and placed on the Chemagic MSM I. The following
+        steps were automated on the MSM I.
+
+        M-PVA Magnetic Beads were added to the blood, protease solution. Lysis buffer was added to the
+        solution and vortexed to mix. The bead-bound DNA was then removed from solution via a
+        96-rod magnetic head and washed in three Ethanol-based wash buffers to eliminate cell debris
+        and protein residue. The beads were then washed in a final water wash buffer. Finally, the
+        beads were dipped in elution buffer to re-suspend the DNA. The beads were then removed from solution,
+        leaving purified DNA eluate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Sera were analyzed for expression of anti-neutrophil cytoplasmic antibodies (ANCA),
+        anti-Saccharomyces cerevisiae mannan antibodies (ASCA), anti-OmpC, and anti-CBir1 by
+        ELISA as previously described. Antibody levels were determined and the results expressed as
+        ELISA units (EU/mL), which are relative to laboratory standards consisting of pooled,
+        antigen reactive sera from of patients with well-characterized disease.
+    comment: "Serology ELISA"
+  abundance_matrix:
+    comment: ""
+    format: "tbl"
+
   abundance_matrix:
     comment: ""
     format: "table"    
