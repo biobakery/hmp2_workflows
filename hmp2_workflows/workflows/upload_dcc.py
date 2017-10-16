@@ -230,6 +230,7 @@ def main(workflow):
                         elif data_type == "HTX":
                             dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                               conf.get('data_study'),
+                                                              data_type,
                                                               dtype_metadata,
                                                               row)
                             dcc_seq_obj = dcc.crud_host_tx_raw_seq_set(dcc_prep,
@@ -295,6 +296,7 @@ def main(workflow):
                         elif data_type == 'RRBS':
                             dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                               conf.get('data_study'),
+                                                              data_type,
                                                               dtype_metadata,
                                                               row)
                             dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,

@@ -1080,9 +1080,12 @@ def crud_sample(samples, sample_id, visit_id, conf, metadata):
     req_metadata['mixs'] = required_mixs_dict()
     req_metadata['name'] = sample_id
 
-    if metadata['data_type'] == 'host_transcriptomics':
+    if metadata['IntervalName'] in ['Screening Colonoscopy', 'Additional Biopsy']:
         req_metadata['body_site'] = _get_biopsy_location(metadata, body_site_map)
-    elif metadata['data_type'] in ['host_genome', 'serology']:
+        if not req_metadata['body_site']:
+            req_metadata['body_site'] = "colon"
+    elif (metadata['IntervalName'].lower().startswith('follow-up') or 
+          metadata['IntervalName'] == 'Baseline (IBD and Healthy)'):
         req_metadata['body_site'] = "blood"
     else:        
         req_metadata['body_site'] = "stool"
@@ -1298,7 +1301,7 @@ def crud_host_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return host_assay_prep
 
 
-def crud_host_seq_prep(sample, study_id, conf, metadata):
+def crud_host_seq_prep(sample, study_id, dtype_abbrev, conf, metadata):
     """Creates an iHMP OSDF Host Seq Prep object if it doesn't exist or 
     updates an already existing Prep object with the provided metadata. 
 
@@ -1307,6 +1310,8 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
             associated with.
         study_id (string): The study ID this microbiome assay prep is
             assocaited with.
+        dtype_abbrev (string): The abbrevation for the data type that this 
+            prep represents (i.e. MGX, MTX)
         conf (dict): Python dictionary representation of the project YAML
             configuration containing project metadata.
         metadata (pandas.Series): The metadata that is assocaited with this 
@@ -1319,9 +1324,11 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
         cutlass.HostSeqPrep: The created or updated OSDF 
             HostSeqPrep object.
     """
+    prep_id = "%s_%s" % (metadata.get('External ID'), dtype_abbrev)
+
     host_seq_preps = group_osdf_objects(sample.hostSeqPreps(),
                                         'prep_id')
-    host_seq_prep = host_seq_preps.get(metadata['External ID'])
+    host_seq_prep = host_seq_preps.get(prep_id)
 
     if not host_seq_prep:
         host_seq_prep = cutlass.HostSeqPrep()
@@ -1335,7 +1342,7 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
     req_metadata['mims'] = required_mims_dict()
     req_metadata['mims'].update(conf.get('mims'))
 
-    if not metadata.get('biopsy_locaiton'):
+    if not metadata.get('biopsy_location'):
         req_metadata['mims']['material'] = "blood [UBERON_0000178]"
     elif metadata.get('biopsy_location') == "Rectum":
         req_metadata['mims']['material'] = "mucosa of rectum [UBERON_0003346]"
@@ -1343,10 +1350,8 @@ def crud_host_seq_prep(sample, study_id, conf, metadata):
         req_metadata['mims']['material'] = "colonic mucosa [UBERON_0000317]"
 
     ## Fill in the remaining pieces of metadata needed from other sources
-    req_metadata['prep_id'] = metadata['External ID']
+    req_metadata['prep_id'] = prep_id
     req_metadata['comment'] = "IBDMDB"
-
-    req_metadata['mims']['lib_const_meth'] = str(req_metadata['mims']['lib_const_meth'])
 
     fields_to_update = get_fields_to_update(req_metadata, host_seq_prep)
     map(lambda key: setattr(host_seq_prep, key, req_metadata.get(key)),
@@ -1550,7 +1555,7 @@ def crud_host_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     else:
         host_wgs_raw_seq_set = host_wgs_raw_seq_set[0]
 
-    req_metadata.update(conf.get('host_genome'))
+    req_metadata.update(conf.get('methylome'))
     req_metadata['checksums'] = { "md5": md5sum }
 
     req_metadata['local_raw_file'] = metadata.get('seq_file')
