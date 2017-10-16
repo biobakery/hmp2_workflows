@@ -271,7 +271,7 @@ def get_pdo_number(row):
         
         if batch_num.isdigit():
             pdo_num = batch_num
-    elif row.get('data_type') == 'amplicon':
+    elif row.get('data_type') == 'amplicon' and 'PDO' not in pdo_num:
         pdo_num = "PDO-%s" % pdo_num
 
     return pdo_num
@@ -1075,6 +1075,7 @@ def main(args):
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.drop(['Site'], 1, inplace=True)
 
+    metadata_df = metadata_df.sort_values(['data_type', 'Participant ID', 'visit_num'])
     metadata_df.to_csv(metadata_file, index=False)
 
 

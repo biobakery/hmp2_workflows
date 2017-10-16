@@ -195,7 +195,7 @@ def get_sample_id_from_fname(filename):
     matches = re.match(pattern, filename)
     if matches:
         sample_id = matches.group(1)
-        sample_id = (sample_id.replace(sample_id[:2], sample_id[:2] + '-') if '-' not in sample_id
+        sample_id = (sample_id.replace(sample_id[:2], sample_id[:2] + '-', 1) if '-' not in sample_id
                      else sample_id)
     else:
         sample_id = os.path.splitext(filename)[0]
