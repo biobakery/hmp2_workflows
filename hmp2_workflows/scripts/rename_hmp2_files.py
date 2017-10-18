@@ -75,7 +75,7 @@ def parse_cli_arguments():
                         'host_transcriptomics', 'metabolomics', 'methylome',
                         'serology', 'biopsy_16S'],
                         help='The data-type of the files being renamed.')
-    parser.add_argument('-o', '--output-directory', 
+    parser.add_argument('-o', '--output-dir', 
                         help='OPTIONAL. Output directory to write renamed files '
                         'too.')                    
     parser.add_argument('-s', '--symlink', action='store_true', default=False,
@@ -90,18 +90,21 @@ def parse_cli_arguments():
 
 
 def main(args):
-    input_files = glob(os.path.join(args.input_dir, args.input_extension))
+    input_files = glob(os.path.join(args.input_dir, "*" + args.input_extension))
     metadata_df = pd.read_csv(args.metadata_file, dtype='str')
 
     for seq_file in input_files:
         (seq_fname, ext) = os.path.splitext(os.path.basename(seq_file))
 
         row = metadata_df[(metadata_df[args.from_id] == seq_fname) 
-                           & (metadata_df[args.data_type] == args.data_type)]
+                           & (metadata_df['data_type'] == args.data_type)]
+
+        if row.empty:
+            continue 
 
         rename_id = row.get(args.to_id).values[0]                           
         output_dir = args.output_dir if args.output_dir else os.path.dirname(seq_file)
-        rename_file = os.path.join(output_dir, rename_id + os.sep + ext)
+        rename_file = os.path.join(output_dir, rename_id + ext)
 
         print "Renaming file %s to %s" % (seq_file, rename_file)
 

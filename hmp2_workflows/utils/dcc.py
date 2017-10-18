@@ -1778,73 +1778,6 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     return metatranscriptome
 
 
-def crud_viral_seq_set(input_file, md5sum, sample_id, conf, metadata):
-    """Creates an iHMP OSDF VirlaSeqSet object if it doesn't exist or updates
-    an already existing object with the provided metadta.
-
-    This function is different from the other crud_* functions 
-    in that the object is not saved but will instead be passed off to 
-    AnADAMA2 in an attempt to parallelize the upload to the DCC.
-
-    Args:
-        input_file (string): Path to the viral sequence set file to be 
-            uploaded.
-        md5sum (string): md5 checksum for the associated sequence file.
-        sample_id (string): Sample ID assocaited with this viral sequence set.
-        conf (dict): Config dictionary containing some "hard-coded" pieces of
-            metadata assocaited with all transcriptomes
-        metadata (pandas.Series): Metadata associated with this transcriptome
-
-    Requires:
-        None
-
-    Returns:
-        cutlass.ViralSeqSet: The newely populated ViralSeqSet object
-    """
-    raw_file_name = os.path.splitext(os.path.basename(input_file))[0]
-
-    ## Setup our 'static' metadata pulled from our YAML config
-    req_metadata = {}
-
-    ## ViralSeqSet's are derived from a corresponding WgsRawSeqSet so we need 
-    ## to pull down the corresponding WgsRawSeqSet (if it exists)
-    external_id = row.get('External ID')
-
-
-    metatranscriptomes = group_osdf_objects(prep.child_seq_sets(),
-                                            'urls')
-    metatranscriptomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
-                             in metatranscriptomes.items())
-    
-    metatranscriptome = metatranscriptomes.get(raw_file_name)
-
-    if not metatranscriptome:
-        metatranscriptome = cutlass.MicrobTranscriptomicsRawSeqSet()
-    else:
-        metatranscriptome = metatranscriptome[0]
-
-    req_metadata.update(conf.get('metatranscriptome'))
-    req_metadata['local_file'] = seq_file
-    req_metadata['size'] =  os.path.getsize(seq_file)
-    req_metadata['checksums'] = { "md5": md5sum }
-
-    fields_to_update = get_fields_to_update(req_metadata, metatranscriptome)
-    map(lambda key: setattr(metatranscriptome, key, req_metadata.get(key)),
-        fields_to_update)
-
-    metatranscriptome.updated = False
-
-    if fields_to_update:
-        metatranscriptome.updated = True
-        metatranscriptome.links['sequenced_from'] = [prep.id]
-
-        if not metatranscriptome.is_valid():
-            raise ValueError('Microbe Transcritpome validation failed: %s' % 
-                             metatranscriptome.validate())
-
-    return metatranscriptome
-
-
 def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     """Creates or updates an iHMP OSDF 16SRawSeqSet object.
 
@@ -2088,7 +2021,7 @@ def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
         cutlass.ViralSeqSet: The ViralSeqSet object to be saved.
     """
     raw_file = metadata.get('seq_file')
-    raw_file_name = os.path.splitext(os.path.basename(raw_file))
+    raw_file_name = os.path.splitext(os.path.basename(raw_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
@@ -2118,7 +2051,7 @@ def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
     virome.updated = False
     if fields_to_update:
         virome.updated = True
-        virome.links['sequenced_from'] = [prep.id]
+        virome.links['computed_from'] = [prep.id]
 
         if not virome.is_valid():
             raise ValueError('Virome validation failed: %s' % 
