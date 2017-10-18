@@ -1681,8 +1681,9 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
+    group_key = 'urls' if not private else 'comment'
     metagenomes = group_osdf_objects(prep.child_seq_sets(),
-                                    'urls')
+                                    group_key)
     metagenomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                           in metagenomes.items())
     
@@ -1697,6 +1698,7 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     req_metadata['local_file'] = metadata.get('seq_file')
     req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
     req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['comment'] = raw_file_name
 
     if private:
         req_metadata['private_files'] = True
