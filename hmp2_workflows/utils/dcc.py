@@ -1698,6 +1698,9 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
     req_metadata['checksums'] = { "md5": md5sum }
 
+    if private:
+        req_metadata['private_files'] = True
+
     fields_to_update = get_fields_to_update(req_metadata, metagenome)
     map(lambda key: setattr(metagenome, key, req_metadata.get(key)),
         fields_to_update)
@@ -1997,7 +2000,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
 
     return abund_matrix
 
-def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
+def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF ViralSeqSet object if it doesn't exist or updates 
     an already existing object with the provided metadta.
 
@@ -2008,6 +2011,7 @@ def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
     Args:
         prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
             ViromicsSetSeq object will be associated with.
+        seq_file (string): Path to viral sequence set file.            
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
@@ -2020,7 +2024,7 @@ def crud_viral_seq_set(prep, md5sum, sample_id, conf, metadata):
     Returns:
         cutlass.ViralSeqSet: The ViralSeqSet object to be saved.
     """
-    raw_file = metadata.get('seq_file')
+    raw_file = seq_file
     raw_file_name = os.path.splitext(os.path.basename(raw_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config

@@ -173,7 +173,7 @@ def main(workflow):
                 if dcc_subject:
                     dcc_subject = dcc_subject[0]
                 else:
-                    raise ValueException('Could not find Subject object for subject ID %s' % subject_id)                        
+                    raise ValueError('Could not find Subject object for subject ID %s' % subject_id)                        
 
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
                                                     'visit_id')
@@ -277,11 +277,12 @@ def main(workflow):
                                                              data_type,
                                                              dtype_metadata,
                                                              row) 
-                            dcc_seq_obj = dcc.crud_viral_seq_set(dcc_prep,
-                                                                 file_md5sum,
-                                                                 dcc_sample.name,
-                                                                 dtype_metadata,
-                                                                 row)
+                            dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
+                                                                   file_md5sum,
+                                                                   dcc_sample.name,
+                                                                   dtype_metadata,
+                                                                   row,
+                                                                   private=True)
                         elif data_type == '16S':
                             dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
                                                               conf.get('data_study'),
@@ -343,7 +344,31 @@ def main(workflow):
                                                                              dtype_metadata,
                                                                              row)
                                 dcc_seq_obj = upload_data_files(workflow, [trim_seq_obj])
+                            elif data_type == "MVX":
+                                ## Viromics data requires us to create a private node for the 
+                                ## WGS raw seq set that is used to create our viral seq set.
+                                viral_seqs = [viral_seq for viral_seq in seq_out_files 
+                                              if 'tar' in viral_seq]
 
+                                if len(viral_seqs > 1):
+                                    raise ValueError("Found more than one viral sequence " 
+                                                     "for visit: %s" % viral_seqs)
+
+                                viral_seq = viral_seqs[0]
+                                viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seqs))
+                                if not viral_seq_md5:
+                                   raise ValueError("Could not find md5sum for file %s" % viral_seq)
+                                    
+                                dcc_seq_obj = dcc.crud_viral_seq_set(dcc_seq_obj,
+                                                                     viral_seq,
+                                                                     viral_seq_md5,
+                                                                     dcc_sample.name,
+                                                                     dtype_metadata,
+                                                                     row)
+                                uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
+                                dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
+
+                                seq_out_files.remove(viral_seq)                                                                     
                             else:
                                 dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
 
