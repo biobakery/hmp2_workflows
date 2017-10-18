@@ -350,12 +350,12 @@ def main(workflow):
                                 viral_seqs = [viral_seq for viral_seq in seq_out_files 
                                               if 'tar' in viral_seq]
 
-                                if len(viral_seqs > 1):
+                                if len(viral_seqs) > 1:
                                     raise ValueError("Found more than one viral sequence " 
                                                      "for visit: %s" % viral_seqs)
 
                                 viral_seq = viral_seqs[0]
-                                viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seqs))
+                                viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seq))
                                 if not viral_seq_md5:
                                    raise ValueError("Could not find md5sum for file %s" % viral_seq)
                                     

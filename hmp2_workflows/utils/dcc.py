@@ -231,7 +231,12 @@ def create_output_file_map(data_type, output_files):
         basename = os.path.splitext(os.path.basename(output_file))[0]
         ## We are assuming here that our basename split on '_' is going to 
         ## provide us with our sample name.
-        sample_id = basename.rsplit('_', 1)[0]
+        sample_id = basename.split('_', 1)[0]
+        if "_TR" in basename:
+            sample_id += "_TR"
+        elif "_P" in basename:
+            sample_id += "_P"
+
         output_map.setdefault(sample_id, []).append(output_file)
     
     return output_map
@@ -1962,7 +1967,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
 
     ## TODO: Figure out a better way to take care of this
     if "taxonomic_profile" in abund_file:
-        if data_type == "metagenomics":
+        if data_type in ["metagenomics", "viromics"]:
             req_metadata['matrix_type'] = "wgs_community"
         elif data_type == "amplicon":
             req_metadata['matrix_type'] = "16s_community"
@@ -2002,7 +2007,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
 
     return abund_matrix
 
-def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
+def crud_viral_seq_set(raw_seq_set, seq_file, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF ViralSeqSet object if it doesn't exist or updates 
     an already existing object with the provided metadta.
 
@@ -2011,8 +2016,8 @@ def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
     AnADAMA2 in an attempt to parallelize the upload to the DCC.
 
     Args:
-        prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
-            ViromicsSetSeq object will be associated with.
+        raw_seq_set (cutlass.WgsRawSeqSet): The WgsRawSeqSet object that this 
+            ViralSetSeq object will be associated with.
         seq_file (string): Path to viral sequence set file.            
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
@@ -2032,12 +2037,12 @@ def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    virome = group_osdf_objects(prep.child_seq_sets(),
-                                'urls')
-    virome = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
-                  in virome.items())
+    viromes = group_osdf_objects(raw_seq_set.viral_seq_sets(),
+                                 'urls')
+    viromes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                   in viromes.items())
     
-    virome = virome.get(raw_file_name)
+    virome = viromes.get(raw_file_name)
 
     if not virome:  
          virome = cutlass.ViralSeqSet()
@@ -2046,7 +2051,7 @@ def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
 
     req_metadata.update(conf.get('virome'))
     req_metadata['checksums'] = { "md5": md5sum }
-    req_metadata['local_raw_file'] =  raw_file
+    req_metadata['local_file'] =  raw_file
 
     req_metadata['tags'] = []
 
@@ -2057,7 +2062,7 @@ def crud_viral_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
     virome.updated = False
     if fields_to_update:
         virome.updated = True
-        virome.links['computed_from'] = [prep.id]
+        virome.links['computed_from'] = [raw_seq_set.id]
 
         if not virome.is_valid():
             raise ValueError('Virome validation failed: %s' % 
