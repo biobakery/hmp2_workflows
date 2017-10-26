@@ -42,6 +42,7 @@ from biobakery_workflows.tasks.shotgun import (quality_control,
 from biobakery_workflows.utilities import (find_files,
                                            sample_names as get_sample_names,
                                            create_folders,
+                                           paired_files,
                                            name_files)
 from hmp2_workflows.tasks.common import (verify_files, 
                                          stage_files,
@@ -122,15 +123,19 @@ def main(workflow):
                                       input_files,
                                       deposition_dir,
                                       symlink=True)
-        paired_end_seqs = bam_to_fastq(workflow, 
-                                        deposited_files, 
-                                        processing_dir, 
-                                        paired_end=True,
-                                        compress=False,
-                                        threads=args.threads)
+
+        if input_extension == ".bam":
+            paired_end_seqs = bam_to_fastq(workflow, 
+                                            deposited_files, 
+                                            processing_dir, 
+                                            paired_end=True,
+                                            compress=False,
+                                            threads=args.threads)
+        else:
+            paired_end_seqs = paired_files(input_files, pair_identifier)                                            
 
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
-        adapter_trim_opts = " --trimmomatic-options \"%s:2:30:10\" " % adapter_sequences
+        #adapter_trim_opts = " --trimmomatic-options \"%s:2:30:10\" " % adapter_sequences
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         paired_end_seqs,
                                                         processing_dir,
