@@ -164,6 +164,9 @@ HG: &hg
 
 HTX: &htx
     <<: *base
+    
+    target_metadata_cols:
+        - Total Reads
 
     metadata_id_col: "External ID"
 
