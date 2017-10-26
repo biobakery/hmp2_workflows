@@ -124,7 +124,7 @@ def main(workflow):
                                       deposition_dir,
                                       symlink=True)
 
-        if input_extension == ".bam":
+        if file_extension == ".bam":
             paired_end_seqs = bam_to_fastq(workflow, 
                                             deposited_files, 
                                             processing_dir, 
