@@ -134,7 +134,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                    ['/tmp/fooA.bam', '/tmp/fooB.bam'],
                                    '/seq/ibdmdbd/out_dir'])
     """
-    sample_names = bb_utils.sample_names(input_files)
+    sample_names = bb_utils.sample_names(input_files, '.bam')
     sorted_bams = bb_utils.name_files(sample_names, 
                                       output_dir, 
                                       subfolder="sort",
@@ -268,7 +268,7 @@ def batch_convert_tsv_to_biom(workflow, tsv_files):
     """
     biom_files = []
 
-    tsv_fnames = bb_utils.sample_names(tsv_files)
+    tsv_fnames = bb_utils.sample_names(tsv_files, '.tsv')
     tsv_dir = os.path.dirname(tsv_files[0])
 
     biom_dir = os.path.join(tsv_dir, 'biom')
