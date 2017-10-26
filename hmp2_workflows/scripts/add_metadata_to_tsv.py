@@ -76,17 +76,23 @@ def parse_cli_arguments():
     parser.add_argument('-t', '--id-col', required=True,
                         help='Target ID column to match up analysis samples '
                         'to samples found in the metadata.')
+    parser.add_argument('--drop-missing-cols', action='store_true', default=False,
+                        help='OPTIOANL. If set to True drop any columns that '
+                        'do not map to our metadata.')                        
     parser.add_argument('-s', '--supplement', default=[], action='append',
                         help='Any supplementary metadata to be added. '
                         'should be keyed on the same ID provided in the '
                         '--id-col parameter.')
+
 
     return parser.parse_args()
 
 
 def add_metadata_to_tsv(analysis_files, metadata_file,
                         data_type,
-                        id_col, col_replace, target_cols=[],
+                        id_col, col_replace, 
+                        drop_cols,
+                        target_cols=[],
                         supplement=[]):
     """Adds metadata to the top of a tab-delimited file. This function is
     meant to be called on analysis files to append relevant metadata to the 
@@ -114,6 +120,8 @@ def add_metadata_to_tsv(analysis_files, metadata_file,
             for and replaced in either of the column headers of the analysis 
             or metadata files.
         target_cols (list): A list of columns to filter the metadata file on.
+        drop_cols (boolean): If True drop any columns that don't map to our 
+            metadata file.
         supplement (list): Any additional metadata files to integrate into 
             analysis files. 
 
@@ -182,6 +190,7 @@ def add_metadata_to_tsv(analysis_files, metadata_file,
 
         subset_metadata_df = metadata_df[(metadata_df.data_type == data_type) &
                                          (metadata_df[id_col].isin(sample_ids))]
+        mapping_sample_ids = subset_metadata_df[id_col].tolist()                                         
 
         if supplement:
             for aux_file in supplement:
@@ -240,6 +249,10 @@ def add_metadata_to_tsv(analysis_files, metadata_file,
                                           analysis_df], axis=0)
         analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
         na_rep = "NA"
+
+        if drop_cols:
+            analysis_metadata_df.filter(mapping_sample_ids)
+
         analysis_metadata_df.to_csv(pcl_out,
                                     index=False,
                                     header=header,
@@ -268,6 +281,7 @@ def main(args):
                                      data_type_label,
                                      args.id_col,
                                      analysis_col_patterns,
+                                     args.drop_missing_cols,
                                      target_metadata_cols,
                                      supplement=args.supplement)
 

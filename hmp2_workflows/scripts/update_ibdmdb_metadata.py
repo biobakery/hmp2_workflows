@@ -226,7 +226,7 @@ def get_project_id(row):
         pandas.Series: Row of metadata with Project column populated.
     """
     project_id = row.get('Project')
-    type_mapping = {'host_transcriptomics': 'TX',
+    type_mapping = {'host_transcriptomics': 'HTX',
                     'biopsy_16S': 'BP',
                     'metatranscriptomics': 'MTX',
                     'metagenomics': 'MGX',
@@ -482,11 +482,13 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
     data_type_mapping = config.get('dtype_mapping')
 
     ## Grab subset of Broad sample tracking spreadsheet
-    sample_subset_df = sample_df[(sample_df['Parent Sample A'].isin(sample_ids)) |
-                                 (sample_df['Proteomics'].isin(sample_ids)) |
-                                 (sample_df['MbX'].isin(sample_ids)) |
-                                 (sample_df['Viromics'].isin(sample_ids)) |
-                                 (sample_df['Site/Sub/Coll']).isin(sample_ids)]
+    sample_subset_df = pd.DataFrame()
+    if data_type != "HTX":
+        sample_subset_df = sample_df[(sample_df['Parent Sample A'].isin(sample_ids)) |
+                                    (sample_df['Proteomics'].isin(sample_ids)) |
+                                    (sample_df['MbX'].isin(sample_ids)) |
+                                    (sample_df['Viromics'].isin(sample_ids)) |
+                                    (sample_df['Site/Sub/Coll']).isin(sample_ids)]
 
     if sample_ids_techreps:
         sample_ids_techreps = [sample_id.replace('_techrep', '') for sample_id 
@@ -516,7 +518,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
                          '7': 'Sigmoid Colon',
                          '8': 'Rectum'}
 
-        if data_type == "TX" or data_type == "RRBS":
+        if data_type == "HTX" or data_type == "RRBS":
         # TODO: Add these to config file
             biopsy_map = {'bx_q5': 'Rectum',
                           'bx_q6': 'Ileum',
@@ -635,6 +637,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
             metadata_df = metadata_df.merge(proteomics_df,
                                             on='Parent Sample A',
                                             how='left')
+            metadata_df['External ID'] = None                                            
     
     ## Now if we have techreps in our samples we need to add them in.
     metadata_df['data_type'] = data_type_mapping.get(data_type)
@@ -994,10 +997,11 @@ def main(args):
  
             new_metadata_df = pd.concat(new_metadata, ignore_index=True)
 
-            new_metadata_df[new_metadata_df['External ID'].isnull()] = None
+            #new_metadata_df[new_metadata_df['External ID'].isnull()] = None
             new_metadata_df['Site/Sub/Coll ID'] = new_metadata_df['Site/Sub/Coll'].map(lambda sid: str(sid))
-            new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
-            new_metadata_df['visit_num'] = new_metadata_df['Collection #']
+            #new_metadata_df['Participant ID'] = new_metadata_df['Subject'].map(lambda subj: 'C' + str(subj))
+            if 'Collection #' in new_metadata_df.columns:
+                new_metadata_df['visit_num'] = new_metadata_df['Collection #']
             new_metadata_df['Project'] = new_metadata_df.apply(get_project_id, axis=1)
             new_metadata_df['ProjectSpecificID'] = pd.to_numeric(new_metadata_df['ProjectSpecificID'])
             new_metadata_df['Site'] = new_metadata_df['SiteName']
@@ -1043,7 +1047,7 @@ def main(args):
 
             if new_cols:
                 supp_new_df = supp_df.filter(items=supp_columns[:idx_offset] + list(new_cols))
-                metadata_df.merge(supp_new_df, how='left', on=join_id)
+                metadata_df = metadata_df.merge(supp_new_df, how='left', on=join_id)
 
             if existing_cols:
                 supp_existing_df = supp_df.filter(items=supp_columns[:idx_offset] + list(existing_cols))
@@ -1075,9 +1079,8 @@ def main(args):
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.drop(['Site'], 1, inplace=True)
 
-    metadata_df = metadata_df.sort_values(['data_type', 'Participant ID', 'visit_num'])
+    #metadata_df = metadata_df.sort_values(['data_type', 'Participant ID', 'visit_num'])
     metadata_df.to_csv(metadata_file, index=False)
-
 
 
 if __name__ == "__main__":

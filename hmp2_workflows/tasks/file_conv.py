@@ -155,7 +155,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
         mate_1_files = bb_utils.name_files(map(os.path.basename, input_files),
                                            output_dir,
                                            tag="R1",
-                                           subfolder="fastq"
+                                           subfolder="fastq",
                                            extension="fastq",
                                            create_folder=True)
         mate_2_files = bb_utils.name_files(map(os.path.basename, input_files),
