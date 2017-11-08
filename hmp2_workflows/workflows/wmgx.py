@@ -132,6 +132,7 @@ def main(workflow):
                                             paired_end=True,
                                             compress=False,
                                             threads=args.threads)
+            pair_identifier = "_R1"                                            
         else:
             paired_end_seqs = paired_files(input_files, pair_identifier)                                            
 
