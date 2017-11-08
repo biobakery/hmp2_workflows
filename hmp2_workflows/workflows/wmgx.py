@@ -125,6 +125,7 @@ def main(workflow):
                                       symlink=True)
 
         if file_extension == ".bam":
+            ## Need to sort our BAM files to be sure here...
             paired_end_seqs = bam_to_fastq(workflow, 
                                             deposited_files, 
                                             processing_dir, 
@@ -135,14 +136,12 @@ def main(workflow):
             paired_end_seqs = paired_files(input_files, pair_identifier)                                            
 
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
-        #adapter_trim_opts = " --trimmomatic-options \"%s:2:30:10\" " % adapter_sequences
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         paired_end_seqs,
                                                         processing_dir,
                                                         qc_threads,
                                                         contaminate_db,
-                                                        pair_identifier="_R1",
-                                                        additional_options=adapter_trim_opts,
+                                                        pair_identifier=pair_identifier,
                                                         remove_intermediate_output=True)
         
         ## Generate taxonomic profile output. Output are stored in a list 

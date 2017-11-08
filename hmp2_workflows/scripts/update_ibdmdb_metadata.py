@@ -1079,7 +1079,7 @@ def main(args):
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.drop(['Site'], 1, inplace=True)
 
-    #metadata_df = metadata_df.sort_values(['data_type', 'Participant ID', 'visit_num'])
+    metadata_df = metadata_df.sort_values(['data_type', 'Participant ID', 'visit_num'])
     metadata_df.to_csv(metadata_file, index=False)
 
 
