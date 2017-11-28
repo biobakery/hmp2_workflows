@@ -99,7 +99,7 @@ def main(workflow):
     contaminate_db = conf_mtx.get('databases').get('knead_dna')
     mtx_db = conf_mtx.get('databases').get('knead_mtx')
     rrna_db = conf_mtx.get('databases').get('knead_rrna')
-    adapter_sequences = conf.get('adapter_sequences')
+    adapter_sequences = conf_mtx.get('adapter_sequences')
 
     qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
     tax_threads = args.threads_metaphlan if args.threads_metaphlan else args.threads
