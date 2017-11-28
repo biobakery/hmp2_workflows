@@ -99,6 +99,7 @@ def main(workflow):
     contaminate_db = conf_mtx.get('databases').get('knead_dna')
     mtx_db = conf_mtx.get('databases').get('knead_mtx')
     rrna_db = conf_mtx.get('databases').get('knead_rrna')
+    adapter_sequences = conf.get('adapter_sequences')
 
     qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
     tax_threads = args.threads_metaphlan if args.threads_metaphlan else args.threads
@@ -146,6 +147,7 @@ def main(workflow):
                                                                  rrna_db,
                                                                  mtx_db],
                                                                 pair_identifier=pair_identifier_mtx,
+                                                                additional_options=adapter_trim_opts
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
