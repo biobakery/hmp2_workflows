@@ -135,8 +135,11 @@ def main(workflow):
         else:
             paired_end_seqs = paired_files(deposited_files_mtx, file_extension_mtx, pair_identifier_mtx)   
 
+        adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
+                             "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapter_sequences)
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
                                                                 paired_end_seqs,
+                                                                file_extension_mtx,
                                                                 project_dirs_mtx[1],
                                                                 qc_threads,
                                                                 [contaminate_db,
