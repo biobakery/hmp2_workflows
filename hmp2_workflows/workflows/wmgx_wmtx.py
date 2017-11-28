@@ -147,7 +147,7 @@ def main(workflow):
                                                                  rrna_db,
                                                                  mtx_db],
                                                                 pair_identifier=pair_identifier_mtx,
-                                                                additional_options=adapter_trim_opts
+                                                                additional_options=adapter_trim_opts,
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
