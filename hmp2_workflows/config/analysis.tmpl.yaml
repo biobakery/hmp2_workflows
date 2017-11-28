@@ -40,6 +40,8 @@ base: &base
         SER: "serology"
         RRBS: "methylome"
         HG: "host_genome"
+        16SBP: "biopsy_16S"
+        MVX: "viromics"
 
     target_metadata_cols: &metadata_cols
         - site_sub_coll
@@ -94,7 +96,7 @@ MGX: &mgx
         - sccai
         - hbi
         - fecalcal
-        - filtered_read_counts
+        - filtered_reads
 
 16S: &16S
     <<: *base
@@ -139,8 +141,10 @@ MVX: &mvx
         - sccai
         - hbi
         - fecalcal
-        - filtered_read_counts
-        - raw_read_counts
+        - total_reads
+        - Viral Reads
+        - filtered_reads
+        - frac_human_reads
 
 MBX: &mbx
     <<: *base
@@ -166,9 +170,23 @@ HTX: &htx
     <<: *base
     
     target_metadata_cols:
+        - *metadata_cols
         - Total Reads
+        - biopsy_location
+        - is_inflamed
 
     metadata_id_col: "External ID"
+
+16SBP: &16sbp
+    <<: *base
+
+    target_metadata_cols:
+        - *metadata_cols
+        - biopsy_location
+        - is_inflamed  
+        - Raw
+        - Mapped
+        - Unmapped
 
 RRBS: &rrbs
     <<: *base

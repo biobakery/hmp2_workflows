@@ -34,6 +34,7 @@ from anadama2 import Workflow
 
 from biobakery_workflows.utilities import (create_folders,
                                            sample_names,
+                                           paired_files,
                                            name_files)
 from biobakery_workflows.tasks.shotgun import (quality_control, 
                                                taxonomic_profile,
@@ -105,7 +106,8 @@ def main(workflow):
 
     if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX').get('input')
-        pair_identifier = data_files.get('MTX').get('pair_identifier')
+        file_extension_mtx = data_files.get('MTX').get('file_ext')
+        pair_identifier_mtx = data_files.get('MTX').get('pair_identifier')
         input_tax_profiles = []
 
         project_dirs_mtx = create_project_dirs([conf_mtx.get('deposition_dir'),
@@ -121,15 +123,26 @@ def main(workflow):
                                           project_dirs_mtx[0],
                                           symlink=True)
 
+        if file_extension_mtx == ".bam":
+            ## Need to sort our BAM files to be sure here...
+            paired_end_seqs = bam_to_fastq(workflow, 
+                                            deposited_files_mtx, 
+                                            project_dirs_mtx[1],
+                                            paired_end=True,
+                                            compress=False,
+                                            threads=args.threads)
+            pair_identifier_mtx = "_R1"                                            
+        else:
+            paired_end_seqs = paired_files(deposited_files_mtx, pair_identifier_mtx)   
 
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
-                                                                deposited_files_mtx,
+                                                                paired_end_seqs,
                                                                 project_dirs_mtx[1],
                                                                 qc_threads,
                                                                 [contaminate_db,
                                                                  rrna_db,
                                                                  mtx_db],
-                                                                pair_identifier=pair_identifier,
+                                                                pair_identifier=pair_identifier_mtx,
                                                                 remove_intermediate_output=True)
 
         sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
@@ -150,6 +163,8 @@ def main(workflow):
         #           metaphlan2 portions of our pipeline
         if data_files.get('MGX', {}).get('input'):
             input_files_wgs = data_files.get('MGX').get('input')
+            file_extension_mgx = data_files.get('MGX').get('file_ext')
+            pair_identifier_mgx = data_files.get('MGX').get('pair_identifier')
             input_tax_profiles = [in_file for in_file in input_files_wgs
                                   if 'taxonomic_profile.tsv' in in_file]
             input_files_wgs = set(input_files_wgs) - set(input_tax_profiles)
@@ -170,8 +185,20 @@ def main(workflow):
                                                   project_dirs_wgs[0],
                                                   symlink=True)
 
+                if file_extension_mgx == ".bam":
+                    ## Need to sort our BAM files to be sure here...
+                    paired_end_seqs = bam_to_fastq(workflow, 
+                                                    deposited_files_mgx, 
+                                                    project_dirs_mgx[1],
+                                                    paired_end=True,
+                                                    compress=False,
+                                                    threads=args.threads)
+                    pair_identifier_mgx = "_R1"                                            
+                else:
+                    paired_end_seqs_mgx = paired_files(deposited_files_mgx, pair_identifier_mgx)  
+
                 (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
-                                                                        deposited_files_wgs,
+                                                                        paired_end_seqs_mgx,
                                                                         project_dirs_wgs[1],
                                                                         qc_threads,
                                                                         [contaminate_db,
