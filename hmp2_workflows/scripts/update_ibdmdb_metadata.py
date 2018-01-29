@@ -576,7 +576,7 @@ def get_metadata_rows(config, studytrax_df, sample_df, proteomics_df,
             metadata_df = pd.concat([sample_subset_df] + new_metadata_dfs, ignore_index=True)
             metadata_df['Site/Sub/Coll'] = metadata_df.apply(_get_non_stool_site_sub_coll, axis=1)
             resolve_dupe_ssc_ids(metadata_df)
-        elif data_type == "BP":
+        elif data_type == "16SBP":
             biopsy_map = {'bx_q13': 'Rectum',
                           'bx_q14': 'Ileum',
                           'bx_q15': 'Other Inflamed',
@@ -916,6 +916,38 @@ def reorder_columns(metadata_df, cols_to_move):
     return metadata_df
 
 
+def add_baseline_metadata_values(metadata_df, studytrax_df, baseline_columns):
+    """Retrieves metadata from the Studytrax clinical metadata that are 
+    applicable and useful to specific stool data.
+
+    Args:
+        metadata_df (pandas.DataFrame): HMP2 metadata table stored in a 
+            pandas DataFrame.
+        studytrax_df (pandas.DataFrame): StudyTrax clinical metadata.
+        baseline_columns (list): A list of columns to pull target baseline
+            metadata columns from.
+
+    Requires:
+        None
+
+    Returns:
+        pandas.DataFrame: DataFrame containing metadata with baseline columns
+            filled in.                    
+    """
+    metadata_df.set_index('ProjectSpecificID', inplace=True)
+
+    for col in baseline_columns:
+        baseline_df = studytrax_df[(studytrax_df['IntervalName'] == 'Baseline (IBD and Healthy)') &
+                                   (studytrax_df[col].notnull())].filter(['ProjectSpecificID', col])
+        baseline_df[col].apply(lambda x: x.split("(")[0])
+        baseline_df['ProjectSpecificID'] = pd.to_numeric(baseline_df['ProjectSpecificID'])
+        baseline_df.set_index('ProjectSpecificID', inplace=True)
+        metadata_df.update(baseline_df)
+
+    metadata_df.reset_index(inplace=True)
+    return metadata_df        
+
+
 def get_no_sequence_metadata(metadata_df, clinical_df):
     """Generates a dataframe containing any remaiing clinical metadata that 
     is not tied to sequence data. 
@@ -948,7 +980,8 @@ def main(args):
                                   parse_dates=['Actual Date of Receipt'])
     proteomics_df = None
     metadata_df = None
-    
+    new_metadata_df = None
+
     date_today = datetime.date.today()
     metadata_file = os.path.join(args.output_dir,
                                  'hmp2_metadata_%s.csv' % date_today)
@@ -958,6 +991,7 @@ def main(args):
     ## dates
     collection_dates_dict = get_collection_dates(broad_sample_df)
 
+    biopsy_date_map = None
     if args.proteomics_metadata:
         proteomics_df = pd.read_table(args.proteomics_metadata)
     if args.biopsy_dates:
@@ -1018,7 +1052,7 @@ def main(args):
                                                             axis=1)
         metadata_df['PDO Number'] = metadata_df.apply(get_pdo_number, axis=1)
 
-        if not new_metadata_df.empty:
+        if new_metadata_df and not new_metadata_df.empty:
             metadata_df = pd.concat([metadata_df, new_metadata_df], ignore_index=True)
             metadata_df = metadata_df.drop_duplicates(subset=['External ID', 'Site/Sub/Coll ID', 'data_type'], keep='last')
     else:
@@ -1064,17 +1098,20 @@ def main(args):
     metadata_df['visit_num'] = metadata_df.apply(fill_visit_nums, axis=1)
 
     metadata_df['hbi_score'] = pd.to_numeric(metadata_df['hbi_score'])
-    metadata_df['SiteName'] = metadata_df['Site']
+    if 'Site' in metadata_df.columns.tolist():
+        metadata_df['SiteName'] = metadata_df['Site']
+    else:
+        metadata_df['Site'] = metadata_df['SiteName']
 
     ## Couple small remaining changes
     metadata_df.ix[metadata_df.hbi_score > 900, 'hbi_score'] = None 
-    metadata_df['Total Reads'].loc[metadata_df['Total Reads'].astype('str').str.startswith('PDO')] = None 
+    metadata_df.ix[metadata_df.consent_age > 150, 'consent_age'] = None 
+    metadata_df['total_reads'].loc[metadata_df['total_reads'].astype('str').str.startswith('PDO')] = None 
     metadata_df['Research Project'] = "ibdmdb"
 
     metadata_df = generate_collection_statistics(metadata_df, collection_dates_dict, biopsy_date_map)
+    metadata_df = add_baseline_metadata_values(metadata_df, study_trax_df, config.get('baseline_cols'))
 
-    #metadata_df[metadta_df.week_num.isnull()] = generate_collection_statistics(metadata_df[metadta_df.week_num.isnull()],
-    #                                                                           collection_dates_dict)
     metadata_df[metadata_df['SiteName'].isnull()] = fix_site_name(metadata_df[metadata_df['SiteName'].isnull()])
     metadata_df = reorder_columns(metadata_df, config.get('col_order'))
     metadata_df.drop(['Site'], 1, inplace=True)

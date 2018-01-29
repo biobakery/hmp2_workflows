@@ -111,6 +111,14 @@ def main(args):
     map(lambda field: metadata_df[field].replace(replace_yes_no, inplace=True), replace_cols)
     [metadata_df[field].replace(replace_val, inplace=True) for (field, replace_val) in conf_recode_cols.iteritems()]
 
+    ## Drop a couple of the confusing biopsy location columns
+    drop_cols = ['bx_q8', 'bx_q10', 'bx_q16', 'bx_q18', 'bx_q24', 'bx_q26', 'Site/Sub/Coll']
+    map(lambda col_name: metadata_df.drop(col_name, axis=1, inplace=True), drop_cols)
+
+    ## We need to sanitize some of the disease location columns
+    metadata_df['mc_q4'] = metadata_df['mc_q4'].apply(lambda x: x.replace(" ", "").split('(')[0] if pd.notnull(x) else x)
+    metadata_df['mc_q7'] = metadata_df['mc_q7'].apply(lambda x: x.replace(" ", "").split('(')[0] if pd.notnull(x) else x)
+
     ## Rename and write out new CSV file
     col_name_lookup.update(conf_rename_cols)
     metadata_df.rename(columns=col_name_lookup, inplace=True)

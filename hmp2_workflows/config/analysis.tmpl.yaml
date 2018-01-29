@@ -52,6 +52,7 @@ base: &base
         - week_num
         - diagnosis
         - baseline_montreal_location
+        - baseline_uc_extent
 
     analysis_col_patterns:
         - _taxonomic_profile
@@ -81,10 +82,9 @@ MPX: &proteomics
 
     target_metadata_cols:
         - *metadata_cols
-        - State   
-        - Dataset_Type
-        - Request_ID
-        - Protein
+        - sccai
+        - hbi
+        - fecalcal
 
 MGX: &mgx
     <<: *base
@@ -129,7 +129,7 @@ MTX: &mtx
         - sccai
         - hbi
         - fecalcal
-        - filtered_read_counts
+        - filtered_reads
 
 MVX: &mvx
     <<: *base
@@ -144,7 +144,6 @@ MVX: &mvx
         - total_reads
         - Viral Reads
         - filtered_reads
-        - frac_human_reads
 
 MBX: &mbx
     <<: *base
@@ -171,7 +170,7 @@ HTX: &htx
     
     target_metadata_cols:
         - *metadata_cols
-        - Total Reads
+        - total_reads
         - biopsy_location
         - is_inflamed
 
@@ -184,9 +183,6 @@ HTX: &htx
         - *metadata_cols
         - biopsy_location
         - is_inflamed  
-        - Raw
-        - Mapped
-        - Unmapped
 
 RRBS: &rrbs
     <<: *base

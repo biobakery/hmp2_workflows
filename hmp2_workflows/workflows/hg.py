@@ -102,7 +102,7 @@ def main(workflow):
 
         paired_fastq_tars = []
         for (mate_1, mate_2) in zip(paired_fastq_files[0], paired_fastq_files[1]):
-            sample_name = sample_names(mate_1, pair_identifier="_R1")
+            sample_name = sample_names(mate_4, pair_identifier="_R1")
             tar_path = os.path.join(project_dirs[-1], "%s.tar" % sample_name)
             paired_fastq_tar = tar_files(workflow, 
                                          [mate_1, mate_2],

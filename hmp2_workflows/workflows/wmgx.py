@@ -49,10 +49,11 @@ from hmp2_workflows.tasks.common import (verify_files,
                                          tar_files,
                                          make_files_web_visible)
 from hmp2_workflows.tasks.file_conv import (batch_convert_tsv_to_biom, bam_to_fastq)
+from hmp2_workflows.tasks.analysis import generate_ko_files
 from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.utils.misc import (parse_cfg_file, 
                                        create_merged_md5sum_file)
-from hmp2_workflows.utils.files import create_project_dirs
+from hmp2_workflows.utils.files import create_project_dirs, generate_slim_files
                                       
 
 def parse_cli_arguments():
@@ -161,9 +162,12 @@ def main(workflow):
         ## Generate functional profile output using humann2. Outputs are the 
         ## the following:
         ## 
-        ##      * Merged gene families
-        ##      * Merged relative abundances
-        ##      * Merged pathway abundances
+        ##      * Merged normalized genefamilies
+        ##      * Merged normalized ecs
+        ##      * Merged normalized pathways
+        ##      * Merged genefamilies
+        ##      * Merged ecs
+        ##      * Merged pathways
         func_threads = args.threads_humann if args.threads_humann else args.threads
         func_profile_outputs = functional_profile(workflow,
                                                   cleaned_fastqs,
@@ -171,6 +175,33 @@ def main(workflow):
                                                   func_threads,
                                                   tax_profile_outputs[1],
                                                   remove_intermediate_output=True)
+
+        ## The current biobakery workflows do not generate KO's from our genefamilies 
+        ## so we're going to want to do that ourselves.
+        genefamilies = name_files(sample_names, 
+                                  os.path.join(processing_dir, 'metaphlan2'),
+                                  subfolder='main',
+                                  tag = 'genefamilies',
+                                  extension = 'tsv')
+        pathways = name_files(sample_names,
+                              os.path.join(processing_dir, 'humann2'),
+                              subfolder = 'main',
+                              tag = 'pathabundance',
+                              extension = 'tsv')
+        ecs = name_files(sample_names,
+                         os.path.join(processing_dir, 'humann2'),
+                         subfolder = 'regrouped',
+                         tag = 'ecs',
+                         extension = 'tsv')
+        kos = name_files(sample_names,
+                         os.path.join(processing_dir, 'humann2'),
+                         subfolder = 'regrouped',
+                         tag = 'kos',
+                         extension = 'tsv')
+
+        (merged_norm_kos, merged_kos) = generate_ko_files(workflow,
+                                                          genefamilies,
+                                                          processing_dir)
 
         biom_files = batch_convert_tsv_to_biom(workflow, tax_profile_outputs[1])
         tax_biom_files = stage_files(workflow,
@@ -219,20 +250,24 @@ def main(workflow):
                          (kneaddata_log_files, pub_raw_dir)]]
 
         norm_genefamilies = name_files(sample_names, 
-                                      processing_dir, 
+                                       processing_dir, 
                                        subfolder = 'genes',
                                        tag = 'genefamilies_relab',
                                        extension = 'tsv')
         norm_ecs_files = name_files(sample_names,
-                                    processing_dir,
+                                    os.path.join(processing_dir, 'humann2', 'relab'),
                                     subfolder = 'ecs',
                                     tag = 'ecs_relab',
                                     extension = 'tsv')
         norm_path_files = name_files(sample_names,
-                                     processing_dir,
+                                     os.path.join(processing_dir, 'humann2', 'relab'),
                                      subfolder = 'pathways',
                                      tag = 'pathabundance_relab',
                                      extension = 'tsv')
+        norm_kos_files = name_files(sample_names,
+                                    os.path.join(processing_dir, 'humann2', 'relab'),
+                                    subfolder = 'kos_relab',
+                                    extension = 'tsv')
 
         func_tar_files = []
         for (sample, gene_file, ecs_file, path_file) in zip(sample_names,

@@ -180,6 +180,7 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     
     return seq_file
 
+
 def match_tax_profiles(mtx_fastqs, mtx_col_id,
                        tax_profiles, tax_col_id, 
                        metadata_file,

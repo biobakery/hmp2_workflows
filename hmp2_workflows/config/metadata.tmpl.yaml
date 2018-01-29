@@ -97,8 +97,9 @@ col_order:
 ## Baseline or screening columns are columns that contain pieces of metadata
 ## that are relevant to analysis that will be done so we will need to pull
 ## them specifically out of these baseline columns 
-baseline_and_screening_cols:
-    - Location (L) prior to first surgery
+baseline_cols:
+    - mc_q4
+    - mc_q7
 
 col_rename:
     "Site/Sub/Coll ID": site_sub_coll
@@ -108,9 +109,12 @@ col_rename:
     "diagnosis": "diagnosis"
     "mh_heading3": "antibiotics"
     "Actual Date of Receipt": date_of_receipt
-    "Location (L) prior to first surgery": disease_location
+    "mc_q4": baseline_montreal_location
+    "mc_q7": baseline_uc_extent
     "sccai_score": "sccai"
     "hbi_score": "hbi"
+    "Age of consent": "consent_age"
+    "Age at diagnosis": "age_at_dx"
     "st_q16": "fecalcal"
 
 value_recode:

@@ -1,0 +1,27 @@
+
+<<label="wmgx_setup", echo=False>>=
+from biobakery_workflows import utilities
+
+from anadama2 import PweaveDocument
+
+document = PweaveDocument()
+vars = document.get_vars()
+@
+
+<div class="Row">
+<div class="page-header">
+## <%= vars['summary_title'] %>
+<span>The following data were run through a standard workflow for metagenomic sequence analysis.</span>
+</div>
+</div>
+
+<!-- Main page content follows -->
+<div id="main_content" class="Row">
+<ul class="nav nav-tabs">
+<li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
+<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
+<li role="presentation"><a href="#func_tab" data-toggle="tab">Functional Profiling</a></li>
+</ul>
+
+<div class="panel-body">
+<div class="tab-content">

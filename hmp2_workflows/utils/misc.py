@@ -202,6 +202,7 @@ def get_sample_id_from_fname(filename):
 
     return sample_id
 
+
 def reset_column_headers(data_frame, header_col=0):
     """Resets the column header on a pandas DataFrame using the supplied
     row index as the new column header.

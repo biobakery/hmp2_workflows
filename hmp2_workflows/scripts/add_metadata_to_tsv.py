@@ -41,6 +41,8 @@ import pandas as pd
 
 import biobakery_workflows.utilities as bb_utils
 
+from numpy import nan as Nan
+
 from hmp2_workflows.utils.misc import (get_sample_id_from_fname,
                                        parse_cfg_file,
                                        reset_column_headers)
@@ -69,7 +71,8 @@ def parse_cli_arguments():
                         help='Config file containing project config parameters.')
     parser.add_argument('-d', '--data-type', choices=['MGX', 'MTX', 'HTX',
                                                       'MVX', 'MPX', 'MBX',
-                                                      '16S', 'RRBS', 'SER'],
+                                                      '16S', 'RRBS', 'SER',
+                                                      '16SBP'],
                         required=True,
                         help='Data type of data used to generate analysis '
                         'file.')
@@ -230,7 +233,7 @@ def add_metadata_to_tsv(analysis_files, metadata_file,
             target_cols.insert(0, id_col)
             subset_metadata_df = subset_metadata_df.filter(target_cols)
 
-        subset_metadata_df = subset_metadata_df.drop_duplicates(subset=['External ID'], keep='first')
+        subset_metadata_df = subset_metadata_df.drop_duplicates(subset=[id_col], keep='first')
 
         subset_metadata_df = subset_metadata_df.T
         subset_metadata_df = reset_column_headers(subset_metadata_df)
@@ -244,14 +247,22 @@ def add_metadata_to_tsv(analysis_files, metadata_file,
         subset_metadata_df.rename(columns={'index': col_name}, inplace=True)
 
         analysis_df.index = analysis_df.index + len(subset_metadata_df.index)
+        
+        ## add an empty row to make things easier on the R loader scripts
+        empty_df = pd.DataFrame([[""]*len(subset_metadata_df.columns)], columns=subset_metadata_df.columns)
+        #subset_metadata_df = subset_metadata_df.append(empty_row, ignore_index=True)
 
         analysis_metadata_df = pd.concat([subset_metadata_df,
                                           analysis_df], axis=0)
-        analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
-        na_rep = "NA"
 
         if drop_cols:
             analysis_metadata_df.filter(mapping_sample_ids)
+
+        analysis_metadata_df.fillna('NA', inplace=True)
+        analysis_metadata_df = pd.concat([analysis_metadata_df[:len(subset_metadata_df)],
+                                          empty_df,
+                                          analysis_metadata_df[len(subset_metadata_df):]], axis=0)
+        analysis_metadata_df = analysis_metadata_df[analysis_df.columns]
 
         analysis_metadata_df.to_csv(pcl_out,
                                     index=False,

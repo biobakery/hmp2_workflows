@@ -150,7 +150,7 @@ def main(workflow):
                                                                 additional_options=adapter_trim_opts,
                                                                 remove_intermediate_output=True)
 
-        sample_names_mtx = sample_names(cleaned_fastqs_mtx)                                                                
+        sample_names_mtx = sample_names(cleaned_fastqs_mtx, file_extension_mtx)                                                                
 
         ##########################################
         #          MGX FILE PROCESSING           #
@@ -303,6 +303,7 @@ def main(workflow):
                                              '*.fastq')
             func_outs_mtx = functional_profile(workflow,
                                                cleaned_fastqs_mtx,
+                                               file_extension_mtx,
                                                project_dirs_mtx[1],
                                                func_threads,
                                                tax_outs_mtx[1],

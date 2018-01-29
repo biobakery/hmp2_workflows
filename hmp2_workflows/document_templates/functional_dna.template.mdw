@@ -1,8 +1,5 @@
-[//]: # Pweave pandoc markdown template which will generate HTML and 
-[//]: # accompanying visualizations to display quality control information 
-[//]: # for each sample.
 
-<<echo=False>>=
+<<label="functioanl_setup", echo=False>>=
 import os
 import numpy
 
@@ -10,12 +7,13 @@ from biobakery_workflows import utilities
 
 from anadama2 import PweaveDocument
 
-
 document = PweaveDocument()
 vars = document.get_vars()
 
-sample_name = vars['Sample Name']
+max_sets = 50
 @
+
+<div class="tab-pane" id="func_tab"> 
 
 ## Functional Profiling
 
@@ -29,11 +27,67 @@ and [MetaCyc](https://metacyc.org/).
 
 ### Pathway Abundance
 
-Hierarchical clustering using top <%= vars['max_sets'] %> pathways 
+Hierarchical clustering using top **<%= max_sets %>** pathways 
 with highest mean relative abundance among samples. The "average linkage" 
 clustering on the Euclidean distance metric was used to cluster samples.
 The pathway dendrogram is based on pairwise (Spearman) correlation between pathways.
 Samples are columns and pathway are rows. The heatmaps were generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
+
+<<label="pathways", echo=False>>=
+dna_samples, dna_top_average_pathways, dna_top_average_data, top_names_and_descriptions = visualizations.top_average_pathways(
+    document, vars["dna_pathabundance"], max_sets)
+
+# This is crazy ugly....
+pathways_count = len([x.strip() for x in open(vars['dna_pathabundance']).readlines()])
+
+all_dna_samples, all_dna_average_pathways, all_dna_average_data, all_names_and_descriptions = visualizations.top_average_pathways(
+    document, vars["dna_pathabundance"], pathways_count)
+@
+
+<%= visualizations.ShotGun.format_caption("pathway_abundance_intro",max_sets=max_sets) %>
+
+<<echo=False>>=
+utilities.change_pweave_figure_size_heatmap(False)
+
+document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
+    title="Top "+str(max_sets)+" pathways by average abundance")  
+@
+
+<%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="log10") %> 
+
+<<echo=False>>=
+document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
+    title="Top "+str(max_sets)+" pathways by average abundance",
+    log_scale=False,zscore=True)
+@
+
+<%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="z-score") %> 
+
+<<label="pathways_table", echo=False>>=
+utilities.reset_pweave_figure_size()
+
+pathway_file_name="top_average_pathways_names.tsv"
+average_abundance_variance=visualizations.write_pathway_average_variance_table(document, pathway_file_name, dna_top_average_data, top_names_and_descriptions)
+
+all_pathways_file_name = "all_average_pathways_names.tsv"
+all_average_abundance_variance=visualizations.write_pathway_average_variance_table(document, all_pathways_file_name, all_dna_average_data, all_names_and_descriptions)
+hmp2_viz.convert_table_to_datatables_json(os.path.join(document.data_folder, all_pathways_file_name), document.data_folder)
+@
+
+<div id="func_pathways_div">
+<table id="func_pathways_count_table" class="table table-striped" cellspacing="0" width="100%">
+<caption>Pathways by Average Abundance</caption>
+<thead>
+<tr>
+<th>Pathway</th>
+<th>Average abundance</th>
+<th>Variance</th>
+</tr>
+</thead>
+</table>
+</div>
+
+
 
 ### Features
 
@@ -45,4 +99,35 @@ and -agnostic (orange) mode, in which reads not matching any pangenome reference
 searching against the UniRef90 database. Each profiled sample is represented by a orange and blue point in each plot. 
 Linear regression fit is represented by straight lines in each plot.
 
+<<label="features_setup", echo=False>>=
+# read in the read count and feature count files
+total_reads, nucleotide_reads, translated_reads, genefamilies_counts, ecs_counts, pathabundance_counts = visualizations.feature_counts(
+    document, vars["read_counts"],vars["feature_counts"])
 
+# add scatter plots of the data
+document.plot_scatter([[total_reads,nucleotide_reads],[total_reads,translated_reads]],title="Read alignment rate",
+                       row_labels=["Nucleotide search","Nucleotide + translated search"],xlabel="log10(Input reads)", ylabel="log10(Aligned reads)", trendline=True)
+@
+
+<%= visualizations.ShotGun.captions["scatter_reads_aligned"] %> 
+
+<<label="features_uniref90", echo=False>>=
+document.plot_scatter([[nucleotide_reads,genefamilies_counts],[translated_reads,genefamilies_counts]],title="UniRef90 gene families",
+                       row_labels=["Nucleotide search","Nucleotide + translated search"],xlabel="log10(Aligned reads)", ylabel="log10(gene families)", trendline=True)
+@                       
+
+<<echo=False>>=
+document.plot_scatter([[nucleotide_reads,ecs_counts],[translated_reads,ecs_counts]],title="Enzymes (ECs)",
+                       row_labels=["Nucleotide search","Nucleotide + translated search"],xlabel="log10(Aligned reads)", ylabel="log10(ECs)", trendline=True)
+@                       
+
+<<echo=False>>=
+document.plot_scatter([[nucleotide_reads,pathabundance_counts],[translated_reads,pathabundance_counts]],title="Pathways",
+                       row_labels=["Nucleotide search","Nucleotide + translated search"],xlabel="log10(Aligned reads)", ylabel="log10(Pathways)", trendline=True)
+@
+
+<%= visualizations.ShotGun.captions["scatter_features"] %>
+
+</div>
+</div>
+</div>
