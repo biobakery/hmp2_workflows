@@ -139,6 +139,7 @@ def main(workflow):
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         paired_end_seqs,
+                                                        "*.fastq",
                                                         processing_dir,
                                                         qc_threads,
                                                         contaminate_db,
