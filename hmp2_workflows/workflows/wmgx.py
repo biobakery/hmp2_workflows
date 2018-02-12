@@ -103,7 +103,7 @@ def main(workflow):
     if data_files and data_files.get('MGX'):
         input_files = data_files.get('MGX').get('input')
         pair_identifier = data_files.get('MGX').get('pair_identifier')
-        file_extension = data_files.get('MGX', {}).get('file_ext', '.fastq')
+        file_extension = data_files.get('MGX', {}).get('input_extension', '.fastq')
 
         sample_names = get_sample_names(input_files, file_extension)
 
