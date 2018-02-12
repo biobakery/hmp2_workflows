@@ -209,8 +209,8 @@ def main(workflow):
                                      processing_dir)
 
         kneaddata_log_files = name_files(sample_names,
-                                         processing_dir,
-                                         subfolder = 'kneaddata',
+                                         os.path.join(processing_dir, 'kneaddata')
+                                         subfolder = 'main',
                                          extension = 'log')
 
         pub_raw_dir = os.path.join(public_dir, 'raw')
@@ -221,22 +221,24 @@ def main(workflow):
  
         knead_read_counts = os.path.join(processing_dir, 
                                          'counts', 
+                                         'merged',
                                          'kneaddata_read_count_table.tsv') 
+
         tax_profile_pcl = add_metadata_to_tsv(workflow,
                                               [tax_profile_outputs[0]],
                                               args.metadata_file,
                                               'metagenomics',
-                                              conf.get('metadata_id_col'),
-                                              conf.get('analysis_col_patterns'),
-                                              conf.get('target_metadata_cols'),
+                                              id_col=conf.get('metadata_id_col'),
+                                              col_replace=conf.get('analysis_col_patterns'),
+                                              target_cols=conf.get('target_metadata_cols'),
                                               aux_files=[knead_read_counts])
         func_profile_pcl = add_metadata_to_tsv(workflow,
                                                [func_profile_outputs[0]],
                                                args.metadata_file,
                                                'metagenomics',
-                                               conf.get('metadata_id_col'),
-                                               conf.get('analysis_col_patterns'),
-                                               conf.get('target_metadata_cols'),
+                                               id_col=conf.get('metadata_id_col'),
+                                               col_replace=conf.get('analysis_col_patterns'),
+                                               target_cols=conf.get('target_metadata_cols'),
                                                aux_files=[knead_read_counts])
 
         pub_files = [stage_files(workflow, files, target_dir) for (files, target_dir) 
@@ -250,7 +252,7 @@ def main(workflow):
                          (kneaddata_log_files, pub_raw_dir)]]
 
         norm_genefamilies = name_files(sample_names, 
-                                       processing_dir, 
+                                       os.path.join(processing_dir, 'humann2', 'relab'),
                                        subfolder = 'genes',
                                        tag = 'genefamilies_relab',
                                        extension = 'tsv')
