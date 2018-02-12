@@ -139,7 +139,7 @@ def main(workflow):
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
         (cleaned_fastqs, read_counts) = quality_control(workflow, 
                                                         paired_end_seqs,
-                                                        "*.fastq",
+                                                        '.fastq',
                                                         processing_dir,
                                                         qc_threads,
                                                         contaminate_db,
@@ -157,7 +157,7 @@ def main(workflow):
                                                 cleaned_fastqs,
                                                 processing_dir,
                                                 tax_threads,
-                                                input_extension="*.fastq")
+                                                '.fastq')
 
         ## Generate functional profile output using humann2. Outputs are the 
         ## the following:
@@ -171,6 +171,7 @@ def main(workflow):
         func_threads = args.threads_humann if args.threads_humann else args.threads
         func_profile_outputs = functional_profile(workflow,
                                                   cleaned_fastqs,
+                                                  '.fastq',
                                                   processing_dir,
                                                   func_threads,
                                                   tax_profile_outputs[1],
@@ -199,9 +200,9 @@ def main(workflow):
                          tag = 'kos',
                          extension = 'tsv')
 
-        (merged_norm_kos, merged_kos) = generate_ko_files(workflow,
-                                                          genefamilies,
-                                                          processing_dir)
+        #(merged_norm_kos, merged_kos) = generate_ko_files(workflow,
+        #                                                  genefamilies,
+        #                                                  processing_dir)
 
         biom_files = batch_convert_tsv_to_biom(workflow, tax_profile_outputs[1])
         tax_biom_files = stage_files(workflow,
@@ -209,7 +210,7 @@ def main(workflow):
                                      processing_dir)
 
         kneaddata_log_files = name_files(sample_names,
-                                         os.path.join(processing_dir, 'kneaddata')
+                                         os.path.join(processing_dir, 'kneaddata'),
                                          subfolder = 'main',
                                          extension = 'log')
 
