@@ -175,7 +175,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                            output_dir,
                                            extension=".fastq")
 
-    reformat_cmd += "interleaved addcolon"
+    reformat_cmd += "interleaved addslash=t spaceslash=f"
     workflow.add_task_group_gridable(reformat_cmd,
                                      depends=input_files,
                                      targets=output_files,

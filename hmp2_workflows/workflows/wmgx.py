@@ -53,7 +53,7 @@ from hmp2_workflows.tasks.analysis import generate_ko_files
 from hmp2_workflows.tasks.metadata import add_metadata_to_tsv
 from hmp2_workflows.utils.misc import (parse_cfg_file, 
                                        create_merged_md5sum_file)
-from hmp2_workflows.utils.files import create_project_dirs, generate_slim_files
+from hmp2_workflows.utils.files import create_project_dirs
                                       
 
 def parse_cli_arguments():
@@ -99,7 +99,6 @@ def main(workflow):
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
     contaminate_db = conf.get('databases').get('knead_dna')
-    adapter_sequences = conf.get('adapter_sequences')
 
     if data_files and data_files.get('MGX'):
         input_files = data_files.get('MGX').get('input')
