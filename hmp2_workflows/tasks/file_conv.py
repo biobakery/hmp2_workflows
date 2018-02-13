@@ -148,6 +148,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                      targets=[os.path.splitext(bam)[0] for bam in sorted_bams],
                                      args=[threads],
                                      time=30*60,
+                                     cores=threads,
                                      mem=4098)
     
     reformat_cmd = ("reformat.sh t=[args[0]] in=[depends[0]] out=stdout.fq primaryonly | " 
@@ -180,6 +181,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                      depends=input_files,
                                      targets=output_files,
                                      args=[threads],
+                                     cores=threads,
                                      time=20*60,
                                      mem=4098)
 
@@ -192,6 +194,7 @@ def bam_to_fastq(workflow, input_files, output_dir, paired_end=False,
                                          depends=fastq_files,
                                          targets=fastq_files_compress,
                                          args=[threads],
+                                         cores=threads,
                                          time=10*60,
                                          mem=4098)
         fastq_files = fastq_files_compress
