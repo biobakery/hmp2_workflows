@@ -38,7 +38,8 @@ from biobakery_workflows.utilities import (create_folders,
                                            name_files)
 from biobakery_workflows.tasks.shotgun import (quality_control, 
                                                taxonomic_profile,
-                                               functional_profile)
+                                               functional_profile,
+                                               norm_ratio)
 
 from hmp2_workflows.tasks.common import (verify_files, stage_files,
                                          tar_files,
@@ -107,7 +108,7 @@ def main(workflow):
 
     if data_files and data_files.get('MTX', {}).get('input'):
         input_files_mtx = data_files.get('MTX').get('input')
-        file_extension_mtx = data_files.get('MTX').get('file_ext')
+        file_extension_mtx = data_files.get('MTX').get('input_extension', '.fastq')
         pair_identifier_mtx = data_files.get('MTX').get('pair_identifier')
         input_tax_profiles = []
 
@@ -118,7 +119,11 @@ def main(workflow):
                                                creation_date,
                                                'MTX')
         public_dir_mtx = project_dirs_mtx[-1]
+        base_depo_dir = os.path.abspath(os.path.join(project_dirs_mtx[0], '..'))
 
+        manifest_file = stage_files(workflow, 
+                                    [args.manifest_file],
+                                    base_depo_dir)
         deposited_files_mtx = stage_files(workflow,
                                           input_files_mtx,
                                           project_dirs_mtx[0],
@@ -167,27 +172,27 @@ def main(workflow):
         #           prevent them from running through the kneaddata ->
         #           metaphlan2 portions of our pipeline
         if data_files.get('MGX', {}).get('input'):
-            input_files_wgs = data_files.get('MGX').get('input')
+            input_files_mgx = data_files.get('MGX').get('input')
             file_extension_mgx = data_files.get('MGX').get('file_ext')
             pair_identifier_mgx = data_files.get('MGX').get('pair_identifier')
-            input_tax_profiles = [in_file for in_file in input_files_wgs
+            input_tax_profiles = [in_file for in_file in input_files_mgx
                                   if 'taxonomic_profile.tsv' in in_file]
-            input_files_wgs = set(input_files_wgs) - set(input_tax_profiles)
+            input_files_wgs = set(input_files_mgx) - set(input_tax_profiles)
 
-            if input_files_wgs:
-                sample_names_wgs = sample_names(input_files_wgs)
+            if input_files_mgx:
+                sample_names_mgx = sample_names(input_files_wgs, file_extension_mgx, file_extension_mgx)
 
-                project_dirs_wgs = create_project_dirs([conf_mgx.get('deposition_dir'),
+                project_dirs_mgx = create_project_dirs([conf_mgx.get('deposition_dir'),
                                                         conf_mgx.get('processing_dir'),
                                                         conf_mgx.get('public_dir')],
-                                                    project,
-                                                    creation_date,
-                                                    'WGS')
-                public_dir_wgs = project_dirs_wgs[-1]
+                                                       project,
+                                                       creation_date,
+                                                       'WGS')
+                public_dir_mgx = project_dirs_mgx[-1]
 
-                deposited_files_wgs = stage_files(workflow,
-                                                  input_files_wgs,
-                                                  project_dirs_wgs[0],
+                deposited_files_mgx = stage_files(workflow,
+                                                  input_files_mgx,
+                                                  project_dirs_mgx[0],
                                                   symlink=True)
 
                 if file_extension_mgx == ".bam":
@@ -202,69 +207,69 @@ def main(workflow):
                 else:
                     paired_end_seqs_mgx = paired_files(deposited_files_mgx, pair_identifier_mgx)  
 
-                (cleaned_fastqs_wgs, read_counts_wgs) = quality_control(workflow,
+                (cleaned_fastqs_mgx, read_counts_mgx) = quality_control(workflow,
                                                                         paired_end_seqs_mgx,
-                                                                        project_dirs_wgs[1],
+                                                                        project_dirs_mgx[1],
                                                                         qc_threads,
                                                                         [contaminate_db,
                                                                         rrna_db],
                                                                         remove_intermediate_output=True)
 
-                tax_profile_outputs_wgs = taxonomic_profile(workflow,
-                                                            cleaned_fastqs_wgs,
-                                                            project_dirs_wgs[1],
-                                                            tax_threads,
-                                                            '*.fastq')
+                tax_outs_mgx = taxonomic_profile(workflow,
+                                                 cleaned_fastqs_mgx,
+                                                 project_dirs_mgx[1],
+                                                 tax_threads,
+                                                 '*.fastq')
 
-                func_profile_outputs_wgs = functional_profile(workflow,
-                                                            cleaned_fastqs_wgs,
-                                                            project_dirs_wgs[1],
-                                                            func_threads,
-                                                            tax_profile_outputs_wgs[1],
-                                                            remove_intermediate_output=True)
-                input_tax_profiles.extend(tax_profile_outputs_wgs[1])
+                func_outs_mgx = functional_profile(workflow,
+                                                   cleaned_fastqs_mgx,
+                                                   project_dirs_mgx[1],
+                                                   func_threads,
+                                                   tax_outs_mgx[1],
+                                                   remove_intermediate_output=True)
+                input_tax_profiles.extend(tax_outs_mgx[1])
 
-                pub_wgs_raw_dir = os.path.join(public_dir_wgs, 'raw')
-                pub_wgs_tax_profile_dir = os.path.join(public_dir_wgs, 'tax_profile')
-                pub_wgs_func_profile_dir = os.path.join(public_dir_wgs, 'func_profile')
+                pub_wgs_raw_dir = os.path.join(public_dir_mgx, 'raw')
+                pub_wgs_tax_profile_dir = os.path.join(public_dir_mgx, 'tax_profile')
+                pub_wgs_func_profile_dir = os.path.join(public_dir_mgx, 'func_profile')
                 map(create_folders, [pub_wgs_raw_dir, pub_wgs_tax_profile_dir,
                                     pub_wgs_func_profile_dir])
 
-                norm_genefamilies_wgs = name_files(sample_names,
-                                                project_dirs_wgs[1],
+                norm_genefamilies_mgx = name_files(sample_names,
+                                                project_dirs_mgx[1],
                                                 subfolder='genes',
                                                 tag='genefamilies_relab',
                                                 extension='tsv')
-                norm_ecs_files_wgs = name_files(sample_names,
-                                                project_dirs_wgs[1],
+                norm_ecs_files_mgx = name_files(sample_names,
+                                                project_dirs_mgx[1],
                                                 subfolder='ecs',
                                                 tag='genefamilies_ecs_relab',
                                                 extension='tsv')
-                norm_path_files_wgs = name_files(sample_names,
-                                                project_dirs_wgs[1],
+                norm_path_files_mgx = name_files(sample_names,
+                                                project_dirs_mgx[1],
                                                 subfolder='pathways',
                                                 tag='pathabundance_relab',
                                                 extension='tsv')
 
                 pcl_files = add_metadata_to_tsv(workflow,
-                                                [tax_profile_outputs_wgs[1]] 
-                                                + func_profile_outputs_wgs,
+                                                [tax_outs_mgx[1]] 
+                                                + func_outs_mgx,
                                                 'metagenomics',
                                                 conf_mgx.get('metadata_id_col'),
                                                 conf_mgx.get('analysis_col_patterns'),
                                                 conf_mgx.get('target_metadata_cols'))
                                       
                 func_tar_files_wgs = []
-                for (sample, gene_file, ecs_file, path_file) in zip(sample_names_wgs,
-                                                                    norm_genefamilies_wgs,
-                                                                    norm_ecs_files_wgs,
-                                                                    norm_path_files_wgs):
+                for (sample, gene_file, ecs_file, path_file) in zip(sample_names_mgx,
+                                                                    norm_genefamilies_mgx,
+                                                                    norm_ecs_files_mgx,
+                                                                    norm_path_files_mgx):
                     tar_path = os.path.join(pub_wgs_func_profile_dir, 
                                             "%s_humann2.tgz" % sample)
                     func_tar_file = tar_files(workflow,
                                             [gene_file, ecs_file, path_file],
                                             tar_path,
-                                            depends=func_profile_outputs_wgs)
+                                            depends=func_outs_mgx)
                     func_tar_files_wgs.append(func_tar_file)
 
         ##########################################
@@ -311,6 +316,13 @@ def main(workflow):
             func_outs_mtx = list(func_outs_mtx).extend(func_outs_match_mtx)
         else:
             func_outs_mtx = func_outs_match_mtx
+
+        ## Normalize MTX genes, pathways and ecs to MGX data
+        ## TOOD: Do we need to make a mapping file here?
+        norm_files = norm_ratio(workflow, func_outs_mgx[3], func_outs_mgx[4],
+                                func_outs_mgx[5], func_outs_mtx[3], func_outs_mtx[4],
+                                func_outs_mtx[5], project_dirs_mtx[1])
+
 
         pub_mtx_raw_dir = os.path.join(public_dir_mtx, 'raw')
         pub_mtx_tax_profile_dir = os.path.join(public_dir_mtx, 'tax_profile')

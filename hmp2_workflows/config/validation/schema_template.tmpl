@@ -1,0 +1,22 @@
+## A template for metadata schema validation generation using the 
+## PandasSchema library.
+##
+
+from pandas_schema import Column, Schema
+from pandas_schema.validation import (LeadingWhitespaceValidation, TrailingWhitespaceValidation,
+                                      CanConvertValidation, MatchesPatternValidation,
+                                      CustomSeriesValidation, InRangeValidation,
+                                      InListValidation, DateFormatValidation)
+
+
+{{ schema_name }} = Schema([
+    {%+ for rule in validation_rules -%}
+        Column('{{ rule.col_name }}', [
+            {%- for validator in rule.validators -%}
+                {{ validator.type }}({{ validator.value}}{% if validator.error_msg %}, messsage='{{ validator.error_msg }}'{% endif %})
+                {%- if loop.nextitem is defined and validator.operator %} {{ validator.operator }} {% endif -%}
+            {% endfor -%}]){%- if loop.nextitem is defined %},
+    {%+ endif %}
+    {%- endfor %}
+
+])

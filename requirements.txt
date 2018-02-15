@@ -8,3 +8,4 @@ biom-format==2.1.5
 glob2==0.5
 osdf-python==0.7
 funcy==1.8
+-e git+https://github.com/carze/PandasSchema.git
