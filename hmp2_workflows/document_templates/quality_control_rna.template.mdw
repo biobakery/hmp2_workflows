@@ -16,19 +16,19 @@ vars = document.get_vars()
 @
 
 <<label="qc_table_generation", echo=False>>=
-(dna_paired_columns, dna_orphan_columns), dna_samples, (dna_paired_data, dna_orphan_data) = visualizations.qc_read_counts(document, vars["dna_read_counts"])
-dna_microbial_reads, dna_microbial_labels = utilities.microbial_read_proportion_multiple_databases(
-    dna_paired_data, dna_paired_columns, dna_orphan_data)
+(rna_paired_columns, rna_orphan_columns), rna_samples, (rna_paired_data, rna_orphan_data) = visualizations.qc_read_counts(document, vars["rna_read_counts"])
+rna_microbial_reads, rna_microbial_labels = utilities.microbial_read_proportion_multiple_databases(
+    rna_paired_data, rna_paired_columns, rna_orphan_data)
 
-dna_paired_columns = [col.strip() for col in dna_paired_columns]
-dna_orphan_columns = [col.strip() for col in dna_orphan_columns]
+rna_paired_columns = [col.strip() for col in rna_paired_columns]
+rna_orphan_columns = [col.strip() for col in rna_orphan_columns]
 
-document.write_table(["Sample"]+dna_paired_columns, dna_samples, dna_paired_data,
+document.write_table(["Sample"]+rna_paired_columns, rna_samples, rna_paired_data,
     files.ShotGunVis.path("qc_counts_paired", document.data_folder))
-document.write_table(["Sample"]+dna_orphan_columns, dna_samples, dna_orphan_data,
+document.write_table(["Sample"]+rna_orphan_columns, rna_samples, rna_orphan_data,
     files.ShotGunVis.path("qc_counts_orphan", document.data_folder))
-document.write_table(["Sample"]+dna_microbial_labels, dna_samples, 
-    dna_microbial_reads, files.ShotGunVis.path("microbial_counts",document.data_folder))
+document.write_table(["Sample"]+rna_microbial_labels, rna_samples, 
+    rna_microbial_reads, files.ShotGunVis.path("microbial_counts",document.data_folder))
 
 # Need to generate the JSON files for the read count tables we are visualizing
 hmp2_viz.convert_table_to_datatables_json(files.ShotGunVis.path('qc_counts_paired', document.data_folder), document.data_folder)

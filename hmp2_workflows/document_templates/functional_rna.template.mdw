@@ -34,14 +34,14 @@ The pathway dendrogram is based on pairwise (Spearman) correlation between pathw
 Samples are columns and pathway are rows. The heatmaps were generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
 
 <<label="pathways", echo=False>>=
-dna_samples, dna_top_average_pathways, dna_top_average_data, top_names_and_descriptions = visualizations.top_average_pathways(
-    document, vars["dna_pathabundance"], max_sets)
+rna_samples, rna_top_average_pathways, rna_top_average_data, top_names_and_descriptions = visualizations.top_average_pathways(
+    document, vars["norm_pathabundance"], max_sets)
 
 # This is crazy ugly....
-pathways_count = len([x.strip() for x in open(vars['dna_pathabundance']).readlines()])
+pathways_count = len([x.strip() for x in open(vars['norm_pathabundance']).readlines()])
 
-all_dna_samples, all_dna_average_pathways, all_dna_average_data, all_names_and_descriptions = visualizations.top_average_pathways(
-    document, vars["dna_pathabundance"], pathways_count)
+all_rna_samples, all_rna_average_pathways, all_rna_average_data, all_names_and_descriptions = visualizations.top_average_pathways(
+    document, vars["norm_pathabundance"], pathways_count)
 @
 
 <%= visualizations.ShotGun.format_caption("pathway_abundance_intro",max_sets=max_sets) %>
@@ -49,14 +49,14 @@ all_dna_samples, all_dna_average_pathways, all_dna_average_data, all_names_and_d
 <<echo=False>>=
 utilities.change_pweave_figure_size_heatmap(False)
 
-document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
+document.show_hclust2(rna_samples,rna_top_average_pathways,rna_top_average_data,
     title="Top "+str(max_sets)+" pathways by average abundance")  
 @
 
 <%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="log10") %> 
 
 <<echo=False>>=
-document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
+document.show_hclust2(rna_samples,rna_top_average_pathways,rna_top_average_data,
     title="Top "+str(max_sets)+" pathways by average abundance",
     log_scale=False,zscore=True)
 @
@@ -67,10 +67,10 @@ document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
 utilities.reset_pweave_figure_size()
 
 pathway_file_name="top_average_pathways_names.tsv"
-average_abundance_variance=visualizations.write_pathway_average_variance_table(document, pathway_file_name, dna_top_average_data, top_names_and_descriptions)
+average_abundance_variance=visualizations.write_pathway_average_variance_table(document, pathway_file_name, rna_top_average_data, top_names_and_descriptions)
 
 all_pathways_file_name = "all_average_pathways_names.tsv"
-all_average_abundance_variance=visualizations.write_pathway_average_variance_table(document, all_pathways_file_name, all_dna_average_data, all_names_and_descriptions)
+all_average_abundance_variance=visualizations.write_pathway_average_variance_table(document, all_pathways_file_name, all_rna_average_data, all_names_and_descriptions)
 hmp2_viz.convert_table_to_datatables_json(os.path.join(document.data_folder, all_pathways_file_name), document.data_folder)
 @
 
