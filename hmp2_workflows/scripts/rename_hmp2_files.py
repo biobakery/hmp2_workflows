@@ -75,8 +75,11 @@ def parse_cli_arguments():
                         'host_transcriptomics', 'metabolomics', 'methylome',
                         'serology', 'biopsy_16S'],
                         help='The data-type of the files being renamed.')
-    parser.add_argument('-p', '--paired-identifier', default="_R1", help='OPTIONAL. '
+    parser.add_argument('-p', '--pair-identifier', default="_R1", help='OPTIONAL. '
                         'Paired identifier if dealing with paired-end files. [Default: _R1]')
+    parser.add_argument('-tg', '--tag', help='OPTIONAL. A tag that is present in the '
+                        'filename that should be removed for proper mapping and renaming '
+                        'to occur.')                        
     parser.add_argument('-o', '--output-dir', 
                         help='OPTIONAL. Output directory to write renamed files '
                         'too.')                    
@@ -96,29 +99,24 @@ def main(args):
     metadata_df = pd.read_csv(args.metadata_file, dtype='str')
 
     for seq_file in input_files:
-        tag = ""
-
-        (seq_fname, ext) = os.path.basename(seq_file).split(os.extsep, 1)
+        seq_dir = os.path.dirname(seq_file)
+        (seq_id, ext) = os.path.basename(seq_file).split(os.extsep, 1)
 
         if args.pair_identifier:
             mate_identifier = args.pair_identifier.replace('1', '2')
+            seq_id = seq_id.replace(args.pair_identifier, '').replace(mate_identifier, '')
 
-            if args.pair_idenitfier in seq_fname:
-                seq_fname = seq_fname.replace(args.pair_identifier, '')
-                tag = args.pair_identifier
-            elif mate_identifier in seq_fname:
-                seq_fname = seq_fname.replace(mate_identifier, '')
-                tag = mate_identifier
+        seq_id = seq_id.rename(args.tag, '') if args.tag else seq_id
 
-        row = metadata_df[(metadata_df[args.from_id] == seq_fname) 
+        row = metadata_df[(metadata_df[args.from_id] == seq_id) 
                            & (metadata_df['data_type'] == args.data_type)]
 
         if row.empty:
             continue 
 
+        output_dir = args.output_dir if args.output_dir else seq_dir
         rename_id = row.get(args.to_id).values[0]                           
-        output_dir = args.output_dir if args.output_dir else os.path.dirname(seq_file)
-        rename_file = os.path.join(output_dir, rename_id + tag + ext)
+        rename_file = os.path.join(output_dir, seq_file.replace(seq_id, rename_id))
 
         print "Renaming file %s to %s" % (seq_file, rename_file)
 
