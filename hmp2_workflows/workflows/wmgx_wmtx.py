@@ -145,6 +145,7 @@ def main(workflow):
         if adapters_file:
             adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
                                 "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapters_file)
+
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
                                                                 paired_end_seqs,
                                                                 file_extension_mtx,
@@ -179,10 +180,10 @@ def main(workflow):
             pair_identifier_mgx = data_files.get('MGX').get('pair_identifier')
             input_tax_profiles = [in_file for in_file in input_files_mgx
                                   if 'taxonomic_profile.tsv' in in_file]
-            input_files_wgs = set(input_files_mgx) - set(input_tax_profiles)
+            input_files_mgx = set(input_files_mgx) - set(input_tax_profiles)
 
             if input_files_mgx:
-                sample_names_mgx = sample_names(input_files_wgs, file_extension_mgx, file_extension_mgx)
+                sample_names_mgx = sample_names(input_files_mgx, file_extension_mgx, file_extension_mgx)
 
                 project_dirs_mgx = create_project_dirs([conf_mgx.get('deposition_dir'),
                                                         conf_mgx.get('processing_dir'),
@@ -286,6 +287,7 @@ def main(workflow):
         func_outs_match_mtx = []
         if input_tax_profiles:
             (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
+                                                                     mtx_ext,
                                                                      conf_mtx.get('metadat_id_col'),
                                                                      input_tax_profiles,
                                                                      conf_mtx.get('tax_profile_id'),

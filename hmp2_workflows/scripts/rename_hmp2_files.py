@@ -106,7 +106,7 @@ def main(args):
             mate_identifier = args.pair_identifier.replace('1', '2')
             seq_id = seq_id.replace(args.pair_identifier, '').replace(mate_identifier, '')
 
-        seq_id = seq_id.rename(args.tag, '') if args.tag else seq_id
+        seq_id = seq_id.replace(args.tag, '') if args.tag else seq_id
 
         row = metadata_df[(metadata_df[args.from_id] == seq_id) 
                            & (metadata_df['data_type'] == args.data_type)]
@@ -116,7 +116,7 @@ def main(args):
 
         output_dir = args.output_dir if args.output_dir else seq_dir
         rename_id = row.get(args.to_id).values[0]                           
-        rename_file = os.path.join(output_dir, seq_file.replace(seq_id, rename_id))
+        rename_file = os.path.join(output_dir, os.path.basename(seq_file).replace(seq_id, rename_id))
 
         print "Renaming file %s to %s" % (seq_file, rename_file)
 

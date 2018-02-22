@@ -181,7 +181,7 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
     return seq_file
 
 
-def match_tax_profiles(mtx_fastqs, mtx_col_id,
+def match_tax_profiles(mtx_fastqs, mtx_ext, mtx_col_id,
                        tax_profiles, tax_col_id, 
                        metadata_file,
                        tax_tag='_taxonomic_profile.tsv'):
@@ -223,7 +223,7 @@ def match_tax_profiles(mtx_fastqs, mtx_col_id,
  
     # Making the assumption here that the sample ID we will use for lookup in 
     # our metadata file is the filename once we remove the extension
-    mtx_sample_names = bb_utils.sample_names(mtx_fastqs)
+    mtx_sample_names = bb_utils.sample_names(mtx_fastqs, mtx_ext)
     mtx_sample_map = dict(zip(mtx_sample_names, mtx_fastqs))    
  
     tax_profiles_fnames = map(os.path.basename, tax_profiles)
