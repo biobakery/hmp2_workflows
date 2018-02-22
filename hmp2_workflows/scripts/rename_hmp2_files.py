@@ -75,6 +75,8 @@ def parse_cli_arguments():
                         'host_transcriptomics', 'metabolomics', 'methylome',
                         'serology', 'biopsy_16S'],
                         help='The data-type of the files being renamed.')
+    parser.add_argument('-p', '--paired-identifier', default="_R1", help='OPTIONAL. '
+                        'Paired identifier if dealing with paired-end files. [Default: _R1]')
     parser.add_argument('-o', '--output-dir', 
                         help='OPTIONAL. Output directory to write renamed files '
                         'too.')                    
@@ -84,7 +86,7 @@ def parse_cli_arguments():
                         help='OPTIONAL. Instead of moving files create a copy of '
                         'the file.')
     parser.add_argument('--dry-run', action='store_true', default=False,
-                        help='OPTIOANAL. If provided do a dry-run of renaming.')                    
+                        help='OPTIONAL. If provided do a dry-run of renaming.')                    
 
     return parser.parse_args()
 
@@ -94,7 +96,19 @@ def main(args):
     metadata_df = pd.read_csv(args.metadata_file, dtype='str')
 
     for seq_file in input_files:
-        (seq_fname, ext) = os.path.splitext(os.path.basename(seq_file))
+        tag = ""
+
+        (seq_fname, ext) = os.path.basename(seq_file).split(os.extsep, 1)
+
+        if args.pair_identifier:
+            mate_identifier = args.pair_identifier.replace('1', '2')
+
+            if args.pair_idenitfier in seq_fname:
+                seq_fname = seq_fname.replace(args.pair_identifier, '')
+                tag = args.pair_identifier
+            elif mate_identifier in seq_fname:
+                seq_fname = seq_fname.replace(mate_identifier, '')
+                tag = mate_identifier
 
         row = metadata_df[(metadata_df[args.from_id] == seq_fname) 
                            & (metadata_df['data_type'] == args.data_type)]
@@ -104,7 +118,7 @@ def main(args):
 
         rename_id = row.get(args.to_id).values[0]                           
         output_dir = args.output_dir if args.output_dir else os.path.dirname(seq_file)
-        rename_file = os.path.join(output_dir, rename_id + ext)
+        rename_file = os.path.join(output_dir, rename_id + tag + ext)
 
         print "Renaming file %s to %s" % (seq_file, rename_file)
 
