@@ -96,6 +96,7 @@ def main(workflow):
     data_files = manifest.get('submitted_files')
     project = manifest.get('project')
     creation_date = manifest.get('submission_date')
+    adapters_file = manifest.get('adapters_file')
 
     contaminate_db = conf_mtx.get('databases').get('knead_dna')
     mtx_db = conf_mtx.get('databases').get('knead_mtx')
@@ -141,8 +142,9 @@ def main(workflow):
         else:
             paired_end_seqs = deposited_files_mtx
 
-        adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
-                             "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapter_sequences)
+        if adapters_file:
+            adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
+                                "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapters_file)
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
                                                                 paired_end_seqs,
                                                                 file_extension_mtx,
