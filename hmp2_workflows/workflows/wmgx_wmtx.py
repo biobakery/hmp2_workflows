@@ -140,7 +140,7 @@ def main(workflow):
                                             threads=args.threads)
             pair_identifier_mtx = "_R1"                                            
         else:
-            paired_end_seqs = paired_files(deposited_files_mtx, file_extension_mtx, pair_identifier_mtx)
+            paired_end_seqs = deposited_files_mtx
 
         if adapters_file:
             adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
