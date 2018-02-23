@@ -134,7 +134,7 @@ def main(workflow):
                                             threads=args.threads)
             pair_identifier = "_R1"                                            
         else:
-            paired_end_seqs = paired_files(input_files, pair_identifier)                                            
+            paired_end_seqs = paired_files(input_files, file_extension, pair_identifier)                                            
 
         qc_threads = args.threads_kneaddata if args.threads_kneaddata else args.threads
         (cleaned_fastqs, read_counts) = quality_control(workflow, 

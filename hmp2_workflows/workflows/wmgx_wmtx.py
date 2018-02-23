@@ -140,25 +140,25 @@ def main(workflow):
                                             threads=args.threads)
             pair_identifier_mtx = "_R1"                                            
         else:
-            paired_end_seqs = paired_files(deposited_files_mtx, pair_identifier_mtx)
+            paired_end_seqs = paired_files(deposited_files_mtx, file_extension_mtx, pair_identifier_mtx)
 
         if adapters_file:
             adapter_trim_opts = (" --trimmomatic-options \"ILLUMINACLIP:%s:2:30:10:8:TRUE "
-                                "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapters_file)
+                                 "SLIDINGWINDOW:4:20 MINLEN:50\"" % adapters_file)
 
         (cleaned_fastqs_mtx, read_counts_mtx) = quality_control(workflow,
                                                                 paired_end_seqs,
                                                                 file_extension_mtx,
                                                                 project_dirs_mtx[1],
                                                                 qc_threads,
-                                                                [contaminate_db,
-                                                                 rrna_db,
-                                                                 mtx_db],
+                                                                databases=[contaminate_db,
+                                                                           rrna_db,
+                                                                           mtx_db],
                                                                 pair_identifier=pair_identifier_mtx,
                                                                 additional_options=adapter_trim_opts,
                                                                 remove_intermediate_output=True)
 
-        sample_names_mtx = sample_names(cleaned_fastqs_mtx, file_extension_mtx)                                                                
+        sample_names_mtx = sample_names(cleaned_fastqs_mtx, file_extension_mtx)
 
         ##########################################
         #          MGX FILE PROCESSING           #
