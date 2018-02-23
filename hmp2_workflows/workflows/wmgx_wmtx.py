@@ -289,7 +289,7 @@ def main(workflow):
         if input_tax_profiles:
             (matched_fqs, matched_tax_profiles) = match_tax_profiles(cleaned_fastqs_mtx,
                                                                      '.fastq',
-                                                                     conf_mtx.get('metadat_id_col'),
+                                                                     conf_mtx.get('metadata_id_col'),
                                                                      input_tax_profiles,
                                                                      conf_mtx.get('tax_profile_id'),
                                                                      args.metadata_file,
