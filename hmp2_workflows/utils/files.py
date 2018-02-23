@@ -184,6 +184,7 @@ def get_sequence_file_from_gid(gid, broad_storage_path):
 def match_tax_profiles(mtx_fastqs, mtx_ext, mtx_col_id,
                        tax_profiles, tax_col_id, 
                        metadata_file,
+                       tags=None,
                        tax_tag='_taxonomic_profile.tsv'):
     """Takes two sets of files and attempts to match them together based on 
     the supplied HMP2 metadata file. Test
@@ -224,8 +225,13 @@ def match_tax_profiles(mtx_fastqs, mtx_ext, mtx_col_id,
     # Making the assumption here that the sample ID we will use for lookup in 
     # our metadata file is the filename once we remove the extension
     mtx_sample_names = bb_utils.sample_names(mtx_fastqs, mtx_ext)
+
+    if tags:
+        mtx_sample_names = [name.replace(tag, '') for tag in tags 
+                            for name in mtx_sample_names if tag in name]
+
     mtx_sample_map = dict(zip(mtx_sample_names, mtx_fastqs))    
- 
+
     tax_profiles_fnames = map(os.path.basename, tax_profiles)
     tax_profiles_map = dict(zip(tax_profiles_fnames, tax_profiles))
 

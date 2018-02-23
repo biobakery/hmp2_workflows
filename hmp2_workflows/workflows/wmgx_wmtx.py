@@ -111,6 +111,7 @@ def main(workflow):
         input_files_mtx = data_files.get('MTX').get('input')
         file_extension_mtx = data_files.get('MTX').get('input_extension', '.fastq')
         pair_identifier_mtx = data_files.get('MTX').get('pair_identifier')
+        input_file_tags = data_files.get('MTX').get('tags')
         input_tax_profiles = []
 
         project_dirs_mtx = create_project_dirs([conf_mtx.get('deposition_dir'),
@@ -291,7 +292,8 @@ def main(workflow):
                                                                      conf_mtx.get('metadat_id_col'),
                                                                      input_tax_profiles,
                                                                      conf_mtx.get('tax_profile_id'),
-                                                                     args.metadata_file)
+                                                                     args.metadata_file,
+                                                                     tags=input_file_tags)
 
             func_outs_match_mtx = functional_profile(workflow,
                                                      matched_fqs,
