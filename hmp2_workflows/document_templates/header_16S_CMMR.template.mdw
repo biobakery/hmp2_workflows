@@ -1,0 +1,59 @@
+% <% from anadama2 import PweaveDocument; document=PweaveDocument(); vars = document.get_vars(); print(vars["summary_title"]) %>
+
+---
+header-includes: 
+  - <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+  - <link rel="stylesheet" href="/static/css/carousel.css" />
+  - <link rel="stylesheet" href="/static/css/mezzanine.css" />
+  - <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css" />
+  - <link rel="stylesheet" href="/static/css/datatables.min.css" />
+  - <link rel="stylesheet" href="/static/css/ibdmdb-summary.css" />
+  - <script src="/static/mezzanine/js/jquery-1.7.1.min.js"></script>
+  - <script src="/static/js/bootstrap.js"></script>
+  - <script src="/static/js/datatables.min.js"></script>
+  - <script src="/static/js/plotly-latest.min.js"></script>
+  - <script src="/static/js/16S.js"></script>
+
+---
+
+<div class="container">
+<div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+<div class="container-fluid">
+<div class="navbar-header">
+<a class="navbar-brand" href="/" style="padding: 0px 10px;">
+<img src="/static/img/gut_cartoon.png" alt="IBDMDB.org" height="50" width="50">
+</a>
+</div>
+
+<ul class="nav navbar-nav">
+<li id="dropdown-menu-home"><a href="/">Home</a></li>
+<li class="active" id="-results"><a href="/results">Download Data</a></li>
+<li class="" id="-cb-browser"><a href="/cb/browser">Protocols</a></li>
+<li class="" id="project"><a href="/project/">Team</a></li>
+<li class="" id="-participant"><a href="/participant">Participant Interface</a></li>
+</ul>
+</div>
+</div>
+
+<div class="Row">
+<div class="page-header">
+## <%= vars['summary_title'] %>
+<p>The following data were run through the CMMR	16S	rRNA	gene	pipeline. The pipeline incorporates	
+phylogenetic	and	alignment	based	approaches	to	maximize	data	resolution.	16Sv4	rDNA	
+sequences	are	clustered	into	Operational	Taxonomic	Units	(OTUs)	at	a	similarity	cutoff	
+value	of	97%	using	the	UPARSE	algorithm.	OTUs	are	subsequently	mapped	to	an	optimized	
+version	of	the	SILVA	Database	containing	only	sequences	from	the	v4	region	of	the	
+16S	rRNA	gene	to	determine	taxonomies.	Abundances	are	recovered	by	mapping	the	
+demultiplexed	reads	to	the	UPARSE	OTUs.</p>
+</div>
+</div>
+
+<!-- Main page content follows -->
+<div id="main_content" class="Row">
+<ul class="nav nav-tabs">
+<li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
+<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
+</ul>
+
+<div class="panel-body">
+<div class="tab-content">

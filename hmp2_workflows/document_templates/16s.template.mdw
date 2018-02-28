@@ -65,8 +65,6 @@ try:
 except AttributeError:
     workflow_settings = []
 
-
-
 # print a warning if the variables could not be read
 if isinstance(workflow_settings, list):
     print("WARNING: Unable to read workflow settings from log file.")
@@ -77,34 +75,9 @@ trunc_len_max = workflow_settings.get("trunc_len_max","UNK")
 percent_identity = workflow_settings.get("percent_identity","UNK")
 min_cluster_size = workflow_settings.get("min_size","UNK")
 
+data_source = vars["soure"]
 columns, samples, data = document.read_table(vars["read_count_table"])
 @
-
-<div class="Row">
-<div class="page-header">
-## <%= vars['summary_title'] %>
-<span>
-The <% print(len(samples)) %> samples from this project were run through the standard 16S workflow. The workflow
-follows the UPARSE OTU analysis pipeline for OTU calling and taxonomy prediction with percent identity 
-of <%= percent_identity %> and minimum cluster size of <%= min_cluster_size %>. 
-The GreenGenes 16S RNA Gene Database version 13_8 was used for taxonomy prediction.
-Reads were filtered for quality control using a MAXEE score of <%= maxee %>. Filtered reads were
-used to generate the OTUs. Reads not passing quality control were kept and used in the step
-assigning reads to OTUs. First these reads were truncated to a max length of <%= trunc_len_max %> bases.
-</span>
-</div>
-</div>
-
-<!-- Main page content follows -->
-<div id="main_content" class="Row">
-<ul class="nav nav-tabs">
-<li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
-<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
-<li role="presentation"><a href="#func_tab" data-toggle="tab">Functional Profiling</a></li>
-</ul>
-
-<div class="panel-body">
-<div class="tab-content">
 
 <div class="tab-pane active" id="qc_tab"> 
 
@@ -117,7 +90,7 @@ document.show_table(eestats_data, eestats_rows, eestats_columns,
     "Expected error filter by read length",font="10")
 @
 <p>The general stats for this data are: <%= overall_stats %>.</p>
-</p>This table shows the number of reads based on legnth for different error filters.</p>
+</p>This table shows the number of reads based on length for different error filters.</p>
 
 ## Read Count
 

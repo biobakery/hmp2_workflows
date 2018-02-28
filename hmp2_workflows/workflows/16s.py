@@ -97,9 +97,10 @@ def main(workflow):
         pair_identifier = data_files.get('16S').get('pair_identifier')
         index_identifier = data_files.get('16S').get('index_identifier')
 
-        index_files = [in_file for in_file in input_files if
-                       index_identifier in in_file]
-        input_files = set(input_files) - set(index_files)                       
+        if index_identifier:
+            index_files = [in_file for in_file in input_files if
+                        index_identifier in in_file]
+            input_files = set(input_files) - set(index_files)                       
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
                                             conf.get('processing_dir'),

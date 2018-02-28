@@ -59,6 +59,9 @@ def parse_cli_arguments():
                           'containing parameters required by the workflow.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
                            'for the provided data files.', default=None)
+    workflow.add_argument('source', desc='The source of the output files generated. '
+                          '[biobakery, CMMR]', default='biobakery', 
+                          choices=['biobakery', 'CMMR'])
 
 
     return workflow
@@ -67,42 +70,62 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    otu_table = glob(os.path.join(args.input + '/**/', 
-        files.SixteenS.file_info['otu_table_closed_reference'].keywords.get('names')))[0]
-    otu_table_open = glob(os.path.join(args.input + '/**/',
-        files.SixteenS.file_info['otu_table_open_reference'].keywords.get('names')))[0]
-    read_counts_table = glob(os.path.join(args.input + "/**/",
-        files.SixteenS.file_info['read_count_table'].keywords.get('names')))[0]
+    ## Because we accept files analyzed by Baylor here or our own files analyzed via the biobakery worfklow 
+    ## derivation we need to be able to handle either set of data. This is specified by the source parameter 
+    ## provided to the viz script.
+    templates = []
+    vars = {}
+
+    # This file should exist in either scenario
     eestats_table = glob(os.path.join(args.input + "/**/",
         files.SixteenS.file_info['eestats2'].keywords.get('names')))[0]
-    centroid_fasta = glob(os.path.join(args.input + "/**/",
-        files.SixteenS.file_info['msa_nonchimera'].keywords.get('names')))[0]
-    centroid_closed_fasta = glob(os.path.join(args.input + "/**/",
-        files.SixteenS.file_info['msa_closed_reference'].keywords.get('names')))[0]
-    centroid_closed_fasta = glob(os.path.join(args.input + "/**/",
-        files.SixteenS.file_info['msa_closed_reference'].keywords.get('names')))[0]
-    log_file = files.Workflow.path('log', args.input)
 
-    dependencies = [otu_table, otu_table_open, read_counts_table, eestats_table,
-                    centroid_fasta, centroid_closed_fasta, log_file]
+    if args.source == 'biobakery':
+        otu_table = glob(os.path.join(args.input + '/**/', 
+            files.SixteenS.file_info['otu_table_closed_reference'].keywords.get('names')))[0]
+        otu_table_open = glob(os.path.join(args.input + '/**/',
+            files.SixteenS.file_info['otu_table_open_reference'].keywords.get('names')))[0]
+        read_counts_table = glob(os.path.join(args.input + "/**/",
+            files.SixteenS.file_info['read_count_table'].keywords.get('names')))[0]
+        centroid_fasta = glob(os.path.join(args.input + "/**/",
+            files.SixteenS.file_info['msa_nonchimera'].keywords.get('names')))[0]
+        centroid_closed_fasta = glob(os.path.join(args.input + "/**/",
+            files.SixteenS.file_info['msa_closed_reference'].keywords.get('names')))[0]
+        centroid_closed_fasta = glob(os.path.join(args.input + "/**/",
+            files.SixteenS.file_info['msa_closed_reference'].keywords.get('names')))[0]
+        log_file = files.Workflow.path('log', args.input)
 
-    templates = []
-    templates.append(document_templates.get_template('header'))
-    templates.append(document_templates.get_template('16s'))
+        dependencies = [otu_table, otu_table_open, read_counts_table, eestats_table,
+                        centroid_fasta, centroid_closed_fasta, log_file]
+        vars.update({
+            'log': log_file,
+            'read_count_table': read_counts_table,
+        })
+
+        templates.append(document_templates.get_template('header_16S'))
+        templates.append(document_templates.get_template('quality_control_16S_CMMR'))
+    elif args.source == 'CMMR':
+        otu_table = glob(os.path.join(args.input + '/**/' + 'OTU_Table.tsv'))
+        centroid_fasta = glob(os.path.join(args.input + '/**/', 'CentroidInformation.fa'))
+        dependencies = [otu_table, eestats_table, centroid_fasta]
+
+        templates.append(document_templates.get_template('header_16S_CMMR'))
+        templates.append(document_templates.get_template('quality_control_16S_CMMR'))
+
+    templates.append(document_templates.get_template('taxonomy_16S'))
     templates.append(document_templates.get_template('footer'))
+
+    vars.update({
+        'summary_title': "HMP2: 16S Data Summary Report",
+        'otu_table': otu_table,
+        'eestats_table': eestats_table
+    })
 
     doc_task = workflow.add_document(
         templates = templates,
         depends = dependencies,
         targets = workflow.name_output_files("summary.html"),
-        vars = {
-            'summary_title': "HMP2: 16S Data Summary Report",
-            "otu_table": otu_table,
-            "read_count_table": read_counts_table,
-            "eestats_table" :eestats_table,
-            "format": args.format,
-            "log": log_file
-        },
+        vars = vars,
         table_of_contents = False
     )
 

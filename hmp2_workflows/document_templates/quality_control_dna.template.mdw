@@ -54,7 +54,6 @@ The tables and plots are annotated as follows:
 ### DNA Samples Quality Control
 
 #### DNA Samples Tables of Filtered Reads
-
 <div id="qc_filtered_reads">
 <table id="qc_filtered_reads_paired_counts_table" class="table table-striped" cellspacing="0" width="100%">
 <caption>DNA Paired-end Reads</caption>
