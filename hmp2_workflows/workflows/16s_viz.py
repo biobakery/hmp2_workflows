@@ -74,6 +74,7 @@ def main(workflow):
     ## derivation we need to be able to handle either set of data. This is specified by the source parameter 
     ## provided to the viz script.
     templates = []
+    dependencies = []
     vars = {}
 
     # This file should exist in either scenario
@@ -105,14 +106,14 @@ def main(workflow):
         templates.append(document_templates.get_template('header_16S'))
         templates.append(document_templates.get_template('quality_control_16S_CMMR'))
     elif args.source == 'CMMR':
-        otu_table = glob(os.path.join(args.input + '/**/' + 'OTU_Table.tsv'))
-        centroid_fasta = glob(os.path.join(args.input + '/**/', 'CentroidInformation.fa'))
+        otu_table = glob(os.path.join(args.input + '/**/' + 'OTU_Table_taxonomy_fix.tsv'))[0]
+        centroid_fasta = glob(os.path.join(args.input + '/**/', 'CentroidInformation.fa'))[0]
         dependencies = [otu_table, eestats_table, centroid_fasta]
 
         templates.append(document_templates.get_template('header_16S_CMMR'))
         templates.append(document_templates.get_template('quality_control_16S_CMMR'))
+        templates.append(document_templates.get_template('taxonomy_16S_CMMR'))
 
-    templates.append(document_templates.get_template('taxonomy_16S'))
     templates.append(document_templates.get_template('footer'))
 
     vars.update({
@@ -140,9 +141,6 @@ def main(workflow):
     workflow.add_task("sed -i -e '/img.* alt/! s/img/img alt=\"\"/' [depends[0]];",
                       depends = workflow.name_output_files('summary.html'),
                       targets = workflow.name_output_files('summary.html'))
-
-    workflow.add_task("rm [depends[0]]",
-                      depends = workflow.name_output_files('summary.html-e'))
 
     workflow.add_task('tidy -q -i --wrap 0 -m [depends[0]]',
                       depends = workflow.name_output_files('summary.html'),

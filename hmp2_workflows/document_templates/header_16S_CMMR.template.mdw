@@ -37,7 +37,6 @@ header-includes:
 
 <div class="Row">
 <div class="page-header">
-## <%= vars['summary_title'] %>
 <p>The following data were run through the CMMR	16S	rRNA	gene	pipeline. The pipeline incorporates	
 phylogenetic	and	alignment	based	approaches	to	maximize	data	resolution.	16Sv4	rDNA	
 sequences	are	clustered	into	Operational	Taxonomic	Units	(OTUs)	at	a	similarity	cutoff	
