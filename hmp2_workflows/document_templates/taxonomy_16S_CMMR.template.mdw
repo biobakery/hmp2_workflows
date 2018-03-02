@@ -1,10 +1,14 @@
 <<label="16s_taxonomy_setup", echo=False>>=
+import os
+
 import numpy
 
 from biobakery_workflows import utilities
 
 from anadama2 import PweaveDocument
 from anadama2.reporters import LoggerReporter
+
+from hmp2_workflows.utils import viz as hmp2_viz 
 
 document = PweaveDocument()
 vars = document.get_vars()
@@ -58,13 +62,14 @@ sorted_samples, sorted_data = utilities.sort_data(top_data[0], samples)
 transpose_top_data = numpy.transpose(top_data)
 sorted_top_data = numpy.transpose([transpose_top_data[samples.index(sample)] for sample in sorted_samples])
 
-document.plot_stacked_barchart(sorted_top_data, row_labels=top_taxa_short_names, 
-    column_labels=sorted_samples, title="Top "+str(max_taxa)+" genera by average abundance",
-    ylabel="Relative abundance", legend_title="Genera", legend_style="italic", legend_size=legend_size)
-
-plot_all_categorical_metadata(sorted_samples, sorted_top_data, top_taxa_short_names,
-    title="Top "+str(max_taxa)+" genera by average abundance", ylabel="Relative abundance", legend_title="Genera", legend_size=legend_size)
+document.write_table(["Sample"] + top_taxa_short_names, sorted_samples, numpy.transpose(sorted_top_data), 
+                     os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'))
+hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'), 
+                                              document.data_folder, 
+                                              plot_type='stack')
 @
+
+<div id="tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>
 
 ### Terminal Taxa
 
@@ -83,13 +88,14 @@ sorted_samples_terminal, sorted_data_terminal = utilities.sort_data(top_terminal
 transpose_top_terminal_data = numpy.transpose(top_terminal_data)
 sorted_top_terminal_data = numpy.transpose([transpose_top_terminal_data[samples.index(sample)] for sample in sorted_samples_terminal])
 
-document.plot_stacked_barchart(sorted_top_terminal_data, row_labels=shorted_names, 
-    column_labels=sorted_samples_terminal, title="Top "+str(max_taxa)+" terminal taxa by average abundance",
-    ylabel="Relative abundance", legend_title="Terminal taxa")
-
-plot_all_categorical_metadata(sorted_samples_terminal, sorted_top_terminal_data, shorted_names,
-    title="Top "+str(max_taxa)+" terminal taxa by average abundance", ylabel="Relative abundance", legend_title="Terminal taxa")
+document.write_table(["Sample"] + sorted_samples_terminal, shorted_names, sorted_top_terminal_data, 
+                     os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'))
+hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'), 
+                                              document.data_folder, 
+                                              plot_type='stack')
 @
+
+<div id="terminal_tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>
 
 ### Ordination
 

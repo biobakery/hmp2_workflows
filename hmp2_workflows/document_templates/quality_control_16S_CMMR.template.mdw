@@ -25,7 +25,7 @@ eestats_rows, eestats_columns, eestats_data, overall_stats = utilities.read_eest
 document.show_table(eestats_data, eestats_rows, eestats_columns, 
     "Expected error filter by read length",font="10")
 @
-<p>The general stats for this data are: <%= overall_stats %>.</p>
-<p>This table shows the number of reads based on legnth for different error filters.</p>
+<p>The general stats for this data are: <b><%= overall_stats %></b>.</p>
+<p>This table shows the number of reads based on length for different error filters.</p>
 
 </div>
