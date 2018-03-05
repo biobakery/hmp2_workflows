@@ -110,7 +110,7 @@ document.show_pcoa(samples, filtered_taxonomy, filtered_data, title="PCOA Ordina
 @
 
 For the PCoA plot, relative abundances are passed through a basic filter requiring each terminal taxa
-to have at least <% print(min_abundance)%> % abundance in at least <% print(min_samples) %> % of all samples.
+to have at least <b><% print(min_abundance)%> %</b> abundance in at least <b><% print(min_samples) %> %</b> of all samples.
 </div>
 </div>
 </div>

@@ -323,13 +323,6 @@ def main(workflow):
         else:
             func_outs_mtx = func_outs_match_mtx
 
-        ## Normalize MTX genes, pathways and ecs to MGX data
-        ## TOOD: Do we need to make a mapping file here?
-        norm_files = norm_ratio(workflow, func_outs_mgx[3], func_outs_mgx[4],
-                                func_outs_mgx[5], func_outs_mtx[3], func_outs_mtx[4],
-                                func_outs_mtx[5], project_dirs_mtx[1])
-
-
         pub_mtx_raw_dir = os.path.join(public_dir_mtx, 'raw')
         pub_mtx_tax_profile_dir = os.path.join(public_dir_mtx, 'tax_profile')
         pub_mtx_func_profile_dir = os.path.join(public_dir_mtx, 'func_profile')
