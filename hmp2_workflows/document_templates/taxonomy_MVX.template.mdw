@@ -1,0 +1,227 @@
+
+<<label="mvx_taxonomy_setup", echo=False>>=
+import os
+import math
+
+import numpy
+import pandas as pd
+
+from biobakery_workflows import utilities, visualizations, files
+from hmp2_workflows.utils import viz as hmp2_viz 
+
+from hmp2_workflows.utils.misc import relabel_virmap_taxonomy_classes
+
+from anadama2 import PweaveDocument
+
+document = PweaveDocument()
+vars = document.get_vars()
+
+min_abundance=0.01
+min_samples=10
+max_sets_heatmap=25
+max_sets_barplot=15
+@
+
+<<label="mvx_species_counts", echo=False>>=
+def count_filtered_columns(data, min):
+    data=numpy.transpose(data)
+    return [len(list(filter(None,filter(lambda x: x>min,row)))) for row in data]
+
+samples, taxonomy, data = document.read_table(vars["taxonomic_profile"])
+species_taxonomy, species_data = utilities.filter_species(taxonomy,data)
+
+filtered_species_taxonomy, filtered_species_data = utilities.filter_species(taxonomy,
+    data, min_abundance=min_abundance, min_samples=min_samples)
+species_counts=count_filtered_columns(species_data, min=0)
+species_counts_after_filter=count_filtered_columns(filtered_species_data, min=0)
+
+all_species_counts=[[a,b] for a,b in zip(species_counts, species_counts_after_filter)] 
+
+document.write_table(["Sample","Total","After filter"],samples, all_species_counts,
+    files.ShotGunVis.path("species_counts", document.data_folder))
+
+hmp2_viz.convert_table_to_datatables_json(files.ShotGunVis.path('species_counts', 
+                                                                 document.data_folder),
+                                          document.data_folder)
+
+pub_species_counts_table = os.path.join('data', 
+                                        files.ShotGunVis.file_info['species_counts'].keywords['names'])
+                   
+# Now do this all again for our virMAP profile 
+# TODO: Cut down on the code duplication here...
+
+# Because the virmap profile is in a different format than what we are used to dealing with we need 
+# to convert it to something that will work first
+relabed_virmap_profile = relabel_virmap_taxonomy_classes(vars['virmap_profile'], document.data_folder)
+
+virmap_samples, virmap_taxonomy, virmap_data = document.read_table(relabed_virmap_profile)
+virmap_species_taxonomy, virmap_species_data = utilities.filter_species(virmap_taxonomy,virmap_data)
+
+virmap_filtered_species_taxonomy, virmap_filtered_species_data = utilities.filter_species(virmap_taxonomy,
+    virmap_data, min_abundance=min_abundance, min_samples=min_samples)
+
+virmap_species_counts=count_filtered_columns(virmap_species_data, min=0)
+virmap_species_counts_after_filter=count_filtered_columns(virmap_filtered_species_data, min=0)
+
+virmap_all_species_counts=[[a,b] for a,b in zip(virmap_species_counts, virmap_species_counts_after_filter)] 
+
+virmap_species_counts_file = os.path.join(document.data_folder, 'species_counts_table_virmap.tsv')
+document.write_table(["Sample","Total","After filter"],virmap_samples, virmap_all_species_counts,
+                     virmap_species_counts_file)
+
+hmp2_viz.convert_table_to_datatables_json(virmap_species_counts_file, document.data_folder)
+@
+
+<div class="tab-pane" id="tax_tab">
+
+## Taxonomy
+
+Taxonomic profiling was generated using both [MetaPhlAn2](http://huttenhower.sph.harvard.edu/metaphlan2) and 
+a custom in-house virome analysis tools developed at the Alkek Center for Metagenomics and Microbiome Research 
+at Baylor College of Medicine.
+
+Species abundances are passed through a basic filter requiring each species
+to have at least **<%= min_abundance %>%** abundance.
+
+A total of **<% print(len(species_taxonomy)) %>** species were identified. After basic filtering
+**<% print(len(filtered_species_taxonomy)) %>** species remained.
+
+### Species Count Table (MetaPhlAn2)
+
+<div id="tax_species_count_div">
+<table id="metaphlan2_tax_species_count_table" class="table table-striped" cellspacing="0" width="100%">
+<thead>
+<tr>
+<th>Sample Name</th>
+<th>Total</th>
+<th>After Filter</th>
+</tr>
+</thead>
+</table>
+</div>
+
+Download Species Counts Table: [species_counts_table_metaphlan2.tsv](<%= pub_species_counts_table %>
+
+### Species Count Table (virMAP)
+
+<div id="virmap_tax_species_count_div">
+<table id="tax_species_count_table" class="table table-striped" cellspacing="0" width="100%">
+<thead>
+<tr>
+<th>Sample Name</th>
+<th>Total</th>
+<th>After Filter</th>
+</tr>
+</thead>
+</table>
+</div>
+
+Download Species Counts Table: [species_counts_table_virmap.tsv](<%= virmap_species_counts_file %>)
+
+### Ordination
+
+Principal coordinate analysis of variance among samples, based on Bray-Curtis dissimilarities between 
+species profiles of samples. Filtered species' relative abundances were arcsin-square root transformed
+to approximate a normal distribution and down-weight the effect of highly abundant species on
+Bray-Curtis dissimilarities. Numbers in paranthesis on each axis represent the amount of variance 
+explained by that axis.
+
+<<label="ordination_metaphlan2  ", echo=False>>=
+top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_heatmap,
+    function="average") 
+
+pcoa_data = numpy.array(top_data)/100.0
+caption_metaphlan2 = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances (MetaPhlAn2)")
+@
+
+<% print(caption_metaphlan2) %>
+
+<<label="ordination_virmap", echo=False>>=
+virmap_top_taxonomy, virmap_top_data = utilities.top_rows(virmap_species_taxonomy, virmap_species_data, max_sets_heatmap,
+    function="average") 
+
+virmap_pcoa_data = numpy.array(virmap_top_data)/100.0
+caption_virmap = document.show_pcoa(virmap_samples,virmap_top_taxonomy,virmap_pcoa_data,"Ordination of species abundances (virMAP)")
+@
+
+### Heatmap
+
+The top <%= max_sets_heatmap %> species based on average relative abundances are show in the heatmap.
+The heatmap was generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
+
+<<label="heatmap", echo=False>>=
+utilities.change_pweave_figure_size_heatmap(False)
+
+document.show_hclust2(samples, top_taxonomy, top_data,
+                      title="Top " + str(max_sets_heatmap) + " species by average abundance (MetaPhlAn2)")
+
+#document.show_hclust2(virmap_samples, virmap_top_taxonomy, virmap_top_data,
+#                      title="Top " + str(max_sets_heatmap) + " species by average abundance (virMAP)")
+@
+
+Hierarchical clustering of samples and species, using top <%= max_sets_heatmap %> species with highest
+mean relative abundance among samples.  Abundances were log10 transformed prior to clustering, and the
+"average linkage" clustering on the Euclidean distance metric was used to cluster samples.  The species
+dendrogram is based on pairwise (Spearman) correlation between species.  Samples are columns and species
+are rows. The color bar represents relative abundances on a log10 scale.
+
+<<echo=False>>=
+utilities.reset_pweave_figure_size()
+@
+
+### Barplot
+
+<<label="taxonomy_plotly", echo=False >>=
+def sort_data(top_data, samples, sort_by_name=False):
+    # sort the top data so it is ordered with the top sample/abundance first
+    if sort_by_name:
+        sorted_sample_indexes=[samples.index(a) for a in document.sorted_data_numerical_or_alphabetical(samples)]
+    else:
+        sorted_sample_indexes=sorted(range(len(samples)),key=lambda i: top_data[0][i],reverse=True)
+        
+    sorted_samples=[samples[i] for i in sorted_sample_indexes]
+    sorted_data=[]
+    for row in top_data:
+        sorted_data.append([row[i] for i in sorted_sample_indexes])
+    return sorted_data, sorted_samples
+
+top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_barplot,
+    function="average") 
+        
+sorted_data, sorted_samples = sort_data(top_data, samples)
+
+# add other to the taxonomy data
+# other represents the total abundance of all species not included in the top set
+top_taxonomy.append("other")
+other_abundances=[]
+for column in numpy.transpose(sorted_data):
+    other_abundances.append(100-sum(column))
+sorted_data.append(other_abundances)
+
+document.plot_stacked_barchart(sorted_data, row_labels=top_taxonomy, 
+    column_labels=sorted_samples, title="Top "+str(max_sets_barplot)+" species by average abundance",
+    ylabel="Relative abundance", legend_title="Species", legend_style="italic")
+
+## And now we repeat the process for virMAP taxonomies. 
+## TODO: Make things less repetative code-wise here.
+virmap_top_taxonomy, virmap_top_data = utilities.top_rows(virmap_species_taxonomy, virmap_species_data, max_sets_barplot,
+    function="average") 
+        
+virmap_sorted_data, virmap_sorted_samples = sort_data(virmap_top_data, virmap_samples)
+
+# add other to the taxonomy data
+# other represents the total abundance of all species not included in the top set
+virmap_top_taxonomy.append("other")
+virmap_other_abundances=[]
+for column in numpy.transpose(virmap_sorted_data):
+    virmap_other_abundances.append(100-sum(column))
+sorted_data.append(virmap_other_abundances)
+
+document.plot_stacked_barchart(virmap_sorted_data, row_labels=virmap_top_taxonomy, 
+    column_labels=virmap_sorted_samples, title="Top "+str(max_sets_barplot)+" species by average abundance (virMAP)",
+    ylabel="Relative abundance", legend_title="Species", legend_style="italic")
+@
+
+Stacked barplot of 25 most abundant species among samples. Samples in the plot were sorted on the 
+species with the highest mean abundances among samples in decreasing order.
+</div>

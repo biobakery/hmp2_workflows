@@ -78,6 +78,7 @@ def main(workflow):
 
     if data_files and data_files.get('MVX', {}).get('input'):    
         input_files = data_files.get('MVX').get('input')
+        input_file_ext = data_files.get('MVX').get('input_file_extension')
         pair_identifier = data_files.get('MVX').get('pair_identifier')
 
         project_dirs = create_project_dirs([conf.get('deposition_dir'),
@@ -106,7 +107,7 @@ def main(workflow):
 
         paired_fastq_tars = []
         for (mate_1, mate_2) in zip(paired_fastq_files[0], paired_fastq_files[1]):
-            sample_name = sample_names(mate_1, pair_identifier=pair_identifier)
+            sample_name = sample_names(mate_1, input_file_ext, pair_identifier=pair_identifier)
             tar_path = os.path.join(project_dirs[-1], "%s.tar" % sample_name)
             paired_fastq_tar = tar_files(workflow, 
                                          [mate_1, mate_2],

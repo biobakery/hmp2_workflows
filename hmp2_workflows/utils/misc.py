@@ -222,3 +222,85 @@ def reset_column_headers(data_frame, header_col=0):
     data_frame.drop(data_frame.index[header_col], inplace=True)
 
     return data_frame
+
+
+def relabel_virmap_taxonomy_classes(virmap_profile, out_dir):
+    """Relabels virMAP produced taxonomic profiles to the more traditional 
+    "k__", "o__", etc. labeling we use in other taxonomic profiles produced 
+    during HMP2 analysis.
+
+    Args:
+        virmap_profile (string): Path to the virMAP profile to be relabeled.
+        out_dir (string): Path to save relabeled profile file too.
+
+    Requires:
+        None
+
+    Returns:
+        string: Path to modofieid virMAP profile.
+    """
+    relab_virmap_profile = os.path.join(out_dir, 'virmap_profile.relab.tsv')
+
+
+    # This is going to be a bit weird. But the basic premise is that we we 
+    # are provided with a taxonomic classification that resembles the following:
+    # 
+    # superkingdom=Viruses;dsDNA viruses, no RNA stage;order=Caudovirales
+    # 
+    # This indicates that classifications at the kingdom level and order level 
+    # were made but nothing in between the levels was classified. So we should 
+    # end up taggin these as <TAXONOMIC LEVEL>_Viruses_noname
+    tax_labels = ['superkingdom', 'phylum', 'class', 'order', 'family', 
+                  'genus', 'species']
+
+    # And now the fun begins...
+    relab_virmap_fh = open(relab_virmap_profile, 'w')
+
+    with open(virmap_profile) as virmap_fh:
+        for line in virmap_fh:
+            if line.startswith('ID'):
+                relab_virmap_fh.write(line)
+                continue
+
+            line_elts = line.strip().split('\t')
+            (taxonomy_class, abundances) = (line_elts[0], line_elts[1:])
+ 
+            relabeled_tax_levels = []
+            end_pos = 0
+
+            tax_groups = list(zip(*[iter(re.split('(\w+)=', taxonomy_class)[1:-2])] * 2))
+
+            for (tax_level, tax_name) in tax_groups:
+                tax_name = tax_name[:-1].replace(' ', '_').replace(';', '_')
+
+                if tax_level == "superkingdom":
+                    relabeled_tax_levels.append('k__%s' % tax_name)
+                    end_pos = end_pos + 1
+                    continue
+                if tax_level == "subfamily":
+                    # We don't really care about sub-family in this case so skip it
+                    continue
+                elif tax_level == "taxId":
+                    break
+                else:
+                    # Take the taxonomic level we are at end then the 
+                    # most current taxonomic level we know we have a  
+                    # validly labeled.
+                    class_label_idx = tax_labels.index(tax_level)
+
+                    if end_pos != class_label_idx-1:
+                       tax_label_subset = tax_labels[end_pos:class_label_idx-1]
+                       relabeled_tax_levels.extend(['%s__Viruses__noname' % 
+                                                    tax_label[0] for tax_label in tax_label_subset])
+
+                    relabeled_tax_levels.append('%s__%s' % (tax_level[0], tax_name.replace(' ', '_')))
+                    end_pos = class_label_idx
+
+            relab_virmap_fh.write('|'.join(relabeled_tax_levels) + '\t' + '\t'.join(line_elts[1:]) + '\n')
+                
+            relabeled_tax_levels = []
+            end_pos = 0
+
+        relab_virmap_fh.close()
+    
+    return relab_virmap_profile

@@ -1,0 +1,29 @@
+
+<<label="mvx_setup", echo=False>>=
+from biobakery_workflows import utilities
+
+from anadama2 import PweaveDocument
+
+document = PweaveDocument()
+vars = document.get_vars()
+@
+
+<div class="Row">
+<div class="page-header">
+## <%= vars['summary_title'] %>
+<span>The following data were run through a viral analysis pipeline employing a clustering algorithm that creates putative viral genomes using a mapping assembly 
+strategy that leverages nucleotide and translated nucleotide alignment information. Viral taxonomies were assigned using a scoring system that incorporates 
+nucleotide and translated nucleotide alignment results in a per base fashion and optimizes for the highest resolution taxonomic rank.
+</span>
+</div>
+</div>
+
+<!-- Main page content follows -->
+<div id="main_content" class="Row">
+<ul class="nav nav-tabs">
+<li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
+<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
+</ul>
+
+<div class="panel-body">
+<div class="tab-content">

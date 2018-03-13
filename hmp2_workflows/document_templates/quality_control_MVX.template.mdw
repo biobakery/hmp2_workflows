@@ -1,0 +1,74 @@
+
+<<label="qc_dna_setup", echo=False>>=
+import os
+import math
+
+import numpy
+import pandas as pd
+
+from biobakery_workflows import utilities, visualizations, files
+from hmp2_workflows.utils import viz as hmp2_viz 
+
+from anadama2 import PweaveDocument
+
+document = PweaveDocument()
+vars = document.get_vars()
+@
+
+<<label="qc_table_generation", echo=False>>=
+viral_read_proporiton_file = hmp2_viz.generate_viral_read_proportions_file(vars['read_counts'], document.data_folder)
+
+# Need to generate the JSON files for the read count tables we are visualizing
+hmp2_viz.convert_table_to_datatables_json(vars['read_counts'], document.data_folder)
+hmp2_viz.convert_table_to_datatables_json(viral_read_proporiton_file, document.data_folder)
+@
+
+<div class="tab-pane active" id="qc_tab"> 
+
+## Quality Control
+
+This report section contains information about the quality control processing for all samples.
+
+* **Raw**: Untouched fastq reads.
+* **Trimmd Reads**: Number of reads remaining after trimming bases.
+* **Viral Reads**: Number of reads remaining which have viral sequences identified in them.
+
+### Viral DNA Samples Quality Control
+
+#### Viral DNA Samples Tables of Filtered Reads
+<div id="qc_filtered_reads">
+<table id="qc_filtered_reads_counts_table" class="table table-striped" cellspacing="0" width="100%">
+<caption>Viral DNA Reads</caption>
+<thead>
+<tr>
+<th>Sample</th>
+<th>Raw</th>
+<th>Trimmed</th>
+<th>Viral</th>
+</tr>
+</thead>
+</table>
+
+<table id="qc_filtered_reads_viral_proportion" class="table table-striped" cellspacing="0" width="100%"> 
+<caption>Viral DNA Read Proportion</caption>
+<thead>
+<tr>
+<th>Sample</th>
+<th>Viral / Trim</th>
+<th>Viral / Raw</th>
+</tr>
+</thead>
+</table>
+</div>
+
+Proportion of reads remaining after removing host reads relative to the number of: **i) quality-trimmed reads**, and **ii) raw unfiltered reads**.
+
+### DNA Samples Plots of Filtered Reads
+
+<<label="qc_plotly_setup", echo=False>>=
+hmp2_viz.convert_table_to_plotly_barplot_json(vars['read_counts'], document.data_folder)
+@
+
+<div id="qc_filtered_viral_read_counts_plotly"></div>
+</div>
+</div>
