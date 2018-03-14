@@ -54,8 +54,8 @@ This report section contains information about the quality control processing fo
 <thead>
 <tr>
 <th>Sample</th>
-<th>Viral / Trim</th>
 <th>Viral / Raw</th>
+<th>Viral / Trim</th>
 </tr>
 </thead>
 </table>
@@ -70,5 +70,4 @@ hmp2_viz.convert_table_to_plotly_barplot_json(vars['read_counts'], document.data
 @
 
 <div id="qc_filtered_viral_read_counts_plotly"></div>
-</div>
 </div>

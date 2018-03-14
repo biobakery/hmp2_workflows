@@ -323,6 +323,17 @@ def main(workflow):
         else:
             func_outs_mtx = func_outs_match_mtx
 
+        # We'll need to generate DNA/RNA normalized files to be displayed 
+        # in our visualization output.
+        (norm_gene_ratio, norm_ecs_ratio, norm_path_ratio) = norm_ratio(workflow,
+                                                                        func_outs_mgx[0],
+                                                                        func_outs_mgx[1],
+                                                                        func_outs_mgx[2],
+                                                                        func_outs_mtx[0],
+                                                                        func_outs_mtx[1],
+                                                                        func_outs_mtx[2],
+                                                                        project_dirs_mtx[1])
+
         pub_mtx_raw_dir = os.path.join(public_dir_mtx, 'raw')
         pub_mtx_tax_profile_dir = os.path.join(public_dir_mtx, 'tax_profile')
         pub_mtx_func_profile_dir = os.path.join(public_dir_mtx, 'func_profile')

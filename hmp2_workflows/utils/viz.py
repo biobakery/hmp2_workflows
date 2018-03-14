@@ -131,7 +131,7 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, plot_type='grou
     plot_json = {}
 
     table_basename = os.path.splitext(os.path.basename(table_file))[0]
-    output_json_file = os.path.join(output_dir, '%s.json' % table_basename)
+    output_json_file = os.path.join(output_dir, '%s_plotly.json' % table_basename)
     output_json_file = output_json_file.replace('table', 'plot')
 
     transpose = False if plot_type == "group" else True
@@ -172,7 +172,7 @@ def generate_viral_read_proportions_file(viral_read_counts, out_dir):
     out_file = os.path.join(out_dir, "viral_read_proportions.tsv")
     viral_read_counts_df = pd.read_table(viral_read_counts)
 
-    viral_read_counts_df['raw_proprtion'] = viral_read_counts_df['Viral Reads'] / viral_read_counts_df['Raw Reads']
+    viral_read_counts_df['raw_proportion'] = viral_read_counts_df['Viral Reads'] / viral_read_counts_df['Raw Reads']
     viral_read_counts_df['trim_proportion'] = viral_read_counts_df['Viral Reads'] / viral_read_counts_df['Trimmed Reads']
 
     viral_read_counts_df.drop('Viral Reads', axis=1, inplace=True)

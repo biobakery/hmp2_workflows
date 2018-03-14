@@ -68,14 +68,15 @@ def main(workflow):
     templates = []
 
     taxonomic_profile = glob(os.path.join(args.input + '/**/', 'HMP2.Virome.MetaPhlAn2.txt'))[0]
-    virmap_profile = glob(os.path.join(args.input + '/**/', 'HMP2.Virome.VirMAP.tsv'))[0]
+    virmap_profile = glob(os.path.join(args.input + '/**/', 'HMP2.Virome.VirMAP.rel_abund.tsv'))[0]
     read_counts = glob(os.path.join(args.input + '/**/', 'HMP2.Virome.VirMAP_Stats.txt'))[0]
 
     # TOOO: Segment these templates even more so we can pull in individual pieces that 
     # are used across all templates (like parsing and displaying metaphlan tables)
+    templates.append(document_templates.get_template('header'))
     templates.append(document_templates.get_template('mvx'))
-    templates.append(document_templates.get_template('quality_control_MVX'))
-    templates.append(document_templates.get_template('taxonomy_MVX'))
+    templates.append(document_templates.get_template('quality_control_mvx'))
+    templates.append(document_templates.get_template('taxonomy_mvx'))
     templates.append(document_templates.get_template('footer'))
 
     doc_task = workflow.add_document(

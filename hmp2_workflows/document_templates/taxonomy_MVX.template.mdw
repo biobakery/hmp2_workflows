@@ -100,7 +100,7 @@ A total of **<% print(len(species_taxonomy)) %>** species were identified. After
 </table>
 </div>
 
-Download Species Counts Table: [species_counts_table_metaphlan2.tsv](<%= pub_species_counts_table %>
+Download Species Counts Table: [species_counts_table_metaphlan2.tsv](<%= pub_species_counts_table %>)
 
 ### Species Count Table (virMAP)
 
@@ -155,8 +155,8 @@ utilities.change_pweave_figure_size_heatmap(False)
 document.show_hclust2(samples, top_taxonomy, top_data,
                       title="Top " + str(max_sets_heatmap) + " species by average abundance (MetaPhlAn2)")
 
-#document.show_hclust2(virmap_samples, virmap_top_taxonomy, virmap_top_data,
-#                      title="Top " + str(max_sets_heatmap) + " species by average abundance (virMAP)")
+document.show_hclust2(virmap_samples, virmap_top_taxonomy, virmap_top_data,
+                      title="Top " + str(max_sets_heatmap) + " species by average abundance (virMAP)")
 @
 
 Hierarchical clustering of samples and species, using top <%= max_sets_heatmap %> species with highest
@@ -224,4 +224,6 @@ document.plot_stacked_barchart(virmap_sorted_data, row_labels=virmap_top_taxonom
 
 Stacked barplot of 25 most abundant species among samples. Samples in the plot were sorted on the 
 species with the highest mean abundances among samples in decreasing order.
+</div>
+</div>
 </div>
