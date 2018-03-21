@@ -67,17 +67,20 @@ def parse_cli_arguments():
 def main(workflow):
     args = workflow.parse_args()
 
-    taxonomic_profile = glob(os.path.join(args.input + '/**/', 
-        files.ShotGun.file_info['taxonomic_profile'].keywords.get('names')))[0]
     rna_read_counts = glob(os.path.join(args.input + '/**/',
         files.ShotGun.file_info['kneaddata_read_counts'].keywords.get('names')))[0]
+    rna_aligned_read_counts = glob(os.path.join(args.input + '/**/',
+        files.ShotGun.file_info['humann2_read_counts'].keywords.get('names')))[0]
     norm_pathabundance = glob(os.path.join(args.input + "/**/",
         files.ShotGun.file_info['paths_norm_ratio'].keywords.get('names')))[0]
+    norm_genefamilies = glob(os.path.join(args.input + "/**/",
+        files.ShotGun.file_info['genefamilies_norm_ratio'].keywords.get('names')))[0]
+    norm_ecs = glob(os.path.join(args.input + "/**/",
+        files.ShotGun.file_info['ecs_norm_ratio'].keywords.get('names')))[0]
     read_counts = glob(os.path.join(args.input + "/**/",
         files.ShotGun.file_info['humann2_read_counts'].keywords.get('names')))[0]
     feature_counts = glob(os.path.join(args.input + "/**/",
         files.ShotGun.file_info['feature_counts'].keywords.get('names')))[0]
-
 
     templates = []
     templates.append(document_templates.get_template('header'))
@@ -88,12 +91,14 @@ def main(workflow):
 
     doc_task = workflow.add_document(
         templates = templates,
-        depends = [taxonomic_profile],
+        depends = [rna_read_counts],
         targets = workflow.name_output_files("summary.html"),
         vars = {
             'summary_title': "HMP2: Metatranscriptomics Data Summary Report",
             'rna_read_counts': rna_read_counts,
+            'rna_aligned_read_counts': rna_aligned_read_counts,
             'norm_pathabundance': norm_pathabundance,
+            'norm_ecs': norm_ecs,
             'read_counts': read_counts,
             'feature_counts': feature_counts
         },
