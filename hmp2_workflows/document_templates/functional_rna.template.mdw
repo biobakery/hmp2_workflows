@@ -10,9 +10,11 @@ from anadama2 import PweaveDocument
 document = PweaveDocument()
 vars = document.get_vars()
 
+max_sets = 50
+
 top_norm_pathways=50
-top_norm_ecs=100
-top_norm_genes=100
+top_norm_ecs=50
+top_norm_genes=50
 @
 
 <div class="tab-pane" id="func_tab"> 
@@ -35,21 +37,13 @@ clustering on the Euclidean distance metric was used to cluster samples.
 The pathway dendrogram is based on pairwise (Spearman) correlation between pathways.
 Samples are columns and pathway are rows. The heatmaps were generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
 
-<<label="norm_ratio_pathways_heatmap" echo=False>>=
+<<label="norm_ratio_pathways_table", echo=False>>=
 samples, top_pathways, top_pathway_data, top_names_and_descriptions = visualizations.top_average_pathways(
     document, vars["paths_norm_ratio"], top_norm_pathways)
 
-document.show_hclust2(samples,top_pathways,top_pathway_data,
-                        title="Top "+str(top_norm_pathways)+" RNA pathways by average abundance")  
-@
-
-<<label="norm_ratio_pathways_table" echo=False>>=
 # write a table of the pathways average and variance
 pathway_file_name="top_average_rna_dna_pathways_names.tsv"
 average_abundance_variance=visualizations.write_pathway_average_variance_table(document, pathway_file_name, top_pathway_data, top_names_and_descriptions)
-
-samples, top_pathways, top_pathway_data, top_names_and_descriptions = visualizations.top_average_pathways(
-    document, vars["paths_norm_ratio"], top_norm_pathways)
 hmp2_viz.convert_table_to_datatables_json(os.path.join(document.data_folder, pathway_file_name), document.data_folder)
 @
 
@@ -81,15 +75,12 @@ Linear regression fit is represented by straight lines in each plot.
 The heatmaps show RNA normalized to DNA for the three features computed by HUMAnN2: gene families, ecs and pathways."
 Note the most abundant DNA features are not necessarily those with the highest transcription (RNA) levels."
 
-<<label="norm_ratio_pathways" echo=False>>=
-samples, top_genes, top_gene_data, top_names_and_descriptions = visualizations.top_average_pathways(
-    document, vars["genefamilies_norm_ratio"], top_norm_genes)
-
-document.show_hclust2(samples,top_genes,top_gene_data,
-                        title="Top "+str(top_norm_genes)+" RNA gene families by average abundance")   
+<<label="norm_ratio_pathways", echo=False>>=
+document.show_hclust2(samples,top_pathways,top_pathway_data,
+                        title="Top "+str(top_norm_pathways)+" RNA pathways by average abundance")   
 @
 
-<<label="norm_ratio_ecs" echo=False>>=
+<<label="norm_ratio_ecs", echo=False>>=
 # read in the top average rna normed ecs
 samples, top_ecs, top_ec_data, top_names_and_descriptions = visualizations.top_average_pathways(
     document, vars["ecs_norm_ratio"], top_norm_ecs)
@@ -103,7 +94,7 @@ document.show_hclust2(samples,top_ecs,top_ec_data,
 <<label="features_alignment_rate", echo=False>>=
 # read in the read count and feature count files
 total_reads, nucleotide_reads, translated_reads, genefamilies_counts, ecs_counts, pathabundance_counts = visualizations.feature_counts(
-    document, vars["rna_aligned_read_counts"],vars["rna_feature_counts"])
+    document, vars["aligned_read_counts"],vars["feature_counts"])
 
 # add scatter plots of the data
 document.plot_scatter([[total_reads,nucleotide_reads],[total_reads,translated_reads]],title="RNA Read alignment rate",

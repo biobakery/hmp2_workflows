@@ -11,7 +11,7 @@ header-includes:
   - <script src="/static/js/bootstrap.js"></script>
   - <script src="/static/js/datatables.min.js"></script>
   - <script src="/static/js/plotly-latest.min.js"></script>
-  - <script src="/static/js/wmtx.js"></script
+  - <script src="/static/js/wmtx.js"></script>
 
 ---
 
@@ -36,7 +36,6 @@ vars = document.get_vars()
 <div id="main_content" class="Row">
 <ul class="nav nav-tabs">
 <li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
-<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
 <li role="presentation"><a href="#func_tab" data-toggle="tab">Functional Profiling</a></li>
 </ul>
 

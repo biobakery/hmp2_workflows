@@ -16,7 +16,7 @@ vars = document.get_vars()
 @
 
 <<label="qc_table_generation", echo=False>>=
-(rna_paired_columns, rna_orphan_columns), rna_samples, (rna_paired_data, rna_orphan_data) = visualizations.qc_read_counts(document, vars["rna_read_counts"])
+(rna_paired_columns, rna_orphan_columns), rna_samples, (rna_paired_data, rna_orphan_data) = visualizations.qc_read_counts(document, vars["read_counts"])
 rna_microbial_reads, rna_microbial_labels = utilities.microbial_read_proportion_multiple_databases(
     rna_paired_data, rna_paired_columns, rna_orphan_data)
 
@@ -49,7 +49,8 @@ The tables and plots are annotated as follows:
 * **raw**: Untouched fastq reads.
 * **trim**: Number of reads remaining after trimming bases with Phred score < 20. If the trimmed reads is <70% of original length then it is removed altogether.
 * **hg38**: Number of reads remaining after depleting reads against the human genome (hg38).
-* **mRNA**: Number of reads remaining after depleting reads against the human genome (hg38) and the human transcriptome (hg38 mRNA). (RNA samples only)
+* **rRNA**: The SILVA (rRNA) database is used to remove small and large subunit ribosomal RNA.
+* **hg38 mRNA**: Number of reads remaining after depleting reads against the human genome (hg38) and the human transcriptome (hg38 mRNA). (RNA samples only)
 
 ### RNA Samples Quality Control
 
@@ -64,6 +65,7 @@ The tables and plots are annotated as follows:
 <th>Raw</th>
 <th>Trim</th>
 <th>hg38</th>
+<th>rRNA</th>
 <th>hg38 mRNA</th>
 </tr>
 </thead>
@@ -78,8 +80,10 @@ The tables and plots are annotated as follows:
 <th>Trim orphan2</th>
 <th>hg38 orphan1</th>
 <th>hg38 orphan2</th>
-<th>mRNA orphan1</th>
-<th>mRNA orphan2</th>
+<th>rRNA orphan1</th>
+<th>rRNA orphan2</th>
+<th>hg38 mRNA orphan1</th>
+<th>hg38 mRNA orphan2</th>
 </tr>
 </thead>
 </table>
@@ -91,6 +95,9 @@ The tables and plots are annotated as follows:
 <th>Sample</th>
 <th>hg38 / Trim</th>
 <th>hg38 / Raw</th>
+<th>rRNA / Trim</th>
+<th>rRNA / Raw</th>
+<th>hg38 mRNA / Trim</th>
 <th>hg38 mRNA / Raw</th>
 </tr>
 </thead>
