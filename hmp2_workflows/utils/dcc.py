@@ -462,6 +462,43 @@ def _get_microb_transcriptomics_raw_seq_set_abund_matrices(session, seq_set_id):
                 break
 
 
+def _get_serologies(session, prep_id):
+    """Returns an iterator of all Serology nodes connnected to the
+    provided HostAssayPrep node.
+
+    Args:
+        session (cutlass.Session): The current OSDF session object.
+        prep_id (string): The prep ID to retrieve any associated AbundanceMatrix
+            nodes from.
+
+    Requires:
+        None
+
+    Returns:
+        Iterator: An iterator containing all children connected to the 
+            supplied OSDF object.                    
+    """
+    query = session.get_odsf().oql_query
+    linkage_query = ('"serology"[node_type] && '
+                     '"{}"[linkage.derived_from]'.format(prep_id))
+
+    from cutlass.Serology import Serology
+    from cutlass.HostAssayPrep import HostAssayPrep
+
+    for page_no in itertools.count(1):
+        res = query(Serology.namespace, linkage_query,
+                    page=page_no)
+        res_count = res['result_count']
+
+        for doc in res['results']:
+            yield Serology.load_serology(doc)
+
+        res_count -= len(res['results'])
+
+        if res_count < 1:
+            break
+
+
 def _get_abund_matrices(session, seq_set_id):
     """
     Returns an iterator of all AbundanceMatrix nodes connected to 
@@ -1443,6 +1480,77 @@ def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return microbiome_prep
 
 
+def crud_serology(session, prep, md5sum, sample_id, study_name, conf, metadata):
+    """Creates an iHMP OSDF Serology object if it doesn't exist or updates
+    an already existing Serology object with the provided metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        session (cutlass.Session): The OSDF session instance.
+        prep (cutlass.HostAssayPrep): The  HostAssayPrep object that
+            this Serology object will be associated with.
+        md5sum (string): md5 checksum for the associated sequence file.
+        sample_id (string): Sample ID assocaited with this Proteome            
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all Proteomes.
+        metadata (pandas.Series): Metadata associated with this Proteome.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.Serology: The Serology object that needs to be 
+            saved.
+    """
+    raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
+
+    ## Setup our 'static' metadata pulled from our YAML config
+    req_metadata = {}
+
+    serologies = group_osdf_objects(_get_serologies(session, prep.id), 'comment')
+    serologies = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                      in serologies.items())
+    
+    serology = serologies.get(raw_file_name)
+
+    if not serology:
+        serology = cutlass.Serology()
+    else:
+        serology = serologies[0]
+
+    req_metadata.update(conf.get('serology'))
+
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    req_metadata['local_raw_file'] = metadata.get('seq_file')
+    req_metadata['private_files'] = True
+    req_metadata['comment'] = raw_file_name
+    req_metadata['study'] = study_name
+
+    ## Add DbGap ID here at some point...
+    req_metadata['tags'] = []
+
+    fields_to_update = get_fields_to_update(req_metadata, serology)
+
+    map(lambda key: setattr(serology, key, req_metadata.get(key)),
+        fields_to_update)
+
+    serology.updated = False
+    if fields_to_update:
+        serology.links['derived_from'] = [prep.id]
+
+        if not serology.is_valid():
+            raise ValueError('Serology validation failed: %s' % 
+                             serology.validate())
+
+        serology.updated = True
+
+    return serology
+
+
 def crud_proteome(prep, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF Proteome object if it doesn't exist or updates
     an already existing Proteome object with the provided metadta.
@@ -2006,6 +2114,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
                              abund_matrix.validate())
 
     return abund_matrix
+
 
 def crud_viral_seq_set(raw_seq_set, seq_file, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF ViralSeqSet object if it doesn't exist or updates 
