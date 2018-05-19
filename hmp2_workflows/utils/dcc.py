@@ -179,6 +179,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
     ##
     ##  1.) Broad: MSM5LLHX.bam
     ##  2.) PNNL: 160513-SM-AHYMJ-14.raw
+    ##  3.) Broad MBX: 0396_XAV_iHMP2_FFA_SM-AF6NB.raw.gz
     ## 
     ## In both cases here we the sample name is prefixed by 'SM' and may or 
     ## may not have hyphens or underscores separating it. The Broad samples 
@@ -195,6 +196,8 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
         if data_type == 'foo':
             sample_id = "%s-%s" % ('SM', 
                                    file_name.replace('_', '-').split('-')[2])
+        elif data_type == 'MBX':
+            sample_id = file_name.rsplit('_', 1)
         else:
             sample_id = file_name
             
