@@ -8,7 +8,7 @@ namespace: ihmp
 project_id: iHMP
 
 metadata_id_mappings:
-  MBX: "Tube B:Proteomics"
+  MBX: External ID
   MGX: External ID
   16S: External ID
   MTX: External ID
@@ -484,35 +484,74 @@ MVX:
     format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
     study: ibd
 
+MPX:                                                                                                                                                                                                                 
+  assay:                                                                                                                                                                                                             
+      center: "Pacific Northwest National Laboratory"                                                                                                                                                                
+      contact: "Colin Brislawn <colin.brislawn@pnnl.gov>"                                                                                                                                                            
+      storage_duration: 365                                                                                                                                                                                          
+      experiment_type: "PRIDE:0000429, Shotgun proteomics"                                                                                                                                                           
+      protocol_steps: ""                                                                                                                                                                                             
+      species: 408170                                                                                                                                                                                                   
+      tissue: ""                                                                                                                                                                                                     
+      title: "IBDMDB"                                                                                                                                                                                                      
+  proteome:                                                                                                                                                                                                          
+      analyzer: QExactive                                                                                                                                                                                            
+      detector: QExactive                                                                                                                                                                                            
+      instrument_name: QExactive                                                                                                                                                                                     
+      exp_description: ""                                                                                                                                                                                            
+      data_processing_protocol: ""                                                                                                                                                                                   
+      #pepid_format: List                                                                                                                                                                                            
+      processing_method: MSGF+                                                                                                                                                                                       
+      #protid_format: List                                                                                                                                                                                           
+      #protmod_format: NA                                                                                                                                                                                            
+      protocol_name: NA                                                                                                                                                                                              
+      search_engine: MSGF+                                                                                                                                                                                           
+      software: MSGF+                                                                                                                                                                                                
+      source: MSGF+                                                                                                                                                                                                  
+      study: ibd                                                                                                                                                                                                     
+      #subtype: host      
+      comment: IBDMDB                                                                                                                                                                                                
+      title: IBDMDB                                                                                                                                                                                                  
+      short_label: NA                                                                                                                                                                                                
+  abundance_matrix:                                                                                                                                                                                                  
+      comment: ""                                                                                                                                                                                                    
+      matrix_type: microb_proteomic                                                                                                                                                                                  
+      format: "tbl" 
 
-MBX:
-  assay:
-      center: Center Name
-      contact: "contact@email.com"
-      storage_duration: 365
-      experiment_type: "PRIDE:0000429, Shotgun proteomics"
-      protocol_steps: ""
-      species: ""
-      tissue: ""
-      title: ""
-  proteome:                
-      analyzer: QExactive
-      detector: QExactive
-      instrument_name: QExactive
-      exp_description: ""
-      data_processing_protocol: ""
-      #pepid_format: List
-      processing_method: MSGF+
-      #protid_format: List
-      #protmod_format: NA
-      protocol_name: NA
-      search_engine: MSGF+
-      software: MSGF+
-      source: MSGF+
-      #spectra_format: .raw
-      study: ibd
-      #subtype: host
-      comment: IBDMDB
-      title: IBDMDB
-      short_label: NA
+MBX:                                                                                                                                                                                                                 
+  assay:                                                                                                                                                                                                             
+      center: Broad Institute                                                                                                                                                                                        
+      contact: "Julian Avila Pacheco <jravilap@broadinstitute.org>"                                                                                                                                                  
+      storage_duration: 365   
+      protocol_name: "HMP2 Metabolomics Protocol v2.0 - https://ibdmdb.org/cb/document/Data%20Generation%20Protocols/MetabolomicsHMP2Protocol.pdf"
+      protocol_steps: >- 
+        Samples were thawed on ice and then centrifuged (4C, 5,000 x g) for 5 minutes.
+        Ethanol was evaporated using a gentle stream of nitrogen gas using a nitrogen evaporator (TurboVap LV;
+        Biotage, Charlotte, NC) and stored at -80C until all samples in the study had been dried. Aqueous
+        homogenates were generated by sonicating each sample in 900 μl of H2O using an ultrasonic probe
+        homogenizer (Branson Sonifier 250) set to a duty cycle of 25% and output control of 2 for 3 minutes.
+        Samples were kept on ice during the homogenization process. The homogenate for each sample was
+        aliquoted into two 10 uL and two 30 uL in 1.5mL centrifuge tubes for LC-MS sample preparation and 30
+        uL of homogenate from each sample were transferred into a 50 mL conical tube on ice to create a pooled
+        reference sample. The pooled reference mixture was mixed by vortexing and then aliquoted (100 uL per
+        aliquot) into 1.5 mL centrifuge tubes. Aliquots and reference sample aliquots were stored at -80C until
+        LC-MS analyses were conducted.
 
+        A combination of four LC-MS methods were used to profile metabolites in the fecal
+        homogenates; two methods that measure polar metabolites, a method that measures metabolites of
+        intermediate polarity (e.g. fatty acids and bile acids), and a lipid profiling method. For the analysis queue
+        in each method, participants were randomized and longitudinal samples from each participant were
+        randomized and analyzed as a group. Additionally, pairs of pooled reference samples were inserted into
+        the queue at intervals of approximately 20 samples for QC and data standardization. Samples were
+        prepared for each method using extraction procedures that are matched for use with the chromatography
+        conditions. Data were acquired using LC-MS systems comprised of Nexera X2 U-HPLC systems
+        (Shimadzu Scientific Instruments; Marlborough, MA) coupled to Q Exactive/Exactive Plus orbitrap mass
+        spectrometers (Thermo Fisher Scientific; Waltham, MA)
+      experiment_type: "Untargeted metabolomics"
+      pride_id: "PRIDE:0000461"                                                                                                                                                                                      
+      species: "human gut metagenome"                                                                                                                                                                                                   
+      tissue: "feces"                                                                                                                                                                                                     
+      title: "IBDMDB Stool Metabolomics"                                                                                                                                                                                                      
+  metabolome:                                                                                                                                                                                                          
+      format: "raw"
+      format_doc: "https://en.wikipedia.org/wiki/Mass_spectrometry_data_format"

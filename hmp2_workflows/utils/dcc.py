@@ -1796,7 +1796,7 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
 
     group_key = 'urls' if not private else 'comment'
     metagenomes = group_osdf_objects(prep.child_seq_sets(),
-                                    group_key)
+                                     group_key)
     metagenomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                           in metagenomes.items())
     
@@ -1949,6 +1949,68 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
                              sixs_raw_seq.validate())
 
     return sixs_raw_seq
+
+def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
+    """Creates an iHMP OSDF Metabolome object if it doesn't exist or updates
+    an already existing Metabolome object with the provided metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        prep (cutlass.HostAssayPrep): The Host Assay Prep object that
+            this Metabolome object will be assocaited with.
+        md5sum (string): md5 checksum for the associated Metabolome file.
+        sample_id (string): Sample ID assocaited with this Metabolome          
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all Metabolomes.
+        metadata (pandas.Series): Metadata associated with this Metabolome.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.Metabolome: The Metabolome object that needs to be 
+            saved.
+    """
+    req_metadata = {}
+
+    metabolomes = group_osdf_objects(prep.metabolomes(),
+                                     'urls')
+    metabolomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                      in metabolomes.items())
+    
+    metabolome = metabolomes.get(raw_file_name)
+    metabolome = cutlass.Metabolome() if not metabolome else metabolome[0]
+
+    req_metadata.update(conf.get('metabolome'))
+
+    req_metadata['subtype'] = "host"
+    req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['comment'] = sample_id
+
+    req_metadata['local_raw_file'] = metadata.get('seq_file')
+
+    req_metadata['tags'] = []
+    req_metadata['tags'].append(metadata.get('diagnosis'))
+
+    fields_to_update = get_fields_to_update(req_metadata, metabolome)
+
+    map(lambda key: setattr(metabolome, key, req_metadata.get(key)),
+        fields_to_update)
+
+    metabolome.updated = False
+    if fields_to_update:
+        metabolome.links['derived_from'] = [prep.id]
+
+        if not metabolome.is_valid():
+            raise ValueError('Metabolome validation failed: %s' % 
+                             metabolome.validate())
+
+        metabolome.updated = True
+
+    return metabolome       
 
 
 def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 
