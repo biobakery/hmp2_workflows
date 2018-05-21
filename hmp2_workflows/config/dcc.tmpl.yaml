@@ -14,8 +14,9 @@ metadata_id_mappings:
   MTX: External ID
   HTX: External ID
   HG: External ID
+  MPX: "Tube B: Proteomics"
   MVX: Viromics
-  RRBS: External ID
+  RRBS: External I
   SER: External ID
 
 datatype_mapping:
@@ -142,9 +143,7 @@ subject_attribute:
     mother: "Mother"
     siblings: "Does the subject have a sibling with IBD?"
     education: "Education Level"
-    disease_name: diagnosis
     alcohol: "Alcohol (beer, brandy, spirits, hard liquor, wine, aperitif, etc.)"
-    tobacco: "smoking status"
 
 visit_attribute:
   meds_stopped_cols:

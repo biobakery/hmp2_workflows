@@ -197,7 +197,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
             sample_id = "%s-%s" % ('SM', 
                                    file_name.replace('_', '-').split('-')[2])
         elif data_type == 'MBX':
-            sample_id = file_name.rsplit('_', 1)
+            sample_id = file_name.rsplit('_', 1)[-1]
         else:
             sample_id = file_name
             
