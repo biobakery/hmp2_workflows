@@ -502,6 +502,42 @@ def _get_serologies(session, prep_id):
             break
 
 
+def _get_epigenetics_raw_seq_sets(session, prep_id):
+    """Returns an iterator of all Serology nodes connnected to the
+    provided HostAssayPrep node.
+
+    Args:
+        session (cutlass.Session): The current OSDF session object.
+        prep_id (string): The prep ID to retrieve any associated HostEpigeneticsRawSeqSets
+            nodes from.
+
+    Requires:
+        None
+
+    Returns:
+        Iterator: An iterator containing all children connected to the 
+            supplied OSDF object.                    
+    """
+    query = session.get_odsf().oql_query
+    linkage_query = ('"host_epigenetics_raw_seq_set"[node_type] && '
+                     '"{}"[linkage.derived_from]'.format(prep_id))
+
+    from cutlass.HostEpigeneticsRawSeqSet import HostEpigeneticsRawSeqSet
+
+    for page_no in itertools.count(1):
+        res = query(HostEpigeneticsRawSeqSet.namespace, linkage_query,
+                    page=page_no)
+        res_count = res['result_count']
+
+        for doc in res['results']:
+            yield HostEpigeneticsRawSeqSet.load_host_epigenetics_raw_seq_set(doc)
+
+        res_count -= len(res['results'])
+
+        if res_count < 1:
+            break
+
+
 def _get_abund_matrices(session, seq_set_id):
     """
     Returns an iterator of all AbundanceMatrix nodes connected to 
@@ -2022,6 +2058,74 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
         metabolome.updated = True
 
     return metabolome       
+
+
+def crud_host_epigenetics_raw_seq_set(prep, md5sum, sample_id, study_id, conf, metadata):
+    """Creates an iHMP OSDF HostEpigeneticsRawSeqSet object if it doesn't exist or updates
+    an already existing HostEpigeneticsRawSeqSet object with the provided metadta.
+
+    This function is different from the other create_or_update_* functions 
+    in that the object is not saved but will instead be passed off to 
+    AnADAMA2 in an attempt to parallelize the upload to the DCC.
+
+    Args:
+        prep (cutlass.HostSeqPrep): The Host Seq Prep object that
+            this HostEpigeneticsRawSeqSet object will be assocaited with.
+        md5sum (string): md5 checksum for the associated HostEpigeneticsRawSeqSet file.
+        sample_id (string): Sample ID assocaited with this HostEpigeneticsRawSeqSet  
+        study (string): The study name for the project.        
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all HostEpigeneticsRawSeqSets.
+        metadata (pandas.Series): Metadata associated with this HostEpigeneticsRawSeqSets.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.HostEpigeneticsRawSeqSet: The HostEpigeneticsRawSeqSet object that needs to be 
+            saved.
+    """
+    req_metadata = {}
+
+    seq_file = metadata.get('seq_file')
+    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
+
+    host_epigenetics_raw_seq_sets = group_osdf_objects(_get_epigenetics_raw_seq_sets(session, prep.id), 'comment')
+    host_epigenetics_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                                         in host_epigenetics_raw_seq_sets.items())
+    
+    host_epigentic_raw_seq_set = host_epigenetics_raw_seq_sets.get(raw_file_name)
+    host_epigenetics_raw_seq_sets = (cutlass.HostEpigeneticsRawSeqSet() if not host_epigenetics_raw_seq_set 
+                                     else host_epigenetics_raw_seq_sets[0])
+
+    req_metadata.update(conf.get('methylome'))
+
+    req_metadata['subtype'] = "host"
+    req_metadata['study'] = study_id
+    req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['comment'] = raw_file_name
+
+    req_metadata['tags'] = []
+    req_metadata['tags'].append(metadata.get('diagnosis'))
+
+    fields_to_update = get_fields_to_update(req_metadata, host_epigentic_raw_seq_set)
+
+    map(lambda key: setattr(host_epigenetics_raw_seq_set, key, req_metadata.get(key)),
+        fields_to_update)
+
+    host_epigentic_raw_seq_set.updated = False
+    if fields_to_update:
+        host_epigentic_raw_seq_set.study = prep.study
+        host_epigentic_raw_seq_set.links['derived_from'] = [prep.id]
+
+        if not host_epigentic_raw_seq_set.is_valid():
+            raise ValueError('HostEpigeneticRawSeqSet validation failed: %s' % 
+                             host_epigentic_raw_seq_set.validate())
+
+        host_epigentic_raw_seq_set.updated = True
+
+    return host_epigentic_raw_seq_set
 
 
 def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 

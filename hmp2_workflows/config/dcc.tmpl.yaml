@@ -31,7 +31,7 @@ datatype_mapping:
   SER: serology
   16SBP: biopsy_16S
 
-nonstool_datatype:
+nonstool_datatypes:
   - HTX
   - HG
   - RRBS
@@ -53,8 +53,8 @@ race_map:
   "American Indian or Alaska Native": american_indian_or_alaska_native
 
 disease_map:
-  uc: "ulcerative colitis"
-  cd: "Crohn's disease"
+  UC: "ulcerative colitis"
+  CD: "Crohn's disease"
   nonIBD: "Non-IBD"
 
 study:
@@ -170,17 +170,17 @@ visit_attribute:
     - "Cancer - ovarian"
     - "Cancer - prostate"
   desc_map:
-    cd: "An intestinal disease that involves inflammation located_in intestine."
-    uc: >- 
+    CD: "An intestinal disease that involves inflammation located_in intestine."
+    UC: >- 
       A colitis that is predominantly confined to the mucosa located_in colon 
       and includes characteristic ulcers, or open sores.
   xref_map:
-    cd:
+    CD:
       DO: "DOID:8778"
       NCI: "NCI:C35211"
       MESH: "MESH:D003424"
       UML: "UMLS_CUI:C0156147"
-    uc:
+    UC:
       DO: "DOID:8577"
       NCI: "NCI:C2952"
       MESH: "MESH:D003093"
@@ -359,12 +359,61 @@ HG:
 
 RRBS:
   assay:
-    sequencing_center: Center Name
-    sequencing_contact: "contact@email.com"
-    lib_layout: ""
-    lib_selection: ""
+    sequencing_center: Broad Institute
+    sequencing_contact: "tpoon@broadinstitute.org"
+    lib_layout: "fragment"
+    lib_selection: "Random"
     ncbi_taxon_id: 9606
     storage_duration: ""
+  mims:
+    geo_loc_name: "United States of America"
+    lat_lon: Unknown
+    biome: "terrestrial biome [ENVO:00000446]"
+    feature: "human-associated habitat [ENVO:00009003]"
+    env_package: human-associated
+    collection_date: Unknown
+    seq_meth: "Sequencing by Synthesis"
+    lib_const_meth: >-
+      Reduced Representation Bisulfite Sequencing (RRBS) libraries were prepared as described previously
+      (1) with modifications detailed below. Briefly, genomic DNA samples were quantified using a Quant-It
+      dsDNA high sensitivity kit (ThermoFisher, cat# Q33120) and normalized to a concentration of 10ng/ul. A
+      total of 100ng of normalized genomic DNA was digested with MspI in a 20ul reaction containing 1ul MspI
+      (20U/ul) (NEB, cat# R0106L) and 2ul of 10X CutSmart Buffer (NEB, cat# B7204S). MspI digestion
+      reactions were then incubated at 37C for 2 hours followed by a 15 min. incubation at 65C.
+
+      Next, A-tailing reactions were performed by adding 1ul dNTP mix (containing 10mM dATP, 1mM dCTP
+      and 1mM dGTP) (NEB, cat# N0446S), 1ul Klenow 3'-5' exo (NEB, cat# M0212L) and 1ul 10X CutSmart
+      Buffer in a total reaction volume of 30ul. A-tailing reactions were then incubated at 30C for 20 min.,
+      followed by 37C for 20 min., followed by 65C for 15 min.
+
+      Methylated Illumina sequencing adapters (1) were then ligated to the A-tailed material (30ul) by adding
+      1ul 10X CutSmart Buffer, 5ul 10mM ATP (NEB, cat# P0756S), 1ul T4 DNA Ligase (2,000,000U/ml) (NEB,
+      cat# M0202M) and 2ul methylated adapters in a total reaction volume of 40ul. Adapter ligation reactions
+      were then incubated at 16C overnight (16-20 hours) followed by incubation at 65C for 15 min. Adapter
+      ligated material was purified using 1.2X volumes of Ampure XP according to the manufacturer’s
+      recommended protocol (Beckman Coulter, cat# A63881).
+
+      Following adapter ligation, bisulfite conversion and subsequent sample purification was performed using
+      the QIAGEN EpiTect kit according to the manufacturer's recommended protocol designated for DNA
+      extracted from FFPE tissues (QIAGEN, cat# 59104). Two rounds of bisulfite conversion were performed
+      yielding a total of 40ul bisulfite converted DNA.
+
+      In order to determine the minimum number of PCR cycles required for final library amplification, 50ul PCR
+      reactions containing 3ul bisulfite converted DNA, 5ul 10X PfuTurbo Cx hotstart DNA polymerase buffer,
+      0.5ul 100mM dNTP (25mM each dNTP) (Agilent, cat# 200415), 0.5ul Illumina TruSeq PCR primers (25uM
+      each primer) (1) and 1ul PfuTurbo Cx hotstart DNA polymerase (Agilent, cat# 600412) were prepared.
+      Reactions where then split equally into four separate tubes and thermocycled using the following
+      conditions - denature at 95C for 2 min. followed by 'X' cycles of 95C for 30 sec., 65C for 30 sec., 72C
+      for 45 sec. (where 'X' number of cycles = 11, 13, 15 and 17), followed by a final extension at 72C for 7
+      min. PCR products were purified using 1.2X volumes of Ampure XP and analyzed on an Agilent
+      Bioanalyzer using a High Sensitivity DNA kit (Agilent, cat# 5067-4626). Once the optimal number of PCR
+      cycles was determined, 200ul PCR reactions were prepared using 24ul bisulfite converted DNA, 20ul 10X
+      PfuTurbo Cx hotstart DNA polymerase buffer, 2ul 100mM dNTPs (25mM each), 2ul Illumina TruSeq PCR
+      primers (25uM each) and 4ul PfuTurbo Cx hotstart DNA polymerase with the thermal cycling conditions
+      listed above. PCR reactions were purified using 1.2X volumes of Ampure XP according to the
+      manufacturer’s recommended protocol aPreparation of reduced representation bisulfite sequencing libraries for 
+      genome-scale DNA methylation profilingnd analyzed on an Agilent Bioanalyzer using a High Sensitivity
+      DNA kit.
   methylome:
     study: ibd
     format: fastq
@@ -372,19 +421,16 @@ RRBS:
     sequence_type: "nucleotide"
     exp_length: 0
     comment: IBDMDB
-  abundance_matrix:
-    comment: ""
-    format: "table"    
 
 SER:
   assay:
-    sequencing_center: Center Name
-    sequencing_contact: "contact@email.com"
+    sequencing_center: Broad Institute
+    sequencing_contact: "tpoon@broadinstitute.org"
     storage_duration: 0
     pride_id: ""
-    species: ""
-    tissue: ""
-    title: ""
+    species: "Homo sapiens"
+    tissue: "blood"
+    title: "IBDMDB Blood Serology"
     experiment_type: "Targeted Immunoproteomics"
     protocol_steps: >-
         DNA was extracted via the Chemagic MSM I with the Chemagic DNA Blood Kit-96 from Perkin Elmer.
@@ -408,10 +454,6 @@ SER:
   abundance_matrix:
     comment: ""
     format: "tbl"
-
-  abundance_matrix:
-    comment: ""
-    format: "table"    
 
 MTX:
   assay:
@@ -527,7 +569,7 @@ MBX:
         Samples were thawed on ice and then centrifuged (4C, 5,000 x g) for 5 minutes.
         Ethanol was evaporated using a gentle stream of nitrogen gas using a nitrogen evaporator (TurboVap LV;
         Biotage, Charlotte, NC) and stored at -80C until all samples in the study had been dried. Aqueous
-        homogenates were generated by sonicating each sample in 900 μl of H2O using an ultrasonic probe
+        homogenates were generated by sonicating each sample in 900 ul of H2O using an ultrasonic probe
         homogenizer (Branson Sonifier 250) set to a duty cycle of 25% and output control of 2 for 3 minutes.
         Samples were kept on ice during the homogenization process. The homogenate for each sample was
         aliquoted into two 10 uL and two 30 uL in 1.5mL centrifuge tubes for LC-MS sample preparation and 30

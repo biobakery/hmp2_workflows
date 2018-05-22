@@ -299,11 +299,11 @@ def main(workflow):
                                                               data_type,
                                                               dtype_metadata,
                                                               row)
-                            dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
-                                                                        file_md5sum,
-                                                                        dcc_sample.name,
-                                                                        conf.get(data_type),
-                                                                        row)
+                            dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(dcc_prep,
+                                                                                file_md5sum,
+                                                                                dcc_sample.name,
+                                                                                conf.get(data_type),
+                                                                                row)
                         elif data_type == 'SER':
                             dcc_prep = dcc.crud_host_assy_prep(dcc_sample, 
                                                                conf.get('data_study'),
