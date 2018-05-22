@@ -955,7 +955,7 @@ def _crud_visit_attribute(visit, metadata, conf):
 
     diagnosis = metadata.get('diagnosis')
     if diagnosis != "nonIBD":
-        req_metadata['disease_name'] = disease_map.get(diagnosis)
+        req_metadata['disease_name'] = disease_map.get(diagnosis.lower())
         req_metadata['disease_description'] = disease_desc_map.get(diagnosis)
 
         if diagnosis in ['UC', 'CD']:
@@ -994,6 +994,9 @@ def _crud_visit_attribute(visit, metadata, conf):
 
     if fields_to_update:
         visit_attr.subtype = conf.get('data_study')
+        visit_attr.study = conf.get('data_study')
+        visit_attr.study = conf.get('data_study')
+
         visit_attr.links['associated_with'] = [visit.id]
 
         if visit_attr.is_valid():
@@ -1483,7 +1486,7 @@ def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return microbiome_prep
 
 
-def crud_serology(session, prep, md5sum, sample_id, study_name, conf, metadata):
+def crud_serology(prep, study_id, sample_id, study_name, conf, metadata):
     """Creates an iHMP OSDF Serology object if it doesn't exist or updates
     an already existing Serology object with the provided metadta.
 
@@ -1498,7 +1501,7 @@ def crud_serology(session, prep, md5sum, sample_id, study_name, conf, metadata):
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this Proteome            
         conf (dict): Config dictionary containing some "hard-coded" pieces of
-            metadata assocaited with all Proteomes.
+            metadata assocaited with all Serology objects.
         metadata (pandas.Series): Metadata associated with this Proteome.
 
     Requires:
@@ -1528,7 +1531,7 @@ def crud_serology(session, prep, md5sum, sample_id, study_name, conf, metadata):
 
     req_metadata['checksums'] = { "md5": md5sum }
 
-    req_metadata['local_raw_file'] = metadata.get('seq_file')
+    req_metadata['local_file'] = metadata.get('seq_file')
     req_metadata['private_files'] = True
     req_metadata['comment'] = raw_file_name
     req_metadata['study'] = study_name
@@ -1953,7 +1956,7 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
 
     return sixs_raw_seq
 
-def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
+def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
     """Creates an iHMP OSDF Metabolome object if it doesn't exist or updates
     an already existing Metabolome object with the provided metadta.
 
@@ -1965,7 +1968,8 @@ def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
         prep (cutlass.HostAssayPrep): The Host Assay Prep object that
             this Metabolome object will be assocaited with.
         md5sum (string): md5 checksum for the associated Metabolome file.
-        sample_id (string): Sample ID assocaited with this Metabolome          
+        sample_id (string): Sample ID assocaited with this Metabolome  
+        study (string): The study name for the project.        
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all Metabolomes.
         metadata (pandas.Series): Metadata associated with this Metabolome.
@@ -1978,6 +1982,9 @@ def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
             saved.
     """
     req_metadata = {}
+
+    seq_file = metadata.get('seq_file')
+    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     metabolomes = group_osdf_objects(prep.metabolomes(),
                                      'urls')
@@ -1993,7 +2000,7 @@ def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = sample_id
 
-    req_metadata['local_raw_file'] = metadata.get('seq_file')
+    req_metadata['local_file'] = metadata.get('seq_file')
 
     req_metadata['tags'] = []
     req_metadata['tags'].append(metadata.get('diagnosis'))
@@ -2005,6 +2012,7 @@ def crud_metabolome(prep, md5sum, sample_id, conf, metadata):
 
     metabolome.updated = False
     if fields_to_update:
+        metabolome.study = prep.study
         metabolome.links['derived_from'] = [prep.id]
 
         if not metabolome.is_valid():
@@ -2071,11 +2079,6 @@ def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata,
     if fields_to_update:
         sixs_trimmed_seq.updated = True
         sixs_trimmed_seq.links['computed_from'] = [dcc_parent.id]
-
-        if not sixs_trimmed_seq.is_valid():
-            raise ValueError('16S trimmed sequence set validation failed: %s' % 
-                             sixs_trimmed_seq.validate())
-
     return sixs_trimmed_seq
 
 

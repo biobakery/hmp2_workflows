@@ -305,25 +305,16 @@ def main(workflow):
                                                                         conf.get(data_type),
                                                                         row)
                         elif data_type == 'SER':
-                            dcc_prep = dcc.crud_host_seq_prep(dcc_sample, 
-                                                              conf.get('data_study'),
-                                                              data_type,
-                                                              conf.get(data_type),
-                                                              row)
-                            dcc_seq_obj = dcc.crud_host_epigenetics_raw_set(dcc_prep,
-                                                                            file_md5sum,
-                                                                            dcc_sample.name,
-                                                                            conf.get(data_type),
-                                                                            row)                                                              
-                            #dcc_seq_obj = dcc.crud_abundance_matrix(session,
-                            #                                        dcc_prep,
-                            #                                        row.get('seq_file'),
-                            #                                        file_md5sum,
-                            #                                        dcc_sample.name,
-                            #                                        conf.get('data_study'),
-                            #                                        dtype_metadata,
-                            #                                        row,
-                            #                                        url_param)
+                            dcc_prep = dcc.crud_host_assy_prep(dcc_sample, 
+                                                               conf.get('data_study'),
+                                                               data_type,
+                                                               conf.get(data_type),
+                                                               row)
+                            dcc_seq_obj = dcc.crud_serology(dcc_prep, 
+                                                            file_md5sum,
+                                                            dcc_sample.name,
+                                                            dtype_metadata,
+                                                            row)
 
                         uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
 
@@ -382,9 +373,6 @@ def main(workflow):
 
                                 if not output_md5sum:
                                     raise ValueError("Could not find md5sum for file", output_filename)
-
-
-
 
                                 dcc_seq_out = dcc.crud_abundance_matrix(session,
                                                                         dcc_seq_obj,
