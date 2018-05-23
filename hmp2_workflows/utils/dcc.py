@@ -2059,7 +2059,7 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
     return metabolome       
 
 
-def crud_host_epigenetics_raw_seq_set(prep, md5sum, sample_id, study_id, conf, metadata):
+def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id, conf, metadata):
     """Creates an iHMP OSDF HostEpigeneticsRawSeqSet object if it doesn't exist or updates
     an already existing HostEpigeneticsRawSeqSet object with the provided metadta.
 
@@ -2068,6 +2068,7 @@ def crud_host_epigenetics_raw_seq_set(prep, md5sum, sample_id, study_id, conf, m
     AnADAMA2 in an attempt to parallelize the upload to the DCC.
 
     Args:
+        session (cutlass.osdf_session): The current OSDF session.
         prep (cutlass.HostSeqPrep): The Host Seq Prep object that
             this HostEpigeneticsRawSeqSet object will be assocaited with.
         md5sum (string): md5 checksum for the associated HostEpigeneticsRawSeqSet file.

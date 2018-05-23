@@ -299,7 +299,8 @@ def main(workflow):
                                                               data_type,
                                                               dtype_metadata,
                                                               row)
-                            dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(dcc_prep,
+                            dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(session,
+                                                                                dcc_prep,
                                                                                 file_md5sum,
                                                                                 dcc_sample.name,
                                                                                 conf.get('data_study'),
