@@ -518,15 +518,16 @@ def _get_epigenetics_raw_seq_sets(session, prep_id):
         Iterator: An iterator containing all children connected to the 
             supplied OSDF object.                    
     """
-    query = session.get_odsf().oql_query
+    osdf = session.get_odsf()
+
     linkage_query = ('"host_epigenetics_raw_seq_set"[node_type] && '
                      '"{}"[linkage.derived_from]'.format(prep_id))
 
     from cutlass.HostEpigeneticsRawSeqSet import HostEpigeneticsRawSeqSet
 
     for page_no in itertools.count(1):
-        res = query(HostEpigeneticsRawSeqSet.namespace, linkage_query,
-                    page=page_no)
+        res = osdf.oql_query(HostEpigeneticsRawSeqSet.namespace, linkage_query,
+                             page=page_no)
         res_count = res['result_count']
 
         for doc in res['results']:
@@ -2094,38 +2095,40 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
     host_epigenetics_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
                                          in host_epigenetics_raw_seq_sets.items())
     
-    host_epigentic_raw_seq_set = host_epigenetics_raw_seq_sets.get(raw_file_name)
-    host_epigenetics_raw_seq_sets = (cutlass.HostEpigeneticsRawSeqSet() if not host_epigenetics_raw_seq_set 
+    host_epigenetics_raw_seq_set = host_epigenetics_raw_seq_sets.get(raw_file_name)
+    host_epigenetics_raw_seq_set = (cutlass.HostEpigeneticsRawSeqSet() if not host_epigenetics_raw_seq_set 
                                      else host_epigenetics_raw_seq_sets[0])
 
     req_metadata.update(conf.get('methylome'))
 
-    req_metadata['subtype'] = "host"
     req_metadata['study'] = study_id
     req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = raw_file_name
+    req_metadata['private_files'] = True
 
     req_metadata['tags'] = []
     req_metadata['tags'].append(metadata.get('diagnosis'))
 
-    fields_to_update = get_fields_to_update(req_metadata, host_epigentic_raw_seq_set)
+    fields_to_update = get_fields_to_update(req_metadata, host_epigenetics_raw_seq_set)
 
     map(lambda key: setattr(host_epigenetics_raw_seq_set, key, req_metadata.get(key)),
         fields_to_update)
 
-    host_epigentic_raw_seq_set.updated = False
+    host_epigenetics_raw_seq_set.updated = False
     if fields_to_update:
-        host_epigentic_raw_seq_set.study = prep.study
-        host_epigentic_raw_seq_set.links['derived_from'] = [prep.id]
+        host_epigenetics_raw_seq_set.subtype = "host"
+        host_epigenetics_raw_seq_set.study = prep.study
+        host_epigenetics_raw_seq_set.links['sequenced_from'] = [prep.id]
 
-        if not host_epigentic_raw_seq_set.is_valid():
-            raise ValueError('HostEpigeneticRawSeqSet validation failed: %s' % 
-                             host_epigentic_raw_seq_set.validate())
+        if not host_epigenetics_raw_seq_set.is_valid():
+            raise ValueError('HostEpigeneticsRawSeqSet validation failed: %s' % 
+                             host_epigenetics_raw_seq_set.validate())
 
-        host_epigentic_raw_seq_set.updated = True
+        host_epigenetics_raw_seq_set.updated = True
 
-    return host_epigentic_raw_seq_set
+    return host_epigenetics_raw_seq_set
 
 
 def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 

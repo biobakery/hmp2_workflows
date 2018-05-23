@@ -415,9 +415,11 @@ RRBS:
       DNA kit.
   methylome:
     study: ibd
+    assay_type: "RRBS"
     format: fastq
     format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
     sequence_type: "nucleotide"
+    seq_model: "Illumina HiSeq"
     exp_length: 0
     comment: IBDMDB
 
