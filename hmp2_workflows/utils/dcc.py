@@ -991,7 +991,7 @@ def _crud_visit_attribute(visit, metadata, conf):
 
     diagnosis = metadata.get('diagnosis')
     if diagnosis != "nonIBD":
-        req_metadata['disease_name'] = disease_map.get(diagnosis.lower())
+        req_metadata['disease_name'] = disease_map.get(diagnosis)
         req_metadata['disease_description'] = disease_desc_map.get(diagnosis)
 
         if diagnosis in ['UC', 'CD']:
@@ -1030,7 +1030,6 @@ def _crud_visit_attribute(visit, metadata, conf):
 
     if fields_to_update:
         visit_attr.subtype = conf.get('data_study')
-        visit_attr.study = conf.get('data_study')
         visit_attr.study = conf.get('data_study')
 
         visit_attr.links['associated_with'] = [visit.id]
