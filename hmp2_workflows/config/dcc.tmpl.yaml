@@ -363,19 +363,18 @@ RRBS:
     sequencing_contact: "tpoon@broadinstitute.org"
     lib_layout: "fragment"
     lib_selection: "Random"
-    ncbi_taxon_id: 9606
-    storage_duration: ""
+    ncbi_taxon_id: "9606"
+    storage_duration: 0
   mims:
     geo_loc_name: "United States of America"
     lat_lon: Unknown
+    investigation_Type: "metagenome"
     biome: "terrestrial biome [ENVO:00000446]"
-    feature: "human-associated habitat [ENVO:00009003]"
     env_package: human-associated
-    collection_date: Unknown
     seq_meth: "Sequencing by Synthesis"
     lib_const_meth: >-
       Reduced Representation Bisulfite Sequencing (RRBS) libraries were prepared as described previously
-      (1) with modifications detailed below. Briefly, genomic DNA samples were quantified using a Quant-It
+      with modifications detailed below. Briefly, genomic DNA samples were quantified using a Quant-It
       dsDNA high sensitivity kit (ThermoFisher, cat# Q33120) and normalized to a concentration of 10ng/ul. A
       total of 100ng of normalized genomic DNA was digested with MspI in a 20ul reaction containing 1ul MspI
       (20U/ul) (NEB, cat# R0106L) and 2ul of 10X CutSmart Buffer (NEB, cat# B7204S). MspI digestion
@@ -386,7 +385,7 @@ RRBS:
       Buffer in a total reaction volume of 30ul. A-tailing reactions were then incubated at 30C for 20 min.,
       followed by 37C for 20 min., followed by 65C for 15 min.
 
-      Methylated Illumina sequencing adapters (1) were then ligated to the A-tailed material (30ul) by adding
+      Methylated Illumina sequencing adapters were then ligated to the A-tailed material (30ul) by adding
       1ul 10X CutSmart Buffer, 5ul 10mM ATP (NEB, cat# P0756S), 1ul T4 DNA Ligase (2,000,000U/ml) (NEB,
       cat# M0202M) and 2ul methylated adapters in a total reaction volume of 40ul. Adapter ligation reactions
       were then incubated at 16C overnight (16-20 hours) followed by incubation at 65C for 15 min. Adapter
@@ -401,7 +400,7 @@ RRBS:
       In order to determine the minimum number of PCR cycles required for final library amplification, 50ul PCR
       reactions containing 3ul bisulfite converted DNA, 5ul 10X PfuTurbo Cx hotstart DNA polymerase buffer,
       0.5ul 100mM dNTP (25mM each dNTP) (Agilent, cat# 200415), 0.5ul Illumina TruSeq PCR primers (25uM
-      each primer) (1) and 1ul PfuTurbo Cx hotstart DNA polymerase (Agilent, cat# 600412) were prepared.
+      each primer) and 1ul PfuTurbo Cx hotstart DNA polymerase (Agilent, cat# 600412) were prepared.
       Reactions where then split equally into four separate tubes and thermocycled using the following
       conditions - denature at 95C for 2 min. followed by 'X' cycles of 95C for 30 sec., 65C for 30 sec., 72C
       for 45 sec. (where 'X' number of cycles = 11, 13, 15 and 17), followed by a final extension at 72C for 7
@@ -411,8 +410,8 @@ RRBS:
       PfuTurbo Cx hotstart DNA polymerase buffer, 2ul 100mM dNTPs (25mM each), 2ul Illumina TruSeq PCR
       primers (25uM each) and 4ul PfuTurbo Cx hotstart DNA polymerase with the thermal cycling conditions
       listed above. PCR reactions were purified using 1.2X volumes of Ampure XP according to the
-      manufacturer’s recommended protocol aPreparation of reduced representation bisulfite sequencing libraries for 
-      genome-scale DNA methylation profilingnd analyzed on an Agilent Bioanalyzer using a High Sensitivity
+      manufacturer's recommended protocol. Preparation of reduced representation bisulfite sequencing libraries for 
+      genome-scale DNA methylation profiling analyzed on an Agilent Bioanalyzer using a High Sensitivity
       DNA kit.
   methylome:
     study: ibd
