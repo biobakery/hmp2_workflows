@@ -38,13 +38,15 @@ header-includes:
 <div class="Row">
 <div class="page-header">
 ## <%= vars['summary_title'] %>
-<p>The following data were run through the CMMR 16S rRNA gene pipeline. The pipeline incorporates 
-phylogenetic and alignment based approaches to maximize data resolution. 16Sv4 rDNA 
-sequences are clustered into Operational Taxonomic Units (OTUs) at a similarity cutoff 
-value of 97% using the UPARSE algorithm. OTUs are subsequently mapped to an optimized 
-version of the SILVA Database containing only sequences from the v4 region of the 
-16S rRNA gene to determine taxonomies. Abundances are recovered by mapping the 
+
+<p>Raw 16S v4 sequences were filtered initially using the [https://www.bcm.edu/research/centers/metagenomics-and-microbiome-research](CMMR) 
+pipeline. This uses a combination of phylogenetic and alignment to maximize data quality. 
+Resulting sequences were then clustered into Operational Taxonomic Units (OTUs) at a 97% nucleotide 
+identity threshold using the UPARSE algorithm. OTU representative sequences are subsequently mapped 
+to an optimized version of the SILVA Database containing only sequences from the 16S rRNA gene v4 r
+egion to assign putative taxonomy. Finally, abundances are calculated for each OTU by mapping the 
 demultiplexed reads to the UPARSE OTUs.</p>
+
 </div>
 </div>
 

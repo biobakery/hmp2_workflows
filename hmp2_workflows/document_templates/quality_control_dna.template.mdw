@@ -46,14 +46,14 @@ Samples were first trimmed then filtered using the human genome (hg38). RNA samp
 Data is organized by paired and orphan reads. When one read in a pair passes a filtering step and the other does not the surviving read is an orphan. 
 The tables and plots are annotated as follows:
 
-* **raw**: Untouched fastq reads.
+* **raw**: Number of reads based on de-multiplexed, unprocessed sequencing files
 * **trim**: Number of reads remaining after trimming bases with Phred score < 20. If the trimmed reads is <70% of original length then it is removed altogether.
 * **hg38**: Number of reads remaining after depleting reads against the human genome (hg38).
 * **mRNA**: Number of reads remaining after depleting reads against the human genome (hg38) and the human transcriptome (hg38 mRNA). (RNA samples only)
 
 ### DNA Samples Quality Control
 
-#### DNA Samples Tables of Filtered Reads
+#### DNA Samples: Tables of Filtered Reads
 <div id="qc_filtered_reads">
 <table id="qc_filtered_reads_paired_counts_table" class="table table-striped" cellspacing="0" width="100%">
 <caption>DNA Paired-end Reads</caption>
@@ -99,10 +99,14 @@ Proportion of reads remaining after removing host reads relative to the number o
 <<label="qc_plotly_setup", echo=False>>=
 hmp2_viz.convert_table_to_plotly_barplot_json(files.ShotGunVis.path('qc_counts_paired', 
                                                                     document.data_folder),
-                                                document.data_folder)
+                                              document.data_folder,
+                                              hide_x_axis=True,
+                                              sort_on='Raw')
 hmp2_viz.convert_table_to_plotly_barplot_json(files.ShotGunVis.path('qc_counts_orphan', 
                                                                     document.data_folder),
-                                                document.data_folder)
+                                              document.data_folder,
+                                              hide_x_axis=True,
+                                              sort_on='Trim orphan1')
 @
 
 <div id="qc_filtered_reads_paired_counts_plotly"></div>

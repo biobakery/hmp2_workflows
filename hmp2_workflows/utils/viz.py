@@ -72,13 +72,14 @@ def convert_table_to_datatables_json(table_file, output_dir):
     return output_json_file
 
 
-def _generate_group_barplot_json(table_file, transpose=False):
+def _generate_group_barplot_json(table_file, sort_on, transpose=False):
     """Generates a JSON string that can be consumed by the Plotly JS library
     to produce a grouped barplot.
 
     Args:
         table_file (string): Path to the tab-delimited table file to be 
             parsed and converted to a JSON object.
+        sort_on (string): Key to sort plot data on.
         transpose (boolean): Whether or not to transpose the dataframe
             once loaded. Depending on the table passed in this may need 
             to be done.            
@@ -92,6 +93,7 @@ def _generate_group_barplot_json(table_file, transpose=False):
     traces = []
 
     table_df = pd.read_table(table_file, index_col=0)
+    table_df = table_df.sort_values(by=sort_on) if sort_on else table_df
     table_df = table_df.T if transpose else table_df
     
     table_split = json.loads(table_df.to_json(orient='split'))
@@ -105,7 +107,8 @@ def _generate_group_barplot_json(table_file, transpose=False):
     return traces
 
 
-def convert_table_to_plotly_barplot_json(table_file, output_dir, plot_type='group'):
+def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None, 
+                                         hide_x_axis=False, plot_type='group'):
     """Converts a tab-delimited text file to a JSON file that can be read 
     by the Plotly js library to generate dynamic charts.
 
@@ -113,6 +116,9 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, plot_type='grou
         table_file (string): Path to the table file to be converted.
         output_dir (string): Path to the output directory to write the 
             converted JSON file.
+        sort_on (string): Key to sort plot data on [Default: None]
+        hide_x_axis (boolean): If True hide x-axis and display the number of 
+            x elements [Default: False]
         plot_type (string): The type of barplot to produce. [group, stacked]            
 
     Requires:
@@ -135,10 +141,23 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, plot_type='grou
     output_json_file = output_json_file.replace('table', 'plot')
 
     transpose = False if plot_type == "group" else True
-    plot_traces = _generate_group_barplot_json(table_file, transpose)
+    plot_traces = _generate_group_barplot_json(table_file, sort_on, transpose)
 
     plot_json['data'] = plot_traces
+    
     plot_json['layout'] = {'barmode': plot_type}
+    plot_json['layout']['xaxis'] = {}
+    plot_json['layout']['yaxis'] = {}
+    plot_json['layout']['yaxis']['title'] = "Number of Reads"
+
+    if hide_x_axis:
+        plot_json['layout']['xaxis']['showticklabels'] = False
+
+        ## If we are doing this we're going to want to add a label indicating 
+        ## how many samples are in this dataset.
+        plot_json['layouy']['xaxis']['title'] = "Number of Samples: %s" % len(plot_traces)
+    else:
+        plot_json['layout']['xaxis']['title'] = "Samples"
 
     with open(output_json_file, 'w') as json_out:
         json.dump(plot_json, json_out)

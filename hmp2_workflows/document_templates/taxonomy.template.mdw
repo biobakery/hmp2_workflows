@@ -55,7 +55,7 @@ pub_species_counts_table = os.path.join('data',
 
 ## Taxonomy
 
-Taxonomic profiling was generated using [MetaPhlAn2](http://huttenhower.sph.harvard.edu/metaphlan2).
+Taxonomic profiles were generated using [MetaPhlAn2](http://huttenhower.sph.harvard.edu/metaphlan2).
 
 Species abundances are passed through a basic filter requiring each species
 to have at least **<%= min_abundance %>%** abundance.
@@ -82,9 +82,7 @@ Download Species Counts Table: [species_counts_table.tsv](<%= pub_species_counts
 ### Ordination
 
 Principal coordinate analysis of variance among samples, based on Bray-Curtis dissimilarities between 
-species profiles of samples. Filtered species' relative abundances were arcsin-square root transformed
-to approximate a normal distribution and down-weight the effect of highly abundant species on
-Bray-Curtis dissimilarities. Numbers in paranthesis on each axis represent the amount of variance 
+species profiles of samples. Numbers in paranthesis on each axis represent the amount of variance 
 explained by that axis.
 
 <<label="ordination", echo=False>>=
@@ -92,7 +90,16 @@ top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_
     function="average") 
 
 pcoa_data = numpy.array(top_data)/100.0
-caption = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances")
+
+if metadata_file:
+    ## In this case we are going to want to color things by diagnosis
+    metadata_df = pd.read_table(metadata_file)
+    metadata = metadata_df.filter(['External ID', 'diagnosis']).to_dict()
+
+    caption = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances", 
+                                 metadata=metadata)
+else:
+    caption = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances")
 @
 
 <% print(caption) %>
@@ -155,7 +162,7 @@ document.plot_stacked_barchart(sorted_data, row_labels=top_taxonomy,
 
 <div id="taxonomy_barplot"></div>
 
-Stacked barplot of 25 most abundant species among samples. Samples in the plot were sorted on the 
+Stacked barplot of 15 most abundant species among samples. Samples in the plot were sorted on the 
 species with the highest mean abundances among samples in decreasing order.
 
 </div>

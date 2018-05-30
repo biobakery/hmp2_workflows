@@ -19,13 +19,17 @@ vars = document.get_vars()
 
 ## Quality Control
 
+<p>The general stats for this data are: <b><%= overall_stats %></b>.</p>
+
+<p>The following table shows the number of surviving reads when filtering by read length and maximum 
+expected error rate (maxEE). The maximum expected error rate can be defined as the maximumed expected 
+number of errors in a read measured by Phred Q scores. Reads that contain a higher expected error than 
+maxEE are discarded.</p>
+
 <<label="16s_QC", echo=False>>=
 eestats_rows, eestats_columns, eestats_data, overall_stats = utilities.read_eestats2(vars["eestats_table"])
 
 document.show_table(eestats_data, eestats_rows, eestats_columns, 
     "Expected error filter by read length",font="10")
 @
-<p>The general stats for this data are: <b><%= overall_stats %></b>.</p>
-<p>This table shows the number of reads based on length for different error filters.</p>
-
 </div>

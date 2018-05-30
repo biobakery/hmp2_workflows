@@ -58,7 +58,7 @@ def parse_cli_arguments():
     workflow.add_argument('config-file', desc='Configuration file '
                           'containing parameters required by the workflow.')
     workflow.add_argument('metadata-file', desc='Accompanying metadata file '
-                           'for the provided data files.', default=None)
+                          'for the provided data files.', default=None)
 
 
     return workflow
@@ -93,6 +93,7 @@ def main(workflow):
         targets = workflow.name_output_files("summary.html"),
         vars = {
             'summary_title': "HMP2: Metagenomes Data Summary Report",
+            'metadata_file': args.metadata_file,
             'taxonomic_profile': taxonomic_profile,
             'dna_read_counts': dna_read_counts,
             'dna_pathabundance': pathabundance,
