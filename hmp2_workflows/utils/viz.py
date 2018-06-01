@@ -234,6 +234,7 @@ def filter_taxonomic_profiles(tax_profile, metadata_file, output_folder, min_rea
     """
     filtered_tax_file = os.path.join(output_folder, "filtered_taxonomic_profiles.tsv")
     taxonomy_df = pd.read_table(tax_profile)
+    metadata_df = pd.read_csv(metadata_df)
 
     ## If a metadata file is provided we should have access to number of reads here so we can 
     ## execute the same filtering steps from the manuscript
