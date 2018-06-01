@@ -23,9 +23,10 @@ metadata_file = vars['metadata_file']
 @
 
 <<label="species_counts", echo=False>>=
+tax_profiles = vars['taxonomic_profile']
+
 ## If we have metadata here we can do a little more filtering of our taxonomic profiles
 ## to match what we end up with in the manuscript.
-tax_profiles = vars['taxonomic_profile']
 if metadata_file:
     (metadata_df, tax_profiles) = hmp2_viz.filtered_tax_profiles(tax_profiles,
                                                                  metadata_file, 
@@ -42,7 +43,6 @@ filtered_species_taxonomy, filtered_species_data = utilities.filter_species(taxo
 def count_filtered_columns(data, min):
     data=numpy.transpose(data)
     return [len(list(filter(None,filter(lambda x: x>min,row)))) for row in data]
-
 
 species_counts=count_filtered_columns(species_data, min=0)
 species_counts_after_filter=count_filtered_columns(filtered_species_data, min=0)
@@ -98,7 +98,6 @@ explained by that axis.
 top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_heatmap,
     function="average") 
 
-#pcoa_data = numpy.array(top_data)/100.0
 pcoa_data = numpy.array(species_data)/100.0
 
 caption = None
@@ -106,12 +105,10 @@ if metadata_file:
     ## In this case we are going to want to color things by diagnosis
     metadata_df = metadata_df[metadata_df['External ID'].isin(samples)].filter(['External ID', 'diagnosis'])
     metadata = {d['External ID']: d['diagnosis'] for d in metadata_df.to_dict(orient='records')}
-    #caption = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances", 
-    #                             metadata=metadata)
     caption = document.show_pcoa(samples,species_taxonomy,pcoa_data,"Ordination of species abundances", 
                                  metadata=metadata)
 else:
-    caption = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances")
+    caption = document.show_pcoa(samples,species_taxonomy,pcoa_data,"Ordination of species abundances")
 @
 
 <% print(caption) %>
