@@ -155,7 +155,7 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
 
         ## If we are doing this we're going to want to add a label indicating 
         ## how many samples are in this dataset.
-        plot_json['layouy']['xaxis']['title'] = "Number of Samples: %s" % len(plot_traces)
+        plot_json['layout']['xaxis']['title'] = "Number of Samples: %s" % len(plot_traces)
     else:
         plot_json['layout']['xaxis']['title'] = "Samples"
 
@@ -201,3 +201,55 @@ def generate_viral_read_proportions_file(viral_read_counts, out_dir):
     viral_read_counts_df.to_csv(out_file, sep='\t', index=False)
 
     return out_file
+
+
+def filter_taxonomic_profiles(tax_profile, metadata_file, output_folder, min_reads_threshold=1000000):
+    """Filters taxonomic profiles based on a number of reads threshhold as well 
+    as screening out any samples whos abundance can be defined by just one bug.
+
+    Args:
+        tax_profile (string): Path to taxonomic profile file.
+        metadata_file (string): Path to project metadata.
+        output_folder (string): Path to write filtered taxonomic profile file.
+        min_reads_threshold (int): The minimum number of reads needed for a sample to be 
+            included in downstream analysis (DEFAULT: 1000000)
+
+    Requires:
+        None
+
+    Returns:
+        pandas.DataFrame: Project metadata filtered to only samples passing criteria.
+        string: Path to filtered taxonomic profile file.
+
+    Example:
+        import pandas as pd
+
+        from hmp2_workflows.utils import viz
+
+        taxonomic_profile = "/tmp/hmp2_tax_profiles.tsv"
+        output_folder = "/home/carze/"
+        metadata_file = "/home/carze/hmp2_metadata.csv"
+
+        viz.filter_taxonomic_profiles(taxonomic_profile, metadata, output_folder)
+    """
+    filtered_tax_file = os.path.join(output_folder, "filtered_taxonomic_profiles.tsv")
+    taxonomy_df = pd.read_table(tax_profile)
+
+    ## If a metadata file is provided we should have access to number of reads here so we can 
+    ## execute the same filtering steps from the manuscript
+    valid_samples = metadata_df[metadata_df['filtered_reads'] >= 1000000]['External ID'].values.tolist()
+
+    taxonomy_species_df = taxonomy_df[(taxonomy_df['#SampleID'].str.contains('s__')) &
+                                      -(taxonomy_df['#SampleID'].str.contains('t__'))]
+    weird_samples_series = (taxonomy_species_df == 100).any()
+    weird_samples = weird_samples_series[weird_samples_series == True].index.tolist()
+    weird_samples = [s.replace('_taxonomic_profile', '') for s in weird_samples]
+    valid_samples = set(valid_samples) - set(weird_samples)
+
+    taxonomy_df = taxonomy_df.filter(['#SampleID'] + 
+                                     ['%s_taxonomic_profile' % s for s in valid_samples])
+    taxonomy_df.to_csv(filtered_tax_file, sep='\t', index=False)
+
+    metadata_df = metadata_df[metadata_df['External ID'].isin(valid_samples)]
+
+    return (metadata_df, filtered_tax_file)

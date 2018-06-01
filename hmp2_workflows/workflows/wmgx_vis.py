@@ -78,7 +78,6 @@ def main(workflow):
     feature_counts = glob(os.path.join(args.input + "/**/",
         files.ShotGun.file_info['feature_counts'].keywords.get('names')))[0]
 
-
     templates = []
     templates.append(document_templates.get_template('header'))
     templates.append(document_templates.get_template('wmgx'))
@@ -109,7 +108,8 @@ def main(workflow):
 
     workflow.add_task("sed -i -e '/<header>/,/<\/header>/d' [depends[0]]",
                       depends = workflow.name_output_files('summary.html'),
-                      targets = workflow.name_output_files('summary.html'))
+                      targets = [workflow.name_output_files('summary.html'), 
+                                 workflow.name_output_files('summary.html-e')])
 
     workflow.add_task("sed -i -e '/img.* alt/! s/img/img alt=\"\"/' [depends[0]];",
                       depends = workflow.name_output_files('summary.html'),
