@@ -1,4 +1,22 @@
 
+---
+header-includes: 
+  - <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+  - <link rel="stylesheet" href="/static/css/carousel.css" />
+  - <link rel="stylesheet" href="/static/css/mezzanine.css" />
+  - <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css" />
+  - <link rel="stylesheet" href="/static/css/datatables.min.css" />
+  - <link rel="stylesheet" href="/static/css/ibdmdb-summary.css" />
+  - <script src="/static/mezzanine/js/jquery-1.7.1.min.js"></script>
+  - <script src="/static/js/bootstrap.js"></script>
+  - <script src="/static/js/datatables.min.js"></script>
+  - <script src="/static/js/plotly-latest.min.js"></script>
+  - <script src="/static/js/taxonomy.js"></script>
+  - <script src="/static/js/qc.js"></script>
+  - <script src="/static/js/func_profile.js"></script>
+
+---
+
 <<label="wmgx_setup", echo=False>>=
 from biobakery_workflows import utilities
 

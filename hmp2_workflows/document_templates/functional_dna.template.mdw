@@ -50,7 +50,7 @@ all_dna_samples, all_dna_average_pathways, all_dna_average_data, all_names_and_d
 utilities.change_pweave_figure_size_heatmap(False)
 
 document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
-    title="Top "+str(max_sets)+" pathways by average abundance (log10)")  
+    title="Top "+str(max_sets)+" pathways by average abundance (log10)",dpi=400)  
 @
 
 <%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="log10") %> 
@@ -58,7 +58,7 @@ document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
 <<echo=False>>=
 document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
     title="Top "+str(max_sets)+" pathways by average abundance (z-score)",
-    log_scale=False,zscore=True)
+    log_scale=False,zscore=True,dpi=400)
 @
 
 <%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="z-score") %> 

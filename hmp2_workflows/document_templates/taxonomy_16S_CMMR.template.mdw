@@ -66,7 +66,7 @@ document.write_table(["Sample"] + top_taxa_short_names, sorted_samples, numpy.tr
                      os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'), 
                                               document.data_folder, 
-                                              plot_type='stack')
+                                              plot_type='stack', legend_order='normal')
 @
 
 <div id="tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>
@@ -92,7 +92,7 @@ document.write_table(["Sample"] + sorted_samples_terminal, shorted_names, sorted
                      os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'), 
                                               document.data_folder, 
-                                              plot_type='stack')
+                                              plot_type='stack', legend_order='normal')
 @
 
 <div id="terminal_tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>
