@@ -91,7 +91,7 @@ Data are organized by paired and orphan reads. When one read in a pair passes a 
 
 <table id="qc_filtered_reads_microbial_proportion" class="table table-striped" cellspacing="0" width="100%"> 
 <caption>
-    <p>Microbial Read Proportion</p>
+    <p>Microbial Read Proportions</p>
     <ul class="caption-list">
         <li>**hg38 / Trim**: Proportion of reads reamining after removing host reads relative to the number of quality-trimmed reads</li>
         <li>**hg38 / Raw**: Proportion of reads remaining after removing host reads realtive to the number of raw unfilitered reads</li>
@@ -106,8 +106,6 @@ Data are organized by paired and orphan reads. When one read in a pair passes a 
 </thead>
 </table>
 </div>
-
-Proportion of reads remaining after removing host reads relative to the number of: **i) quality-trimmed reads**, and **ii) raw unfiltered reads**.
 
 ### Metagenomic Samples Plots of Filtered Reads
 

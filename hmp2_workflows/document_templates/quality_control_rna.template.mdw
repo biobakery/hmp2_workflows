@@ -46,19 +46,22 @@ Samples were first trimmed then filtered using the human genome (hg38). RNA samp
 Data is organized by paired and orphan reads. When one read in a pair passes a filtering step and the other does not the surviving read is an orphan. 
 The tables and plots are annotated as follows:
 
-* **raw**: Untouched fastq reads.
-* **trim**: Number of reads remaining after trimming bases with Phred score < 20. If the trimmed reads is <70% of original length then it is removed altogether.
-* **hg38**: Number of reads remaining after depleting reads against the human genome (hg38).
-* **rRNA**: The SILVA (rRNA) database is used to remove small and large subunit ribosomal RNA.
-* **hg38 mRNA**: Number of reads remaining after depleting reads against the human genome (hg38) and the human transcriptome (hg38 mRNA). (RNA samples only)
+### Metatranscritpomic Samples Quality Control
 
-### RNA Samples Quality Control
-
-#### RNA Samples Tables of Filtered Reads
+#### Metatranscriptomic Samples Tables of Filtered Reads
 
 <div id="qc_filtered_reads">
 <table id="qc_filtered_reads_paired_counts_table" class="table table-striped" cellspacing="0" width="100%">
-<caption>RNA Paired-end Reads</caption>
+<caption>
+    <p>Paired-end Reads</p>
+    <ul class="caption-list">
+        <li>**Raw**: Number of reads based on de-multiplexed, unprocessed sequencing files</li>
+        <li>**Trim**: Number of reads remaining after trimming bases with Phred score < 20. If the trimmed reads is <70% of original length then it is removed altogether.</li>
+        <li>**hg38**: Number of reads remaining after depleting reads against the human genome (hg38).</li>
+        <li>**rRNA**: Number of reads remaining after removing small and large subunit ribosomal RNAs using the SILVA (rRNA) database.</li>
+        <li>**hg38 mRNA**: Number of reads remaining after depleting reads against the human genome (hg38) and the human transcriptome (hg38 mRNA). (RNA samples only)</li>
+    </ul>
+</caption>
 <thead>
 <tr>
 <th>Sample</th>
@@ -72,7 +75,19 @@ The tables and plots are annotated as follows:
 </table>
 
 <table id="qc_filtered_reads_orphan_counts_table" class="table table-striped" cellspacing="0" width="100%">
-<caption>RNA Orphan Reads</caption>
+<caption>
+    <p>Orphan Reads</p>
+    <ul class="caption-list">
+        <li>**Trim orphan1**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair2 following baseline trimming.</li>
+        <li>**Trim orphan1**: Number of reads from pair2 of the paired-end sequences that did not have a corresponding read in pair1 following baseline trimming.</li>
+        <li>**hg38 oprhan1**: Number of reads from pair1 of the paried-end sequences that did not have a corresponding read in pair2 following human-contaminant filtering</li>
+        <li>**hg38 oprhan2**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair1 following human-contaminant filtering</li>
+        <li>**rRNA oprhan1**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair2 following remaining ribosomal RNA filtering.</li>
+        <li>**rRNA oprhan2**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair2 following remaining ribosomal RNA filtering.</li>
+        <li>**hg38 mRNA orphan1**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair2 following human genome (hg38) and the human transcriptome (hg38 mRNA) filtering.</li>
+        <li>**hg38 mRNA orphan2**: Number of reads from pair1 of the paired-end sequences that did not have a corresponding read in pair2 following human genome (hg38) and the human transcriptome (hg38 mRNA) filtering.</li>
+    </ul>
+</caption>
 <thead>
 <tr>
 <th>Sample</th>
@@ -89,7 +104,17 @@ The tables and plots are annotated as follows:
 </table>
 
 <table id="qc_filtered_reads_microbial_proportion" class="table table-striped" cellspacing="0" width="100%"> 
-<caption>RNA Microbial Read Proportion</caption>
+<caption>
+    <p>Microbial Read Proportions</p>
+    <ul class="caption-list">
+        <li>**hg38 / Trim**: Proportion of reads reamining after removing host reads relative to the number of quality-trimmed reads</li>
+        <li>**hg38 / Raw**: Proportion of reads remaining after removing host reads realtive to the number of raw unfilitered reads</li>
+        <li>**rRNA / Trim**: Proportion of reads remaining after removing rRNA reads realtive to the number of raw unfilitered reads</li>
+        <li>**rRNA / Raw**: Proportion of reads remaining after removing rRNA reads realtive to the number of raw unfilitered reads</li>
+        <li>**hg38 mRNA / Trim**: Proportion of reads remaining after removing host genome and host transcriptome reads  realtive to the number of raw unfilitered reads</li>
+        <li>**hg38 mRNA / Raw**: Proportion of reads remaining after removing host geneome and host transcriptome reads realtive to the number of raw unfilitered reads</li>
+    </ul>
+</caption>
 <thead>
 <tr>
 <th>Sample</th>
@@ -104,17 +129,19 @@ The tables and plots are annotated as follows:
 </table>
 </div>
 
-Proportion of reads remaining after removing host reads relative to the number of: **i) quality-trimmed reads**, and **ii) raw unfiltered reads**.
-
-### RNA Samples Plots of Filtered Reads
+### Metatranscriptomic Samples Plots of Filtered Reads
 
 <<label="qc_plotly_setup", echo=False>>=
 hmp2_viz.convert_table_to_plotly_barplot_json(files.ShotGunVis.path('qc_counts_paired', 
                                                                     document.data_folder),
-                                                document.data_folder)
+                                                document.data_folder,
+                                                hide_x_axis=True,
+                                                sort_on='Raw')
 hmp2_viz.convert_table_to_plotly_barplot_json(files.ShotGunVis.path('qc_counts_orphan', 
                                                                     document.data_folder),
-                                                document.data_folder)
+                                                document.data_folder,
+                                                hide_x_axis=True,
+                                                sort_on='Trim orphan1')
 @
 
 <div id="qc_filtered_reads_paired_counts_plotly"></div>

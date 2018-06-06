@@ -30,8 +30,8 @@ hmp2_viz.convert_table_to_datatables_json(viral_read_proporiton_file, document.d
 This report section contains information about the quality control processing for all samples.
 
 * **Raw**: Untouched fastq reads.
-* **Trimmd Reads**: Number of reads remaining after trimming bases.
-* **Viral Reads**: Number of reads remaining which have viral sequences identified in them.
+* **Trimmed Reads**: Number of reads remaining after trimming barcodes, semi-random primer sequences and Illumina adapters.
+* **Viral Reads**: Number of reads remaining after mapping to viral database.
 
 ### Viral Samples Quality Control
 
@@ -66,7 +66,7 @@ Proportion of reads remaining after removing host reads relative to the number o
 ### Samples Plots of Filtered Reads
 
 <<label="qc_plotly_setup", echo=False>>=
-hmp2_viz.convert_table_to_plotly_barplot_json(vars['read_counts'], document.data_folder)
+hmp2_viz.convert_table_to_plotly_barplot_json(vars['read_counts'], document.data_folder, hide_x_axis=True, sort_on="Raw Reads")
 @
 
 <div id="qc_filtered_viral_read_counts_plotly"></div>

@@ -53,7 +53,7 @@ hmp2_viz.convert_table_to_datatables_json(os.path.join(document.data_folder, pat
 <thead>
 <tr>
 <th>Pathway</th>
-<th>Average abundance</th>
+<th>Average abundance (RPK/RPK)</th>
 <th>Variance</th>
 </tr>
 </thead>
@@ -77,7 +77,8 @@ Note the most abundant DNA features are not necessarily those with the highest t
 
 <<label="norm_ratio_pathways", echo=False>>=
 document.show_hclust2(samples,top_pathways,top_pathway_data,
-                        title="Top "+str(top_norm_pathways)+" RNA pathways by average abundance")   
+                      title="Top "+str(top_norm_pathways)+" RNA pathways by average abundance",
+                      label_font="6", dpi=400)   
 @
 
 <<label="norm_ratio_ecs", echo=False>>=
@@ -86,7 +87,8 @@ samples, top_ecs, top_ec_data, top_names_and_descriptions = visualizations.top_a
     document, vars["ecs_norm_ratio"], top_norm_ecs)
 
 document.show_hclust2(samples,top_ecs,top_ec_data,
-                        title="Top "+str(top_norm_ecs)+" RNA ECs by average abundance")
+                      title="Top "+str(top_norm_ecs)+" RNA ECs by average abundance",
+                      label_font="6", dpi=400)
 @
 
 #### RNA Features

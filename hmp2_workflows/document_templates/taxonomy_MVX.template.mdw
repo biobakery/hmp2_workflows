@@ -118,32 +118,6 @@ Download Species Counts Table: [species_counts_table_metaphlan2.tsv](<%= pub_spe
 
 Download Species Counts Table: [species_counts_table_virmap.tsv](<%= virmap_species_counts_file %>)
 
-### Ordination
-
-Principal coordinate analysis of variance among samples, based on Bray-Curtis dissimilarities between 
-species profiles of samples. Filtered species' relative abundances were arcsin-square root transformed
-to approximate a normal distribution and down-weight the effect of highly abundant species on
-Bray-Curtis dissimilarities. Numbers in paranthesis on each axis represent the amount of variance 
-explained by that axis.
-
-<<label="ordination_metaphlan2  ", echo=False>>=
-top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_heatmap,
-    function="average") 
-
-pcoa_data = numpy.array(top_data)/100.0
-caption_metaphlan2 = document.show_pcoa(samples,top_taxonomy,pcoa_data,"Ordination of species abundances (MetaPhlAn2)")
-@
-
-<% print(caption_metaphlan2) %>
-
-<<label="ordination_virmap", echo=False>>=
-virmap_top_taxonomy, virmap_top_data = utilities.top_rows(virmap_species_taxonomy, virmap_species_data, max_sets_heatmap,
-    function="average") 
-
-virmap_pcoa_data = numpy.array(virmap_top_data)/100.0
-caption_virmap = document.show_pcoa(virmap_samples,virmap_top_taxonomy,virmap_pcoa_data,"Ordination of species abundances (virMAP)")
-@
-
 ### Heatmap
 
 The top <%= max_sets_heatmap %> species based on average relative abundances are show in the heatmap.
@@ -222,7 +196,7 @@ document.plot_stacked_barchart(virmap_sorted_data, row_labels=virmap_top_taxonom
     ylabel="Relative abundance", legend_title="Species", legend_style="italic")
 @
 
-Stacked barplot of 25 most abundant species among samples. Samples in the plot were sorted on the 
+Stacked barplot of 15 most abundant species among samples. Samples in the plot were sorted on the 
 species with the highest mean abundances among samples in decreasing order.
 </div>
 </div>
