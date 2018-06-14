@@ -54,8 +54,7 @@ race_map:
 
 disease_map:
   UC: "ulcerative colitis"
-  CD: "Crohn's disease"
-  nonIBD: "Non-IBD"
+  CD: "crohn's disease"
 
 study:
   name: Inflammatory Bowel Disease Multi-omics Database (IBDMDB)
@@ -425,14 +424,14 @@ RRBS:
 
 SER:
   assay:
-    sequencing_center: Broad Institute
-    sequencing_contact: "tpoon@broadinstitute.org"
+    center: Broad Institute
+    contact: "tpoon@broadinstitute.org"
     storage_duration: 0
     pride_id: ""
     species: "Homo sapiens"
     tissue: "blood"
     title: "IBDMDB Blood Serology"
-    experiment_type: "Targeted Immunoproteomics"
+    experiment_type: "Targeted Immunoassay"
     protocol_steps: >-
         DNA was extracted via the Chemagic MSM I with the Chemagic DNA Blood Kit-96 from Perkin Elmer.
         This kit combines a chemical and mechanical lysis with magnetic bead-based purification.
@@ -446,15 +445,16 @@ SER:
         96-rod magnetic head and washed in three Ethanol-based wash buffers to eliminate cell debris
         and protein residue. The beads were then washed in a final water wash buffer. Finally, the
         beads were dipped in elution buffer to re-suspend the DNA. The beads were then removed from solution,
-        leaving purified DNA eluate.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Sera were analyzed for expression of anti-neutrophil cytoplasmic antibodies (ANCA),
+        leaving purified DNA eluate.  
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          Sera were analyzed for expression of anti-neutrophil cytoplasmic antibodies (ANCA),
         anti-Saccharomyces cerevisiae mannan antibodies (ASCA), anti-OmpC, and anti-CBir1 by
         ELISA as previously described. Antibody levels were determined and the results expressed as
         ELISA units (EU/mL), which are relative to laboratory standards consisting of pooled,
         antigen reactive sera from of patients with well-characterized disease.
     comment: "Serology ELISA"
-  abundance_matrix:
-    comment: ""
-    format: "tbl"
+  serology:
+    format: tsv
+    
 
 MTX:
   assay:

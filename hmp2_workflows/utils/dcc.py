@@ -366,7 +366,7 @@ def _get_host_assay_prep_abund_matrices(session, prep_id):
         Iterator: An iterator containing all children connected to the 
             supplied OSDF object.                    
     """
-    query = session.get_odsf().oql_query
+    query = session.get_osdf().oql_query
     linkage_query = ('"abundance_matrix"[node_type] && '
                      '"{}"[linkage.computed_from]'.format(prep_id))
 
@@ -481,7 +481,7 @@ def _get_serologies(session, prep_id):
         Iterator: An iterator containing all children connected to the 
             supplied OSDF object.                    
     """
-    query = session.get_odsf().oql_query
+    query = session.get_osdf().oql_query
     linkage_query = ('"serology"[node_type] && '
                      '"{}"[linkage.derived_from]'.format(prep_id))
 
@@ -518,7 +518,7 @@ def _get_epigenetics_raw_seq_sets(session, prep_id):
         Iterator: An iterator containing all children connected to the 
             supplied OSDF object.                    
     """
-    osdf = session.get_odsf()
+    osdf = session.get_osdf()
 
     linkage_query = ('"host_epigenetics_raw_seq_set"[node_type] && '
                      '"{}"[linkage.derived_from]'.format(prep_id))
@@ -1522,7 +1522,7 @@ def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     return microbiome_prep
 
 
-def crud_serology(prep, study_id, sample_id, study_name, conf, metadata):
+def crud_serology(session, prep, md5sum, sample_id, study_name, conf, metadata):
     """Creates an iHMP OSDF Serology object if it doesn't exist or updates
     an already existing Serology object with the provided metadta.
 
@@ -1535,7 +1535,8 @@ def crud_serology(prep, study_id, sample_id, study_name, conf, metadata):
         prep (cutlass.HostAssayPrep): The  HostAssayPrep object that
             this Serology object will be associated with.
         md5sum (string): md5 checksum for the associated sequence file.
-        sample_id (string): Sample ID assocaited with this Proteome            
+        sample_id (string): Sample ID assocaited with this Serology
+        study_name (string): Study these analysis results should be associated with        
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all Serology objects.
         metadata (pandas.Series): Metadata associated with this Proteome.
@@ -1568,7 +1569,6 @@ def crud_serology(prep, study_id, sample_id, study_name, conf, metadata):
     req_metadata['checksums'] = { "md5": md5sum }
 
     req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['private_files'] = True
     req_metadata['comment'] = raw_file_name
     req_metadata['study'] = study_name
 

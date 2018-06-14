@@ -307,14 +307,16 @@ def main(workflow):
                                                                                 conf.get(data_type),
                                                                                 row)
                         elif data_type == 'SER':
-                            dcc_prep = dcc.crud_host_assy_prep(dcc_sample, 
-                                                               conf.get('data_study'),
-                                                               data_type,
-                                                               conf.get(data_type),
-                                                               row)
-                            dcc_seq_obj = dcc.crud_serology(dcc_prep, 
+                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
+                                                                conf.get('data_study'),
+                                                                data_type,
+                                                                conf.get(data_type),
+                                                                row)
+                            dcc_seq_obj = dcc.crud_serology(session,
+                                                            dcc_prep, 
                                                             file_md5sum,
                                                             dcc_sample.name,
+                                                            conf.get('data_study'),
                                                             dtype_metadata,
                                                             row)
 
@@ -325,51 +327,53 @@ def main(workflow):
                         ## ugly but can re-work this later.
                         if output_files_map and row.get('External ID') in output_files_map:
                             seq_out_files = output_files_map.get(row.get('External ID'))
- 
-                            if data_type == "16S":
-                                ## When we have 16S data we first need to associate a trimmed 
-                                ## 16S dataset with our raw 16S dataset and then attach 
-                                ## abundance matrices to the trimmed dataset.
+                            dcc_out_objs = []
 
-                                ## Going to make another big assumption here that if we have a FASTQ
-                                ## file in our output section for a 16S dataset it is a trimmed 
-                                ## file.
-                                trimmed_fastq = [trim for trim in seq_out_files if 'fastq' in trim]
-                                trim_seq_obj = dcc.crud_sixs_trimmed_seq_set(dcc_seq_obj,
-                                                                             file_md5sum,
-                                                                             dcc_sample.name,
-                                                                             dtype_metadata,
-                                                                             row)
-                                dcc_seq_obj = upload_data_files(workflow, [trim_seq_obj])
-                            elif data_type == "MVX":
-                                ## Viromics data requires us to create a private node for the 
-                                ## WGS raw seq set that is used to create our viral seq set.
-                                viral_seqs = [viral_seq for viral_seq in seq_out_files 
-                                              if 'tar' in viral_seq]
+                            for out_file in seq_out_files:
+                                if data_type == "16S":
+                                    ## When we have 16S data we first need to associate a trimmed 
+                                    ## 16S dataset with our raw 16S dataset and then attach 
+                                    ## abundance matrices to the trimmed dataset.
 
-                                if len(viral_seqs) > 1:
-                                    raise ValueError("Found more than one viral sequence " 
-                                                     "for visit: %s" % viral_seqs)
+                                    ## Going to make another big assumption here that if we have a FASTQ
+                                    ## file in our output section for a 16S dataset it is a trimmed 
+                                    ## file.
+                                    trimmed_fastq = [trim for trim in seq_out_files if 'fastq' in trim]
+                                    trim_seq_obj = dcc.crud_sixs_trimmed_seq_set(dcc_seq_obj,
+                                                                                file_md5sum,
+                                                                                dcc_sample.name,
+                                                                                dtype_metadata,
+                                                                                row)
+                                    dcc_out_objs.append(upload_data_files(workflow, [trim_seq_obj]))
+                                elif data_type == "MVX":
+                                    ## Viromics data requires us to create a private node for the 
+                                    ## WGS raw seq set that is used to create our viral seq set.
+                                    viral_seqs = [viral_seq for viral_seq in seq_out_files 
+                                                if 'tar' in viral_seq]
 
-                                viral_seq = viral_seqs[0]
-                                viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seq))
-                                if not viral_seq_md5:
-                                   raise ValueError("Could not find md5sum for file %s" % viral_seq)
-                                    
-                                dcc_seq_obj = dcc.crud_viral_seq_set(dcc_seq_obj,
-                                                                     viral_seq,
-                                                                     viral_seq_md5,
-                                                                     dcc_sample.name,
-                                                                     dtype_metadata,
-                                                                     row)
-                                uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
-                                dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
+                                    if len(viral_seqs) > 1:
+                                        raise ValueError("Found more than one viral sequence " 
+                                                        "for visit: %s" % viral_seqs)
 
-                                seq_out_files.remove(viral_seq)                                                                     
-                            else:
-                                dcc_seq_obj = uploaded_file[0] if uploaded_file else dcc_seq_obj
+                                    viral_seq = viral_seqs[0]
+                                    viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seq))
+                                    if not viral_seq_md5:
+                                    raise ValueError("Could not find md5sum for file %s" % viral_seq)
+                                        
+                                    dcc_seq_obj = dcc.crud_viral_seq_set(dcc_seq_obj,
+                                                                        viral_seq,
+                                                                        viral_seq_md5,
+                                                                        dcc_sample.name,
+                                                                        dtype_metadata,
+                                                                        row)
+                                    uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
+                                    dcc_out_objs.append(uploaded_file[0] if uploaded_file else dcc_seq_obj)
 
-                            def _process_output(output_file):
+                                    seq_out_files.remove(viral_seq)                                                                     
+                                else:
+                                    dcc_out_objs.append(uploaded_file[0] if uploaded_file else dcc_seq_obj)
+
+                            def _process_output(dcc_seq_obj, output_file):
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)
 
@@ -389,7 +393,7 @@ def main(workflow):
 
                                 uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
-                            map(lambda out_file: _process_output(out_file), seq_out_files)
+                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_obj, out_file), zip(seq_out_files, dcc_out_objs)
 
      
     #workflow.go()
