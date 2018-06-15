@@ -2254,12 +2254,14 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
             req_metadata['matrix_type'] = "wgs_community"
         elif data_type == "amplicon":
             req_metadata['matrix_type'] = "16s_community"
-    elif "path" in abund_file or "gene" in abund_file:
+    elif "path" in abund_file or "gene" in abund_file or 'ecs' in abund_file:
         if "path" in abund_file:
             req_metadata['tags'].append('pathways')
         elif "gene" in abund_file:
             req_metadata['tags'].append('genefamilies')
-
+        elif 'ecs' in abund_fild:
+            req_metadata['tags'].append('ecs')
+                
         if data_type == "metatranscriptomics":
             req_metadata['matrix_type'] = "microb_metatranscriptome"
         else:            
