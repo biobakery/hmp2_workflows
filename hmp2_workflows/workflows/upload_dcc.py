@@ -358,7 +358,7 @@ def main(workflow):
                                     viral_seq = viral_seqs[0]
                                     viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seq))
                                     if not viral_seq_md5:
-                                    raise ValueError("Could not find md5sum for file %s" % viral_seq)
+                                        raise ValueError("Could not find md5sum for file %s" % viral_seq)
                                         
                                     dcc_seq_obj = dcc.crud_viral_seq_set(dcc_seq_obj,
                                                                         viral_seq,
@@ -393,11 +393,7 @@ def main(workflow):
 
                                 uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
-                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_obj, out_file), zip(seq_out_files, dcc_out_objs)
-
-     
-    #workflow.go()
-
+                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_seq_obj, out_file), seq_out_files, dcc_out_objs)
 
 if __name__ == "__main__":
     main(parse_cli_arguments())

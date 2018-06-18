@@ -2246,7 +2246,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
         req_metadata['format'] = "tbl"
         req_metadata['format_doc'] = "https://en.wikipedia.org/wiki/Tab-separated_values"
     else:
-        raise ValueError("Unknown abundance matrix type:", raw_file_name)
+        raise ValueError("Unknown abundance matrix type:", abund_fname)
 
     ## TODO: Figure out a better way to take care of this
     if "taxonomic_profile" in abund_file:
@@ -2259,7 +2259,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
             req_metadata['tags'].append('pathways')
         elif "gene" in abund_file:
             req_metadata['tags'].append('genefamilies')
-        elif 'ecs' in abund_fild:
+        elif 'ecs' in abund_file:
             req_metadata['tags'].append('ecs')
                 
         if data_type == "metatranscriptomics":
