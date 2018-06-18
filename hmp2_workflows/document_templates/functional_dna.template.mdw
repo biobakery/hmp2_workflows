@@ -80,7 +80,7 @@ hmp2_viz.convert_table_to_datatables_json(os.path.join(document.data_folder, all
 <thead>
 <tr>
 <th>Pathway</th>
-<th>Average abundance</th>
+<th>Average abundance (RPK)</th>
 <th>Variance</th>
 </tr>
 </thead>

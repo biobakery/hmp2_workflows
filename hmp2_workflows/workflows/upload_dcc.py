@@ -393,7 +393,7 @@ def main(workflow):
 
                                 uploaded_file = upload_data_files(workflow, [dcc_seq_out])
 
-                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_seq_obj, out_file), seq_out_files, dcc_out_objs)
+                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_seq_obj, out_file), dcc_out_objs, seq_out_files)
 
 if __name__ == "__main__":
     main(parse_cli_arguments())
