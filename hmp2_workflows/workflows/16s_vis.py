@@ -81,6 +81,8 @@ def main(workflow):
     eestats_table = glob(os.path.join(args.input + "/**/",
         files.SixteenS.file_info['eestats2'].keywords.get('names')))[0]
 
+    templates.append(document_templates.get_template('header'))
+
     if args.source == 'biobakery':
         otu_table = glob(os.path.join(args.input + '/**/', 
             files.SixteenS.file_info['otu_table_closed_reference'].keywords.get('names')))[0]
@@ -96,21 +98,20 @@ def main(workflow):
             files.SixteenS.file_info['msa_closed_reference'].keywords.get('names')))[0]
         log_file = files.Workflow.path('log', args.input)
 
-        dependencies = [otu_table, otu_table_open, read_counts_table, eestats_table,
-                        centroid_fasta, centroid_closed_fasta, log_file]
+        dependencies = [otu_table, otu_table_open, read_counts_table, 
+                        eestats_table, centroid_fasta, centroid_closed_fasta, log_file]
         vars.update({
             'log': log_file,
             'read_count_table': read_counts_table,
         })
 
-        templates.append(document_templates.get_template('header_16S'))
         templates.append(document_templates.get_template('quality_control_16S_CMMR'))
     elif args.source == 'CMMR':
         otu_table = glob(os.path.join(args.input + '/**/' + 'OTU_Table_taxonomy_fix.tsv'))[0]
         centroid_fasta = glob(os.path.join(args.input + '/**/', 'CentroidInformation.fa'))[0]
-        dependencies = [otu_table, eestats_table, centroid_fasta]
+        read_counts_table = glob(os.path.join(args.input + '/**/' + 'read_counts.tsv'))[0]
+        dependencies = [read_counts_table, otu_table, eestats_table, centroid_fasta]
 
-        templates.append(document_templates.get_template('header_16S_CMMR'))
         templates.append(document_templates.get_template('quality_control_16S_CMMR'))
         templates.append(document_templates.get_template('taxonomy_16S_CMMR'))
 
@@ -119,7 +120,9 @@ def main(workflow):
     vars.update({
         'summary_title': "HMP2: 16S Data Summary Report",
         'otu_table': otu_table,
-        'eestats_table': eestats_table
+        'eestats_table': eestats_table,
+        'metadata_file': args.metadata_file,
+        'read_counts': read_counts_table
     })
 
     doc_task = workflow.add_document(

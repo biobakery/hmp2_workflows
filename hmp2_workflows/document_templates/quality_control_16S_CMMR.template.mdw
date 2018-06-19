@@ -13,23 +13,90 @@ from anadama2 import PweaveDocument
 
 document = PweaveDocument()
 vars = document.get_vars()
+
+eestats_rows, eestats_columns, eestats_data, overall_stats = utilities.read_eestats2(vars["eestats_table"])
+
+overall_stats = overall_stats.replace('reads', 'total reads')
+overall_stats = overall_stats.replace('max len', 'maximum read length')
+overall_stats = overall_stats.replace('avg', 'average read length')
+
+# If we have a metadata file supplied we can filter down our read counts table to 
+# just those samples we have used for analysis.
+metadata_file = vars.get('metadata_file')
+read_counts_file = vars.get('read_counts')
+if metadata_file:
+    filtered_out_file = os.path.join(document.data_folder, "filtered_read_counts.tsv")
+    metadata_df = pd.read_csv(metadata_file)
+    valid_samples = metadata_df[metadata_df['data_type'] == "biopsy_16S"]['External ID'].tolist()
+
+    counts_df = pd.read_table(read_counts_file)
+    filtered_counts_df = counts_df[counts_df['SampleID'].isin([int(s) for s in valid_samples])]
+    filtered_counts_df.to_csv(filtered_out_file, sep="\t", index=False)
+
+    read_counts_file = filtered_out_file
+
+# TODO: Work in Alpha and Beta diversity plots here
 @
 
 <div class="tab-pane active" id="qc_tab"> 
 
 ## Quality Control
 
-<p>The general stats for this data are: <b><%= overall_stats %></b>.</p>
+This report section contains information about the quality control processing for all samples. These samples are run through 
+quality control steps in the CMMR 16S pipeline that produce summary statistics and quality control measurements.
 
+#### 16S Samples: Tables of Filtered Reads
+<div id="qc_filtered_reads">
+<table id="qc_filtered_reads_paired_counts_table" class="table table-striped" cellspacing="0" width="100%">
+<caption>
+    <ul class="caption-list">
+        <li>**Raw**: Number of reads based on de-multiplexed, unprocessed sequencing files</li>
+        <li>**Filtered**: Number of reads surviving filtering steps</li>
+        <li>**Mapped**: Number of reads that mapped to any of the pipeline databases</li>
+        <li>**Unmapped**: Number of reads that did not map to any of the pipeline databases</li>
+    </ul>
+</caption>
+<thead>
+<tr>
+<th>Sample</th>
+<th>Raw</th>
+<th>Filtered</th>
+<th>Mapped</th>
+<th>Unmapped</th>
+</tr>
+</thead>
+</table>
+</div>
+
+#### 16S Samples: Table of Expected Error Rate Filtered Reads
 <p>The following table shows the number of surviving reads when filtering by read length and maximum 
 expected error rate (maxEE). The maximum expected error rate can be defined as the maximumed expected 
 number of errors in a read measured by Phred Q scores. Reads that contain a higher expected error than 
 maxEE are discarded.</p>
 
 <<label="16s_QC", echo=False>>=
-eestats_rows, eestats_columns, eestats_data, overall_stats = utilities.read_eestats2(vars["eestats_table"])
-
 document.show_table(eestats_data, eestats_rows, eestats_columns, 
     "Expected error filter by read length",font="10")
 @
+
+### 16S Samples Plots of Filtered Reads
+
+<div>This figure shows counts of reads in three categories: 
+    <ul>
+        <li>Classified: reads that align to OTUs with known taxonomy</li>
+        <li>Reads that align to OTUs of unknown taxonomy</li>
+        <li>Reads that do not align to any OTUs</li>
+    </ul>
+    The sum of these three read counts for each sample is the total original 
+    read count not including filtering prior to OTU clustering.
+</div>
+
+<<label="qc_plotly_setup", echo=False>>=
+hmp2_viz.convert_table_to_plotly_barplot_json(read_counts_file,
+                                              document.data_folder,
+                                              hide_x_axis=True,
+                                              sort_on='Raw')
+@
+
+<div id="qc_filtered_16S_read_counts_plotly"></div>
 </div>

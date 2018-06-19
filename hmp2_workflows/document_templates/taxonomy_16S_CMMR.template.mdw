@@ -16,19 +16,8 @@ vars = document.get_vars()
 min_abundance=0.01
 min_samples=10
 
-def plot_all_categorical_metadata(sorted_samples, sorted_data, labels, title, ylabel, legend_title="", legend_size=7):
-    """ Generate a plot of each set of categorical metadata """
-    if 'metadata' in vars and vars['metadata'] and 'metadata_labels' in vars and vars['metadata_labels']:
-        # get the metadata organized into the same sample columns as the data
-        new_data, samples_found = utilities.merge_metadata(vars['metadata'], sorted_samples, sorted_data, values_without_names=True)
-        # split the data and metadata 
-        ordered_metadata=new_data[0:len(vars['metadata'])-1]
-        ordered_sorted_data=new_data[len(vars['metadata'])-1:]
-        # get the categorical metadata
-        categorical_metadata=utilities.filter_metadata_categorical(ordered_metadata, vars['metadata_labels'])
-        # plot a barchart for a set of categorical data
-        for cat_metadata in categorical_metadata:
-            plot_grouped_taxonomy_subsets(ordered_sorted_data, cat_metadata, labels, title, samples_found, ylabel, legend_title, legend_size)
+metadata_file = vars['metadata_file']
+
 @
 
 <div class="tab-pane" id="tax_tab">
@@ -37,7 +26,19 @@ def plot_all_categorical_metadata(sorted_samples, sorted_data, labels, title, yl
 
 <<label="16s_taxonomy_average", echo=False>>=
 # read in the otu table data
-samples, ids, taxonomy, data = utilities.read_otu_table(vars["otu_table"])
+
+if metadata_file:
+    filtered_otu_table = os.path.join(document.data_folder, "filtered_otus.tsv")
+    otu_df = pd.read_table(vars["otu_table"])
+    metadata_df = pd.read_csv(metadata_file)
+
+    valid_samples = metadata_df[metadata_df['data_type'] == "biopsy_16S"]['External ID'].tolist()
+    otu_df = otu_df.filter(items=['#OTU ID'] + valid_samples + ['taxonomy'])
+    otu_df.to_csv(filtered_otu_table, sep="\t", index=False)
+
+    samples, ids, taxonomy, data = utilities.read_otu_table(filtered_otu_table)
+else:                                                                     
+    samples, ids, taxonomy, data = utilities.read_otu_table(vars["otu_table"])
 
 # plot the top taxa by genus level, plotting the relative abundance values
 max_taxa=15
@@ -106,11 +107,19 @@ hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder,
 # filter the data by min abundance and min samples
 filtered_taxonomy, filtered_data = utilities.filter_taxa(terminal_taxa_relab, terminal_data_relab, min_abundance, min_samples)
 
-document.show_pcoa(samples, filtered_taxonomy, filtered_data, title="PCOA Ordination of terminal taxa using Bray-Curtis similarity")
+caption = None
+if metadata_file:
+    metadata_df = pd.read_csv(metadata_file)
+
+    ## In this case we are going to want to color things by diagnosis
+    metadata_df = metadata_df[metadata_df['External ID'].isin(samples)].filter(['External ID', 'diagnosis'])
+    metadata = {d['External ID']: d['diagnosis'] for d in metadata_df.to_dict(orient='records')}
+
+    caption = document.show_pcoa(samples,filtered_taxonomy,filtered_data,"PCOA Ordination of terminal taxa using Bray-Curtis similarity", 
+                                 metadata=metadata, dpi=600)
+else:
+    caption = document.show_pcoa(samples,filtered_taxonomy,filtered_data,"PCOA Ordination of terminal taxa using Bray-Curtis similarity")
 @
 
 For the PCoA plot, relative abundances are passed through a basic filter requiring each terminal taxa
 to have at least <b><% print(min_abundance)%> %</b> abundance in at least <b><% print(min_samples) %> %</b> of all samples.
-</div>
-</div>
-</div>

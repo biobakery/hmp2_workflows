@@ -30,7 +30,7 @@ hmp2_viz.convert_table_to_datatables_json(viral_read_proporiton_file, document.d
 This report section contains information about the quality control processing for all samples.
 
 * **Raw**: Untouched fastq reads.
-* **Trimmed Reads**: Number of reads remaining after trimming barcodes, semi-random primer sequences and Illumina adapters.
+* **Trimmed Reads**: 
 * **Viral Reads**: Number of reads remaining after mapping to viral database.
 
 ### Viral Samples Quality Control
@@ -38,7 +38,14 @@ This report section contains information about the quality control processing fo
 #### Viral Samples Tables of Filtered Reads
 <div id="qc_filtered_reads">
 <table id="qc_filtered_reads_counts_table" class="table table-striped" cellspacing="0" width="100%">
-<caption>Viral Reads</caption>
+<caption>
+    <p>Viral Reads</p>
+    <ul class="caption-list">
+        <li>**Raw**: Number of reads based on de-multiplexed, unprocessed sequencing files</li>
+        <li>**Trimmed**: Number of reads remaining after trimming barcodes, semi-random primer sequences and Illumina adapters.</li>
+        <li>**Viral**: Number of reads remaining after mapping to viral database.</li>
+    </ul>
+</caption>
 <thead>
 <tr>
 <th>Sample</th>
@@ -50,7 +57,13 @@ This report section contains information about the quality control processing fo
 </table>
 
 <table id="qc_filtered_reads_viral_proportion" class="table table-striped" cellspacing="0" width="100%"> 
-<caption>Viral Read Proportion</caption>
+<caption>
+    <p>Viral Read Proportion</p>
+    <ul class="caption-list">
+        <li>**Viral / Raw**: Proportion of viral reads relative to the number of raw unfiltered reads.</li>
+        <li>**Viral / Trim**: Proportion of viral reads realtive to the number of quality-trimmed reads.</li>
+    </ul>
+</caption>
 <thead>
 <tr>
 <th>Sample</th>
@@ -60,8 +73,6 @@ This report section contains information about the quality control processing fo
 </thead>
 </table>
 </div>
-
-Proportion of reads remaining after removing host reads relative to the number of: **i) quality-trimmed reads**, and **ii) raw unfiltered reads**.
 
 ### Samples Plots of Filtered Reads
 
