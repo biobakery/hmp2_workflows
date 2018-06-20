@@ -82,6 +82,7 @@ def main(workflow):
         files.SixteenS.file_info['eestats2'].keywords.get('names')))[0]
 
     templates.append(document_templates.get_template('header'))
+    templates.append(document_templates.get_template('16s_bp'))
 
     if args.source == 'biobakery':
         otu_table = glob(os.path.join(args.input + '/**/', 

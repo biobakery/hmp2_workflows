@@ -1,0 +1,48 @@
+
+---
+header-includes: 
+  - <link rel="stylesheet" href="/static/css/bootstrap.min.css" />
+  - <link rel="stylesheet" href="/static/css/carousel.css" />
+  - <link rel="stylesheet" href="/static/css/mezzanine.css" />
+  - <link rel="stylesheet" href="/static/css/bootstrap-theme.min.css" />
+  - <link rel="stylesheet" href="/static/css/datatables.min.css" />
+  - <link rel="stylesheet" href="/static/css/ibdmdb-summary.css" />
+  - <script src="/static/mezzanine/js/jquery-1.7.1.min.js"></script>
+  - <script src="/static/js/bootstrap.js"></script>
+  - <script src="/static/js/datatables.min.js"></script>
+  - <script src="/static/js/plotly-latest.min.js"></script>
+  - <script src="/static/js/16S.js"></script>
+
+---
+
+<<label="16s_bp_setup", echo=False>>=
+from biobakery_workflows import utilities
+
+from anadama2 import PweaveDocument
+
+document = PweaveDocument()
+vars = document.get_vars()
+@
+
+<div class="Row">
+<div class="page-header">
+## <%= vars['summary_title'] %>
+<p>Raw 16S v4 sequences were filtered initially using the [https://www.bcm.edu/research/centers/metagenomics-and-microbiome-research](CMMR) 
+pipeline. This uses a combination of phylogenetic and alignment to maximize data quality. 
+Resulting sequences were then clustered into Operational Taxonomic Units (OTUs) at a 97% nucleotide 
+identity threshold using the UPARSE algorithm. OTU representative sequences are subsequently mapped 
+to an optimized version of the SILVA Database containing only sequences from the 16S rRNA gene v4 r
+egion to assign putative taxonomy. Finally, abundances are calculated for each OTU by mapping the 
+demultiplexed reads to the UPARSE OTUs.</p>
+</div>
+</div>
+
+<!-- Main page content follows -->
+<div id="main_content" class="Row">
+<ul class="nav nav-tabs">
+<li role="presentation" class="active"><a href="#qc_tab" data-toggle="tab">Quality Control</a></li>
+<li role="presentation"><a href="#tax_tab" data-toggle="tab">Taxonomy</a></li>
+</ul>
+
+<div class="panel-body">
+<div class="tab-content">

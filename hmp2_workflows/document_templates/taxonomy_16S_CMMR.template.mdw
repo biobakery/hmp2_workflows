@@ -37,6 +37,8 @@ if metadata_file:
     otu_df.to_csv(filtered_otu_table, sep="\t", index=False)
 
     samples, ids, taxonomy, data = utilities.read_otu_table(filtered_otu_table)
+    samples_out = open('/tmp/samples.txt', 'w')
+    samples_out.write('\n'.join(samples))
 else:                                                                     
     samples, ids, taxonomy, data = utilities.read_otu_table(vars["otu_table"])
 
@@ -63,10 +65,10 @@ sorted_samples, sorted_data = utilities.sort_data(top_data[0], samples)
 transpose_top_data = numpy.transpose(top_data)
 sorted_top_data = numpy.transpose([transpose_top_data[samples.index(sample)] for sample in sorted_samples])
 
-document.write_table(["Sample"] + top_taxa_short_names, sorted_samples, numpy.transpose(sorted_top_data), 
+document.write_table(["Sample"] + sorted_samples, top_taxa_short_names, sorted_top_data, 
                      os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'), 
-                                              document.data_folder, 
+                                              document.data_folder, y_label="Realtive Abundance",
                                               plot_type='stack', legend_order='normal')
 @
 
@@ -92,7 +94,7 @@ sorted_top_terminal_data = numpy.transpose([transpose_top_terminal_data[samples.
 document.write_table(["Sample"] + sorted_samples_terminal, shorted_names, sorted_top_terminal_data, 
                      os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'), 
-                                              document.data_folder, 
+                                              document.data_folder, y_label="Relative Abundance",
                                               plot_type='stack', legend_order='normal')
 @
 
@@ -123,3 +125,7 @@ else:
 
 For the PCoA plot, relative abundances are passed through a basic filter requiring each terminal taxa
 to have at least <b><% print(min_abundance)%> %</b> abundance in at least <b><% print(min_samples) %> %</b> of all samples.
+
+</div>
+</div>
+</div>

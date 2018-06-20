@@ -94,10 +94,6 @@ def _generate_group_barplot_json(table_file, sort_on, transpose=False, rescale_v
     traces = []
 
     table_df = pd.read_table(table_file, index_col=0)
-    
-    if rescale_vals:
-        table_df = table_df * 100
-
     table_df = table_df.sort_values(by=sort_on) if sort_on else table_df
     table_df = table_df.T if transpose else table_df
     
@@ -113,8 +109,8 @@ def _generate_group_barplot_json(table_file, sort_on, transpose=False, rescale_v
 
 
 def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None, 
+                                         x_label='Samples', y_label='Number of Reads',
                                          hide_x_axis=False, plot_type='group', 
-                                         relab_100_scale=True,
                                          xaxis_font_size='10', legend_order='reverse'):
     """Converts a tab-delimited text file to a JSON file that can be read 
     by the Plotly js library to generate dynamic charts.
@@ -124,6 +120,8 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
         output_dir (string): Path to the output directory to write the 
             converted JSON file.
         sort_on (string): Key to sort plot data on [Default: None]
+        x_label (string): x-axis lablel [Default: Samples]
+        y_label (string): y-axis label [Default: Number of Reads]
         hide_x_axis (boolean): If True hide x-axis and display the number of 
             x elements [Default: False]
         plot_type (string): The type of barplot to produce. [group, stacked]
@@ -152,13 +150,14 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
     output_json_file = output_json_file.replace('table', 'plot')
 
     transpose = False if plot_type == "group" else True
-    plot_traces = _generate_group_barplot_json(table_file, sort_on, transpose, rescale_vals=True)
+    plot_traces = _generate_group_barplot_json(table_file, sort_on, transpose)
 
     plot_json['data'] = plot_traces
     
     plot_json['layout'] = {'barmode': plot_type}
     plot_json['layout']['xaxis'] = {}
-    plot_json['layout']['yaxis'] = {'title': 'Number of Reads'}
+    plot_json['layout']['xaxis']['type'] = 'category'
+    plot_json['layout']['yaxis'] = {'title': y_label}
 
     plot_json['layout']['legend'] = {'traceorder': legend_order}
 
@@ -169,7 +168,7 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
         ## how many samples are in this dataset.
         plot_json['layout']['xaxis']['title'] = "Number of Samples: %s" % len(plot_traces[0]['x'])
     else:
-        plot_json['layout']['xaxis']['title'] = "Samples"
+        plot_json['layout']['xaxis']['title'] = x_label
         plot_json['layout']['xaxis']['tickfont'] = {'size': xaxis_font_size}
 
     with open(output_json_file, 'w') as json_out:
