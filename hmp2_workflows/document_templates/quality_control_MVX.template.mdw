@@ -28,20 +28,17 @@ hmp2_viz.convert_table_to_datatables_json(viral_read_proporiton_file, document.d
 ## Quality Control
 
 This report section contains information about the quality control processing for all samples.
-
-* **Raw**: Untouched fastq reads.
-* **Trimmed Reads**: 
-* **Viral Reads**: Number of reads remaining after mapping to viral database.
+Demultiplexed reads were processed by trimming off barcodes, semi-random primer sequences, 
+and Illumina adapters
 
 ### Viral Samples Quality Control
-
 #### Viral Samples Tables of Filtered Reads
 <div id="qc_filtered_reads">
 <table id="qc_filtered_reads_counts_table" class="table table-striped" cellspacing="0" width="100%">
 <caption>
     <p>Viral Reads</p>
     <ul class="caption-list">
-        <li>**Raw**: Number of reads based on de-multiplexed, unprocessed sequencing files</li>
+        <li>**Raw**: Number of reads based on unprocessed sequencing files</li>
         <li>**Trimmed**: Number of reads remaining after trimming barcodes, semi-random primer sequences and Illumina adapters.</li>
         <li>**Viral**: Number of reads remaining after mapping to viral database.</li>
     </ul>

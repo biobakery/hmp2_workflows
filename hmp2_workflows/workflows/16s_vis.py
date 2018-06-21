@@ -113,8 +113,8 @@ def main(workflow):
         read_counts_table = glob(os.path.join(args.input + '/**/' + 'read_counts.tsv'))[0]
         dependencies = [read_counts_table, otu_table, eestats_table, centroid_fasta]
 
-        templates.append(document_templates.get_template('quality_control_16S_CMMR'))
-        templates.append(document_templates.get_template('taxonomy_16S_CMMR'))
+        templates.append(document_templates.get_template('quality_control_16s_cmmr'))
+        templates.append(document_templates.get_template('taxonomy_16s_cmmr'))
 
     templates.append(document_templates.get_template('footer'))
 
