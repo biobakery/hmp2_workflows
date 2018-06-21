@@ -16,10 +16,6 @@ vars = document.get_vars()
 
 eestats_rows, eestats_columns, eestats_data, overall_stats = utilities.read_eestats2(vars["eestats_table"])
 
-overall_stats = overall_stats.replace('reads', 'total reads')
-overall_stats = overall_stats.replace('max len', 'maximum read length')
-overall_stats = overall_stats.replace('avg', 'average read length')
-
 # If we have a metadata file supplied we can filter down our read counts table to 
 # just those samples we have used for analysis.
 metadata_file = vars.get('metadata_file')
@@ -33,7 +29,14 @@ if metadata_file:
     filtered_counts_df = counts_df[counts_df['SampleID'].isin([int(s) for s in valid_samples])]
     filtered_counts_df.to_csv(filtered_out_file, sep="\t", index=False)
 
-hmp2_viz.convert_table_to_datatables_json(read_counts_file, document.data_folder)
+# We can compute a number of "filtered" reads by subtracting the number of Raw Reads from the 
+# sum of the Mapped and Unmapped reads (Raw - (Unmapped + Mapped))
+updated_counts_file = os.path.join(document.data_folder, 'read_counts_final.tsv')
+read_counts_df = pd.read_table(read_counts_file)
+read_counts_df['Filtered'] = read_counts_df['Raw'] - (read_counts_df['Mapped'] + read_counts_df['Unmapped'])
+read_counts_df.to_csv(updated_counts_file, sep="\t", index=False)
+
+hmp2_viz.convert_table_to_datatables_json(updated_counts_file, document.data_folder)
 
 # TODO: Work in Alpha and Beta diversity plots here
 @
@@ -47,7 +50,7 @@ quality control steps in the CMMR 16S pipeline that produce summary statistics a
 
 #### 16S Samples: Tables of Filtered Reads
 <div id="qc_filtered_reads">
-<table id="qc_filtered_reads_counts_table" class="table table-striped" cellspacing="0" width="100%">
+<table id="qc_filtered_read_counts_table" class="table table-striped" cellspacing="0" width="100%">
 <caption>
     <ul class="caption-list">
         <li>**Raw**: Number of reads based on de-multiplexed, unprocessed sequencing files</li>
@@ -81,18 +84,17 @@ document.show_table(eestats_data, eestats_rows, eestats_columns,
 
 ### 16S Samples Plots of Filtered Reads
 
-<div>This figure shows counts of reads in three categories: 
+<div>This figure shows counts of reads in three categories: <br />
     <ul>
-        <li>Classified: reads that align to OTUs with known taxonomy</li>
-        <li>Reads that align to OTUs of unknown taxonomy</li>
-        <li>Reads that do not align to any OTUs</li>
+        <li>**Raw**: Number of reads based on unprocessed sequence files</li>
+        <li>**Filtered**: Number of reads that survive any QC steps</li>
+        <li>**Mapped**: Number of reads that align to OTUs with known taxonomy</li>
+        <li>**Unmapped**: Number of reads that do not align to any OTUs</li>
     </ul>
-    The sum of these three read counts for each sample is the total original 
-    read count not including filtering prior to OTU clustering.
 </div>
 
 <<label="qc_plotly_setup", echo=False>>=
-hmp2_viz.convert_table_to_plotly_barplot_json(read_counts_file,
+hmp2_viz.convert_table_to_plotly_barplot_json(updated_counts_file,
                                               document.data_folder,
                                               sort_on='Raw')
 @

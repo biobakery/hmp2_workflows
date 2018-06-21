@@ -24,6 +24,9 @@ metadata_file = vars['metadata_file']
 
 ### Average Abundance
 
+Stacked barplot of 15 most abundant genus in each sample. Samples in the plot were sorted on the 
+genues with the highest mean abundances among samples in decreasing order.
+
 <<label="16s_taxonomy_average", echo=False>>=
 # read in the otu table data
 
@@ -69,12 +72,15 @@ document.write_table(["Sample"] + sorted_samples, top_taxa_short_names, sorted_t
                      os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_genera_avg_abund.tsv'), 
                                               document.data_folder, y_label="Realtive Abundance",
-                                              plot_type='stack', legend_order='normal')
+                                              plot_type='stack', legend_order='normal', hide_x_axis=True)
 @
 
 <div id="tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>
 
 ### Terminal Taxa
+
+Stacked barplot of 15 most abundant terminal taxa in each sample. Terminal taxa can be defined as the 
+deepest taxonomic classification found for a given sample.
 
 <<label="16s_taxonomy_terminal", echo=False>>=
 # plot the relative abundance of the top terminal taxa
@@ -95,7 +101,7 @@ document.write_table(["Sample"] + sorted_samples_terminal, shorted_names, sorted
                      os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'))
 hmp2_viz.convert_table_to_plotly_barplot_json(os.path.join(document.data_folder, 'top_terminal_genera_avg_abund.tsv'), 
                                               document.data_folder, y_label="Relative Abundance",
-                                              plot_type='stack', legend_order='normal')
+                                              plot_type='stack', legend_order='normal', hide_x_axis=True)
 @
 
 <div id="terminal_tax_top15_genera_avg_abund_plotly" class="plotly" data-plot-resized="false"></div>

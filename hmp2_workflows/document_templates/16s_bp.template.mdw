@@ -27,7 +27,7 @@ vars = document.get_vars()
 <div class="Row">
 <div class="page-header">
 ## <%= vars['summary_title'] %>
-<p>Raw 16S v4 sequences were filtered initially using the [https://www.bcm.edu/research/centers/metagenomics-and-microbiome-research](CMMR) 
+<p>Raw 16S v4 sequences were filtered initially using the [CMMR](https://www.bcm.edu/research/centers/metagenomics-and-microbiome-research)
 pipeline. This uses a combination of phylogenetic and alignment to maximize data quality. 
 Resulting sequences were then clustered into Operational Taxonomic Units (OTUs) at a 97% nucleotide 
 identity threshold using the UPARSE algorithm. OTU representative sequences are subsequently mapped 
