@@ -11,9 +11,8 @@ header-includes:
   - <script src="/static/js/bootstrap.js"></script>
   - <script src="/static/js/datatables.min.js"></script>
   - <script src="/static/js/plotly-latest.min.js"></script>
-  - <script src="/static/js/taxonomy.js"></script>
-  - <script src="/static/js/qc.js"></script>
-  - <script src="/static/js/func_profile.js"></script>
+  - <script src="/static/js/viz_common.js"></script>
+  - <script src="/static/js/wmgx.js"></script>
 
 ---
 

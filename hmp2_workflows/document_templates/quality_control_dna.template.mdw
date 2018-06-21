@@ -40,8 +40,9 @@ hmp2_viz.convert_table_to_datatables_json(files.ShotGunVis.path('microbial_count
 
 ## Quality Control
 
-This report section contains information about the quality control processing for all samples. These samples were run through KneadData. 
-Samples were first trimmed then filtered using the human genome (hg38). RNA samples where than filtered using the human transcriptome (hg38 mRNA).
+This report section contains information about the quality control processing for all samples. Samples were run through [KneadData](http://huttenhower.sph.harvard.edu/kneaddata) 
+which first trimmed reads to preserve high quality sequence and remove any adapter contaminants. Surviving sequence were filtred
+to remove any human contaminants using the human genome (hg38).
 
 Data are organized by paired and orphan reads. When one read in a pair passes a filtering step and the other does not the surviving read is an orphan. 
 

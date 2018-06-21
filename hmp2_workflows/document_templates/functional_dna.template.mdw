@@ -58,10 +58,12 @@ document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
 <<echo=False>>=
 document.show_hclust2(dna_samples,dna_top_average_pathways,dna_top_average_data,
     title="Top "+str(max_sets)+" pathways by average abundance (z-score)",
-    log_scale=False,zscore=True,dpi=400)
+    log_scale=False,zscore=True,dpi=800)
 @
 
+<div id='heatmap_zscore'>
 <%= visualizations.ShotGun.format_caption("pathway_abundance_heatmap",norm="z-score") %> 
+</div>
 
 <<label="pathways_table", echo=False>>=
 utilities.reset_pweave_figure_size()
