@@ -25,7 +25,7 @@ metadata_file = vars['metadata_file']
 ### Average Abundance
 
 Stacked barplot of 15 most abundant genus in each sample. Samples in the plot were sorted on the 
-genues with the highest mean abundances among samples in decreasing order.
+genus with the highest mean abundances among samples in decreasing order.
 
 <<label="16s_taxonomy_average", echo=False>>=
 # read in the otu table data
