@@ -170,9 +170,7 @@ def main(workflow):
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 dcc_subject = dcc_subjects.get(subject_id[1:])
-                if dcc_subject:
-                    dcc_subject = dcc_subject[0]
-                else:
+                if not dcc_subject:
                     raise ValueError('Could not find Subject object for subject ID %s' % subject_id)                        
 
                 dcc_visits = dcc.group_osdf_objects(dcc_subject.visits(),
