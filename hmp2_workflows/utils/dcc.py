@@ -815,10 +815,9 @@ def crud_subjects(subjects, study, baseline_metadata, conf):
             if subject.is_valid():
                 success = subject.save()
                 if not success:
-                    raise ValueError('Saving subject %s failed.' % 
-                                    metadata_subject_id)
+                    raise ValueError('Saving subject %s failed.' % subject_id)
             
-                subjects[subject_id] = subject
+                subjects[subject_id] = [subject]
             else:
                 raise ValueError('Subject validation failed: %s' % 
                                 subject.validate())
