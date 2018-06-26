@@ -109,9 +109,9 @@ def main(workflow):
 
         dcc_objs = []
         dcc_project = dcc.get_project(conf, session)
-        dcc_study = dcc.get_or_update_study(conf, 
-                                            session,
-                                            dcc_project.id)
+        dcc_study = dcc.crud_study(conf, 
+                                   session,
+                                   dcc_project.id)
         dcc_subjects = dcc.group_osdf_objects(dcc_study.subjects(),
                                               'rand_subject_id')
         dcc_subjects = dcc.crud_subjects(dcc_subjects, dcc_study, baseline_metadata_df, conf)
