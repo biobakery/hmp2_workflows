@@ -72,6 +72,8 @@ def parse_cli_arguments():
     parser.add_argument('-d', '--dry-run', action='store_true', default=False, 
                         help='Perform a dry-run deletion and list which '
                         'nodes will be delete.')
+    parser.add_argument('--delete-root', action='store_true', default=False,
+                        help='Delete the root node when this flag is specified.')
 
     return parser.parse_args()
 
@@ -167,12 +169,19 @@ def build_osdf_tree(study_id):
     products = list(itertools.chain.from_iterable(products))
     products = [p for p in products if not isinstance(p, types.GeneratorType)]
     product_nodes = map(_update_osdf_tree, products)
-    osdf_lookup_map.update({po.name: po for po in seq_set_nodes})
+    osdf_lookup_map.update({po.name: po for po in product_nodes})
+
+    ## Sometimes we have another round of products we need to account for here...
+    products2 = [list(c) for p in products for c in p.children() if p.children()]
+    products2 = list(itertools.chain.from_iterable(products2))
+    products2 = [p for p in products2 if not isinstance(p, types.GeneratorType)]
+    product_nodes2 = map(_update_osdf_tree, products2)
+    osdf_lookup_map.update({po.name: po for po in product_nodes2})
 
     return study_node
 
 
-def delete_nodes(root_node, dry_run, stop_node="root"):
+def delete_nodes(root_node, dry_run, delete_root, stop_node="root"):
     """
     Cascade deletes OSDF nodes in a depth-first manner.
 
@@ -182,6 +191,9 @@ def delete_nodes(root_node, dry_run, stop_node="root"):
             be deleted.
         stop_node (string): Name of the node to stop deletion on. Defaults to 
             the root node but can be any OSDF ID to stop on.
+        delete_root (boolean): If the stop_node parameter is set to 'root'
+            this parameter can be passed to indicate we want to delete the 
+            root node as well.
 
     Requires:
         None
@@ -204,19 +216,25 @@ def delete_nodes(root_node, dry_run, stop_node="root"):
                 res = osdf_obj.delete()
                
                 if not res:
+                    print "FAILED TO DELETE NODE:", node
                     failed_delete.append(osdf_obj)
 
     if failed_delete:
-        print "WARNING: The following OSDF nodes were not deleted:"
-        "\n".join(failed_delete)
+        print "WARNING: The following OSDF nodes were not deleted:" + "\n".join(failed_delete)
+
+    if delete_root and stop_node == "root":
+        print "DELETING ROOT NODE:", root_node
+
+        if not dry_run:
+            root_node.osdf.delete()
 
 
 def main(args):
-    session = cutlass.iHMPSession('cesar.arze', 'fishnet-socket-dolphin-can', ssl=False)
+    session = cutlass.iHMPSession(args.username, args.password, ssl=False)
     osdf = session.get_osdf()
 
     root_node = build_osdf_tree(args.study_id)
-    delete_nodes(root_node, args.dry_run)
+    delete_nodes(root_node, args.dry_run, args.delete_root)
 
 
 if __name__ == "__main__":
