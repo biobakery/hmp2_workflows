@@ -619,10 +619,9 @@ def get_project(conf, session):
 
     return cutlass.Project.load(dcc_project_id)
 
-
-def get_or_update_study(conf, session, project_id):
-    """Retrieves an iHMP OSDF study using the provided study metadata. If any
-    study metadata has been updated since the prior submission the updated 
+def crud_study(conf, session, project_id):
+    """Creates or updates iHMP OSDF study using the provided study metadata. If
+    any study metadata has been updated since the prior submission the updated 
     metadata will submitted.
 
     Args:
@@ -661,12 +660,12 @@ def get_or_update_study(conf, session, project_id):
             ': "and" } } } }' % study_id)
     query_resp = osdf.query_all_pages(namespace, query)
 
-    if query_resp.get('search_result_total') != 1:
-        raise ValueError('Could not find existing study: %s' % study_id)
-
-    query_res = query_resp.get('results')[0]
-    study_id = query_res.get('id')
-    study = cutlass.Study.load(study_id)
+    if query_resp.get('search_result_total') == 1:
+        query_res = query_resp.get('results')[0]
+        study_id = query_res.get('id')
+        study = cutlass.Study.load(study_id)
+    else:
+        study = cutlass.Study()
 
     fields_to_update = get_fields_to_update(study_metadata, study)
     map(lambda key: setattr(study, key, study_metadata.get(key)),

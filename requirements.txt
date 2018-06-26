@@ -1,4 +1,5 @@
 https://bitbucket.org/biobakery/anadama2/get/tip.zip#egg=anadama2
+https://bitbucket.org/biobakery/biobakery_workflows/get/tip.zip#egg=biobakery_workflows
 -e git://github.com/ihmpdcc/cutlass.git#egg=cutlass
 numpy==1.12.1
 cutplace==0.8.8
@@ -8,4 +9,3 @@ biom-format==2.1.5
 glob2==0.5
 osdf-python==0.7
 funcy==1.8
--e git+https://github.com/carze/PandasSchema.git

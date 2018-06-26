@@ -83,7 +83,7 @@ at Baylor College of Medicine.
 Species abundances are passed through a basic filter requiring each species
 to have at least **<%= min_abundance %>%** abundance.
 
-A total of **<% print(len(species_taxonomy)) %>** species were identified. After basic filtering
+A total of **<% print(len(species_taxonomy)) %>** species were identified from **<% print(len(samples)) %>** samples. After basic filtering
 **<% print(len(filtered_species_taxonomy)) %>** species remained.
 
 ### Species Count Table (MetaPhlAn2)
@@ -124,6 +124,11 @@ The top <%= max_sets_heatmap %> species based on average relative abundances are
 The heatmap was generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
 
 <<label="heatmap", echo=False>>=
+top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_barplot,
+    function="average") 
+virmap_top_taxonomy, virmap_top_data = utilities.top_rows(virmap_species_taxonomy, virmap_species_data, max_sets_barplot,
+    function="average") 
+
 utilities.change_pweave_figure_size_heatmap(False)
 
 document.show_hclust2(samples, top_taxonomy, top_data,
@@ -159,8 +164,6 @@ def sort_data(top_data, samples, sort_by_name=False):
         sorted_data.append([row[i] for i in sorted_sample_indexes])
     return sorted_data, sorted_samples
 
-top_taxonomy, top_data = utilities.top_rows(species_taxonomy, species_data, max_sets_barplot,
-    function="average") 
         
 sorted_data, sorted_samples = sort_data(top_data, samples)
 
@@ -178,8 +181,6 @@ document.plot_stacked_barchart(sorted_data, row_labels=top_taxonomy,
 
 ## And now we repeat the process for virMAP taxonomies. 
 ## TODO: Make things less repetative code-wise here.
-virmap_top_taxonomy, virmap_top_data = utilities.top_rows(virmap_species_taxonomy, virmap_species_data, max_sets_barplot,
-    function="average") 
         
 virmap_sorted_data, virmap_sorted_samples = sort_data(virmap_top_data, virmap_samples)
 

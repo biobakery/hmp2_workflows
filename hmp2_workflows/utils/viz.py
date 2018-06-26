@@ -72,7 +72,7 @@ def convert_table_to_datatables_json(table_file, output_dir):
     return output_json_file
 
 
-def _generate_group_barplot_json(table_file, sort_on, transpose=False):
+def _generate_group_barplot_json(table_file, sort_on, transpose=False, rescale_vals=True):
     """Generates a JSON string that can be consumed by the Plotly JS library
     to produce a grouped barplot.
 
@@ -82,7 +82,8 @@ def _generate_group_barplot_json(table_file, sort_on, transpose=False):
         sort_on (string): Key to sort plot data on.
         transpose (boolean): Whether or not to transpose the dataframe
             once loaded. Depending on the table passed in this may need 
-            to be done.            
+            to be done.       
+        rescale_vals (boolean): Rescale values from 0-1 to 0-100 if True.
 
     Requires: 
         None
@@ -108,7 +109,8 @@ def _generate_group_barplot_json(table_file, sort_on, transpose=False):
 
 
 def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None, 
-                                         hide_x_axis=False, plot_type='group',
+                                         x_label='Samples', y_label='Number of Reads',
+                                         hide_x_axis=False, plot_type='group', 
                                          xaxis_font_size='10', legend_order='reverse'):
     """Converts a tab-delimited text file to a JSON file that can be read 
     by the Plotly js library to generate dynamic charts.
@@ -118,9 +120,13 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
         output_dir (string): Path to the output directory to write the 
             converted JSON file.
         sort_on (string): Key to sort plot data on [Default: None]
+        x_label (string): x-axis lablel [Default: Samples]
+        y_label (string): y-axis label [Default: Number of Reads]
         hide_x_axis (boolean): If True hide x-axis and display the number of 
             x elements [Default: False]
         plot_type (string): The type of barplot to produce. [group, stacked]
+        relab_100_scale (boolean): If True rescale relab'd values from 0-1 to
+            0-100 [Default: True]
         xaxis_font_size (string): Size of x-axis label font [Default: 10]
         legend_order (string): Ordering of plot legend [Default: reverse]
 
@@ -150,7 +156,8 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
     
     plot_json['layout'] = {'barmode': plot_type}
     plot_json['layout']['xaxis'] = {}
-    plot_json['layout']['yaxis'] = {'title': 'Number of Reads'}
+    plot_json['layout']['xaxis']['type'] = 'category'
+    plot_json['layout']['yaxis'] = {'title': y_label}
 
     plot_json['layout']['legend'] = {'traceorder': legend_order}
 
@@ -161,7 +168,7 @@ def convert_table_to_plotly_barplot_json(table_file, output_dir, sort_on=None,
         ## how many samples are in this dataset.
         plot_json['layout']['xaxis']['title'] = "Number of Samples: %s" % len(plot_traces[0]['x'])
     else:
-        plot_json['layout']['xaxis']['title'] = "Samples"
+        plot_json['layout']['xaxis']['title'] = x_label
         plot_json['layout']['xaxis']['tickfont'] = {'size': xaxis_font_size}
 
     with open(output_json_file, 'w') as json_out:

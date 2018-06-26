@@ -69,7 +69,7 @@ Taxonomic profiles were generated using [MetaPhlAn2](http://huttenhower.sph.harv
 Species abundances are passed through a basic filter requiring each species
 to have at least **<%= min_abundance %>%** abundance.
 
-A total of **<% print(len(species_taxonomy)) %>** species were identified. After basic filtering
+A total of **<% print(len(species_taxonomy)) %>** species were identified in **<% print(len(samples)) %>** samples. After basic filtering
 **<% print(len(filtered_species_taxonomy)) %>** species remained.
 
 ### Species Count Table

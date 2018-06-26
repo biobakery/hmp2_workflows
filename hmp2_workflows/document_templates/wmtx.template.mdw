@@ -11,10 +11,10 @@ header-includes:
   - <script src="/static/js/bootstrap.js"></script>
   - <script src="/static/js/datatables.min.js"></script>
   - <script src="/static/js/plotly-latest.min.js"></script>
+  - <script src="/static/js/viz_common.js"></script>
   - <script src="/static/js/wmtx.js"></script>
 
 ---
-
 
 <<label="wmgx_setup", echo=False>>=
 from biobakery_workflows import utilities

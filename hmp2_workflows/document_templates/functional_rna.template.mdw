@@ -37,6 +37,10 @@ clustering on the Euclidean distance metric was used to cluster samples.
 The pathway dendrogram is based on pairwise (Spearman) correlation between pathways.
 Samples are columns and pathway are rows. The heatmaps were generated with [Hclust2](https://bitbucket.org/nsegata/hclust2).
 
+The heatmaps show RNA normalized to DNA for the three features computed by HUMAnN2: gene families, ecs and pathways."
+Note the most abundant DNA features are not necessarily those with the highest transcription (RNA) levels."
+
+
 <<label="norm_ratio_pathways_table", echo=False>>=
 samples, top_pathways, top_pathway_data, top_names_and_descriptions = visualizations.top_average_pathways(
     document, vars["paths_norm_ratio"], top_norm_pathways)
@@ -71,25 +75,6 @@ searching against the UniRef90 database. Each profiled sample is represented by 
 Linear regression fit is represented by straight lines in each plot.
 
 #### RNA/DNA Normalized Features
-
-The heatmaps show RNA normalized to DNA for the three features computed by HUMAnN2: gene families, ecs and pathways."
-Note the most abundant DNA features are not necessarily those with the highest transcription (RNA) levels."
-
-<<label="norm_ratio_pathways", echo=False>>=
-document.show_hclust2(samples,top_pathways,top_pathway_data,
-                      title="Top "+str(top_norm_pathways)+" RNA pathways by average abundance",
-                      label_font="6", dpi=400)   
-@
-
-<<label="norm_ratio_ecs", echo=False>>=
-# read in the top average rna normed ecs
-samples, top_ecs, top_ec_data, top_names_and_descriptions = visualizations.top_average_pathways(
-    document, vars["ecs_norm_ratio"], top_norm_ecs)
-
-document.show_hclust2(samples,top_ecs,top_ec_data,
-                      title="Top "+str(top_norm_ecs)+" RNA ECs by average abundance",
-                      label_font="6", dpi=400)
-@
 
 #### RNA Features
 
