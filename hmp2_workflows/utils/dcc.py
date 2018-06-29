@@ -1498,7 +1498,7 @@ def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     req_metadata['study'] = study_id
     req_metadata['comment'] = "IBDMDB"
 
-    if dtype_abbrev == "MPX":
+    if dtype_abbrev == "MPX" and 'pride_id' not in req_metadata:
         req_metadata['pride_id'] = 'NA'
 
     fields_to_update = get_fields_to_update(req_metadata, microbiome_prep)
