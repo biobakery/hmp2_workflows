@@ -216,7 +216,7 @@ def main(workflow):
                                                               dtype_metadata,
                                                               row)
                         elif data_type == "MPX":
-                            url_param = '_raw_url'
+                            #url_param = '_raw_url'
                             dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
                                                                   conf.get('data_study'),
                                                                   data_type,
@@ -241,6 +241,7 @@ def main(workflow):
                         elif data_type == "HG":
                             dcc_prep =  dcc.crud_host_seq_prep(dcc_sample,
                                                                conf.get('data_study'),
+                                                               data_type,
                                                                dtype_metadata,
                                                                row)
                             dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,

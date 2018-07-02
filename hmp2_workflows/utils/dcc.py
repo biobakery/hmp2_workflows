@@ -193,7 +193,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
 
         (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
-        if data_type == 'foo':
+        if data_type == 'MPX':
             sample_id = "%s-%s" % ('SM', 
                                    file_name.replace('_', '-').split('-')[2])
         elif data_type == 'MBX':
@@ -231,10 +231,14 @@ def create_output_file_map(data_type, output_files):
     output_map = {}       
     
     for output_file in output_files:
+        output_file = output_file.replace('.gz', '') if 'gz' in output_file else output_file
+
         basename = os.path.splitext(os.path.basename(output_file))[0]
+        
         ## We are assuming here that our basename split on '_' is going to 
         ## provide us with our sample name.
         sample_id = basename.split('_', 1)[0]
+
         if "_TR" in basename:
             sample_id += "_TR"
         elif "_P" in basename:
@@ -852,21 +856,8 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
     Returns:
         cutlass.Visit: The created or updated OSDF Visit object.
     """
+    visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), visit_num)
 
-    ## These specific types of data are going to be categorized into 
-    ## their own visits since they are separate from our stool collection 
-    ## visits.
-    if dtype_abbrev in conf.get('nonstool_datatypes'):
-        interval_name = (metadata.get('IntervalName')
-                                 .replace('-', ' ')
-                                 .replace('(', '')
-                                 .replace(')', ''))
-        interval_abbrev = "".join(item[0].upper() for item in interval_name.split())
-        visit_id  = "%s_%s" % (metadata.get('ProjectSpecificID'), interval_abbrev)
-        visit_num = 1
-    else:
-        visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), visit_num)
-    
     visit = visits.get(visit_id)
     
     ## TODO: Figure out what's going on with Visit Attributes
@@ -1498,7 +1489,7 @@ def crud_microb_assay_prep(sample, study_id, dtype_abbrev, conf, metadata):
     req_metadata['study'] = study_id
     req_metadata['comment'] = "IBDMDB"
 
-    if dtype_abbrev == "MPX":
+    if dtype_abbrev == "MPX" and not 'pride_id' in req_metadata:
         req_metadata['pride_id'] = 'NA'
 
     fields_to_update = get_fields_to_update(req_metadata, microbiome_prep)
@@ -1708,7 +1699,7 @@ def crud_host_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     else:
         host_wgs_raw_seq_set = host_wgs_raw_seq_set[0]
 
-    req_metadata.update(conf.get('methylome'))
+    req_metadata.update(conf.get('host_genome'))
     req_metadata['checksums'] = { "md5": md5sum }
 
     req_metadata['local_raw_file'] = metadata.get('seq_file')
@@ -2117,7 +2108,7 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
     host_epigenetics_raw_seq_set.updated = False
     if fields_to_update:
         host_epigenetics_raw_seq_set.subtype = "host"
-        host_epigenetics_raw_seq_set.study = prep.study
+        host_epigenetics_raw_seq_set.study = study_id
         host_epigenetics_raw_seq_set.links['sequenced_from'] = [prep.id]
 
         if not host_epigenetics_raw_seq_set.is_valid():
