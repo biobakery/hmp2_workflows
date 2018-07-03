@@ -120,7 +120,8 @@ def main(workflow):
             dtype_metadata = conf.get(data_type)
 
             input_files = data_files[data_type]['input']
-            output_files = data_files.get(data_type, {}).get('output').get('abundance_matrix')
+            output = data_files.get(data_type, {}).get('output', {})
+            output_files = output.get('abundance_matrix')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
@@ -240,7 +241,7 @@ def main(workflow):
                                                                        conf.get(data_type),
                                                                        row)
                         elif data_type == "HG":
-                            host_variants_file = output_files['host_variant_calls']
+                            host_variants_file = output['host_variant_calls']
                             host_variants_fname = os.path.basename(host_variants_file)
                             host_variants_md5 = md5sums_map.get(host_variants_fname)
 
@@ -346,7 +347,7 @@ def main(workflow):
                             dcc_output_objs = []
 
                             for output_file in seq_out_files:
-                                dcc_parent_obj = uploaded_files[-1]
+                                dcc_parent_obj = input_dcc_objs[-1]
 
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)

@@ -231,9 +231,7 @@ def create_output_file_map(data_type, output_files):
     output_map = {}       
     
     for output_file in output_files:
-        output_file = output_file.replace('.gz', '') if 'gz' in output_file else output_file
-
-        basename = os.path.splitext(os.path.basename(output_file))[0]
+        basename = os.path.splitext(os.path.basename(output_file.replace('.gz', '')))[0]
         
         ## We are assuming here that our basename split on '_' is going to 
         ## provide us with our sample name.
@@ -2180,7 +2178,7 @@ def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, con
     """
     req_metadata = {}
  
-    raw_file_name = os.path.splitext(os.path.basename(variant_file))[0]
+    raw_file_name = os.path.splitext(os.path.basename(variant_file.replace('.gz', '')))[0]
 
     host_variant_calls = group_osdf_objects(_get_host_variant_calls(session, seq_set.id), 'comment')
     host_variant_calls = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
@@ -2190,7 +2188,7 @@ def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, con
     host_variant_call = (cutlass.HostVariantCall() if not host_variant_call
                                      else host_variant_call[0])
 
-    req_metadata.update(conf.get('variant_calls'))
+    req_metadata.update(conf.get('variant_call'))
 
     req_metadata['study'] = study_id
     req_metadata['local_file'] = metadata.get('seq_file')
@@ -2306,7 +2304,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
     Returns:
         cutlass.AbundanceMatrix: The abundance matrice to be saved.
     """
-    abund_fname = os.path.splitext(os.path.basename(abund_file))[0]
+    abund_fname = os.path.splitext(os.path.basename(abund_file.replace('.gz', '')))[0]
     data_type = metadata.get('data_type')
 
     ## Setup our 'static' metadata pulled from our YAML config
@@ -2336,6 +2334,9 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
     elif abund_file.endswith('.tsv'):
         req_metadata['format'] = "tbl"
         req_metadata['format_doc'] = "https://en.wikipedia.org/wiki/Tab-separated_values"
+    elif abund_file.endswith('.vcf') or abund_file.endswith('.vcf.gz'):
+        req_metadata['format'] = "vcf"
+        req_metadata['format_doc'] = "https://samtools.github.io/hts-specs/VCFv4.2.pdf"
     else:
         raise ValueError("Unknown abundance matrix type:", abund_fname)
 
