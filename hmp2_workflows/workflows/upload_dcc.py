@@ -120,8 +120,7 @@ def main(workflow):
             dtype_metadata = conf.get(data_type)
 
             input_files = data_files[data_type]['input']
-            output = data_files.get(data_type, {}).get('output', {})
-            output_files = output.get('abundance_matrix')
+            output_files = data_files.get(data_type, {}).get('output', {})
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
@@ -201,6 +200,7 @@ def main(workflow):
                         data_filename = os.path.basename(data_file)
                         file_md5sum = md5sums_map.get(os.path.basename(data_filename))
                         url_param = "_urls"
+
                         input_dcc_objs = []
 
                         if not file_md5sum:
@@ -246,7 +246,7 @@ def main(workflow):
                                                                data_type,
                                                                dtype_metadata,
                                                                row)
-                            dcc_seq_set = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
+                            dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
                                                                         file_md5sum,
                                                                         dcc_sample.name,
                                                                         dtype_metadata,
@@ -323,7 +323,9 @@ def main(workflow):
                                                             dtype_metadata,
                                                             row)
 
-                        input_dcc_objs = input_dcc_objs.append(dcc_seq_obj) if not input_dcc_objs else input_dcc_objs
+                        if len(input_dcc_objs) == 0:
+                            input_dcc_objs.append(dcc_seq_obj)
+
                         uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
                         ## The only output type currently supported are AbundanceMatrices 
@@ -335,7 +337,6 @@ def main(workflow):
 
                             for output_file in seq_out_files:
                                 dcc_parent_obj = input_dcc_objs[-1]
-
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)
 

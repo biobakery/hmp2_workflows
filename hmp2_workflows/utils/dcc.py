@@ -2191,8 +2191,8 @@ def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, con
     req_metadata.update(conf.get('variant_call'))
 
     req_metadata['study'] = study_id
-    req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
+    req_metadata['local_file'] = variant_file
+    req_metadata['size'] = os.path.getsize(variant_file)
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = raw_file_name
     req_metadata['private_files'] = True
@@ -2334,9 +2334,6 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
     elif abund_file.endswith('.tsv'):
         req_metadata['format'] = "tbl"
         req_metadata['format_doc'] = "https://en.wikipedia.org/wiki/Tab-separated_values"
-    elif abund_file.endswith('.vcf') or abund_file.endswith('.vcf.gz'):
-        req_metadata['format'] = "vcf"
-        req_metadata['format_doc'] = "https://samtools.github.io/hts-specs/VCFv4.2.pdf"
     else:
         raise ValueError("Unknown abundance matrix type:", abund_fname)
 
