@@ -1962,12 +1962,13 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     return metatranscriptome
 
 
-def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
-    """Creates or updates an iHMP OSDF 16SRawSeqSet object.
+def crud_sixs_raw_seq_set(prep, seq_file, md5sum, conf, metadata):
+    """Creates or updates an iHMP OSDF SixteenSRawSeqSet object.
 
     Args:
         prep (cutlass.16sDnaPrep): The 16sDnaPrep object that this 
             seq set object will be associated with.
+        seq_file (string): path to raw 16S sequence file.
         md5sum (string): md5 checksum for the associated sequence file.
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all transcriptomes
@@ -1979,7 +1980,6 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     Returns:
         cutlass.16sRawSeqSet: The 16S raw seq set to be saved.
     """
-    seq_file = metadata.get('seq_file')
     raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
@@ -2220,17 +2220,13 @@ def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, con
     return host_variant_call
 
 
-def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 
-                              url_param='_urls'):
-    """Creates or updates an iHMP OSDF AbundanceMatrix object.
-
-    Handles abundance matrices in both BIOM and tab-delimited format.
+def crud_sixs_trimmed_seq_set(dcc_parent, md5sum, conf, metadata, url_param='_urls'):
+    """Creates or updates an iHMP OSDF SixteenSTrimmedSeqSet.
 
     Args:
         dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
             or an assay prep from which an abundance matrice may be derived.
              (i.e. WgsRawSeqSet or HostAssayPrep)
-        seq_file (string): Path to the trimmed 16S seq set to submit
         md5sum (string): md5 checksum for the associated sequence file.
         conf (dict): Config dictionary containing some "hard-coded" pieces of
             metadata assocaited with all transcriptomes
@@ -2245,7 +2241,8 @@ def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata,
         cutlass.SixteenSTrimmedSeqSet: The trimmed sequence set to be saved.
     """
     req_metadata = {}
-
+    
+    seq_file = metadata.get('seq_file')
     sixs_trimmed_fname = os.path.splitext(os.path.basename(seq_file))[0]
     data_type = metadata.get('data_type')
 
