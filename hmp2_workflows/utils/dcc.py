@@ -2186,7 +2186,7 @@ def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, con
     
     host_variant_call = host_variant_calls.get(raw_file_name)
     host_variant_call = (cutlass.HostVariantCall() if not host_variant_call
-                                     else host_variant_call[0])
+                         else host_variant_call[0])
 
     req_metadata.update(conf.get('variant_call'))
 
