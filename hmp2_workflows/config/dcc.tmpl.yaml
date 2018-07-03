@@ -11,6 +11,7 @@ metadata_id_mappings:
   MBX: "Tube A: Metabolomics"
   MGX: External ID
   16S: External ID
+  16SBP: External ID
   MTX: External ID
   HTX: External ID
   HG: External ID
@@ -216,18 +217,52 @@ visit_attribute:
     water: Water
     yogurt: "Yogurt or other foods containing active bacterial cultures (kefir, sauerkraut)"
 
-16S:
-  prep_id: 1
-  library_method_text: >-
-      Samples are diluted and run in a 30 cycle PCR that specifically
-      amplifies the V4 region of the 16S ribosomal subunit, with the
-      primers making use of the highly conserved regions on either
-      side. PCR primers are barcoded by well, in a dual plate format,
-      for a total of 192 available barcodes. Samples are quantified
-      using the caliper, and then pooled together. Finally, the pooled
-      sample is cleaned up and selected for size by using a combination
-      of purification columns and a Pippen Prep SAGE protocol, and
-      handed off for MiSeq.
+16SBP:
+  assay:
+    sequencing_center: Sequencing Center
+    sequencing_contact: "contact@email.com"
+    ncbi_taxon_id: 408170 
+    lib_layout: fragment
+    lib_selection: Random
+    storage_duration: 365
+    comment: IBDMDB
+  mims:
+    biome: "terrestrial biome [ENVO:00000446]"
+    geo_loc_name: "United States of America"
+    investigation_type: "metagenome"
+    lat_lon: Unknown
+    seq_meth: "Illumina MiSeq"
+    env_package: 'human-associated'
+    lib_const_meth: >-
+        16S rRNA gene compositional analysis provides a summary of the composition and structure of
+        the bacterial component of the microbiome. Genomic bacterial DNA extraction methods were
+        optimized to maximize the yield of bacterial DNA while keeping background amplification to a
+        minimum. 16S rRNA gene sequencing methods were adapted from the methods developed for
+        the Earth Microbiome Project and NIH-Human Microbiome Project. Briefly, bacterial
+        genomic DNA was extracted from the total mass of the biopsied specimens using the MoBIO
+        PowerLyzer Tissue and Cells DNA isolation kit and sterile spatulas for tissue transfer. The 16S
+        rDNA V4 region was amplified from the extracted DNA by PCR and sequenced in the MiSeq
+        platform (Illumina) using the 2x250 bp paired-end protocol yielding pair-end reads that overlap
+        almost completely. The primers used for amplification contain adapters for MiSeq sequencing
+        and single-index barcodes so that the PCR products may be pooled and sequenced directly,
+        targeting at least 10,000 reads per sample.
+  amplicon_raw:
+    study: ibd
+    exp_length: 0
+    format: fastq
+    sequence_type: nucleotide
+    format_doc: "https://en.wikipedia.org/wiki/fastq_format"
+    seq_model: "Illumina MiSeq"
+    comment: IBDMDB
+  amplicon_trimmed:
+    study: ibd
+    format: fastq
+    sequence_type: nucleotide
+    format_doc: "https://en.wikipedia.org/wiki/fastq_format"
+    seq_model: "illumina MiSeq"
+    comment: IBDMDB
+  abundance_matrix:
+    sop: "https://ibdmdb.org/cb/document/Data%20Generation%20Protocols/16S_Biopsy_HMP2_Protocol.pdf"
 
 MGX:
   assay:

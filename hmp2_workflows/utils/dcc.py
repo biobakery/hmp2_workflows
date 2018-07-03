@@ -1996,7 +1996,7 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     else:
         sixs_raw_seq = sixs_raw_seqs[0]
 
-    req_metadata.update(conf.get('amplicon'))
+    req_metadata.update(conf.get('amplicon_raw'))
     req_metadata['local_file'] = seq_file
     req_metadata['size'] =  os.path.getsize(seq_file)
     req_metadata['checksums'] = { "md5": md5sum }
@@ -2242,7 +2242,7 @@ def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata,
         None
 
     Returns:
-        cutlass.AbundanceMatrix: The abundance matrice to be saved.
+        cutlass.SixteenSTrimmedSeqSet: The trimmed sequence set to be saved.
     """
     req_metadata = {}
 
@@ -2250,7 +2250,7 @@ def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata,
     data_type = metadata.get('data_type')
 
     sixs_trimmed_seqs = group_osdf_objects([trim_seq for trim_seq in dcc_parent.children() if 
-                                            isinstance(trim_seq, cutlass.SixteensTrimmedSeqSet)], 
+                                            isinstance(trim_seq, cutlass.SixteenSTrimmedSeqSet)], 
                                            url_param)
     sixs_trimmed_seqs = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v)
                              in sixs_trimmed_seqs.items())
@@ -2259,9 +2259,9 @@ def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata,
     if sixs_trimmed_seq:
         sixs_trimmed_seq = sixs_trimmed_seq[0]
     else:
-        sixs_trimmed_seq = cutlass.SixteensTrimmedSeqSet()
+        sixs_trimmed_seq = cutlass.SixteenSTrimmedSeqSet()
 
-    req_metadata.update(conf.get('amplicon'))
+    req_metadata.update(conf.get('amplicon_trimmed'))
 
     req_metadata['local_file'] = seq_file
     req_metadata['size'] =  os.path.getsize(seq_file)
