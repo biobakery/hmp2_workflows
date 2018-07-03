@@ -543,6 +543,43 @@ def _get_epigenetics_raw_seq_sets(session, prep_id):
             break
 
 
+def _get_host_variant_calls(session, seq_set_id):
+    """Returns an iterator of all HostVariantCall nodes connnected to the
+    provided HostWgsRawSeqSet node.
+
+    Args:
+        session (cutlass.Session): The current OSDF session object.
+        seq_set_id (string): The seq set ID to retrieve any associated HostVariantCall
+            nodes from.
+
+    Requires:
+        None
+
+    Returns:
+        Iterator: An iterator containing all children connected to the 
+            supplied OSDF object.                    
+    """
+    osdf = session.get_osdf()
+
+    linkage_query = ('"host_variant_call"[node_type] && '
+                     '"{}"[linkage.computed_from]'.format(seq_set_id))
+
+    from cutlass.HostVariantCall import HostVariantCall
+
+    for page_no in itertools.count(1):
+        res = osdf.oql_query(HostVariantCall.namespace, linkage_query,
+                             page=page_no)
+        res_count = res['result_count']
+
+        for doc in res['results']:
+            yield HostVariantCall.load_host_variant_call(doc)
+
+        res_count -= len(res['results'])
+
+        if res_count < 1:
+            break
+
+
 def _get_abund_matrices(session, seq_set_id):
     """
     Returns an iterator of all AbundanceMatrix nodes connected to 
@@ -2118,6 +2155,71 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
         host_epigenetics_raw_seq_set.updated = True
 
     return host_epigenetics_raw_seq_set
+
+
+def crud_host_variant_call(session, seq_set, variant_file, md5sum, study_id, conf, metadata):
+    """Creates an iHMP OSDF HostVariantCall object if it doesn't exist or updates
+    an already existing HostVariantCall object with the provided metadta.
+
+    Args:
+        session (cutlass.osdf_session): The current OSDF session.
+        seq_set (cutlass.HostWgsRawSeqSet): The HostWgsRawSeqSet object that
+            this HostVariantCall object will be assocaited with.
+        variant_file (string): Path to the variant file.
+        md5sum (string): md5 checksum for the associated HostVariantCall file.
+        study (string): The study name for the project.        
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all HostVariantsCall object.
+        metadata (pandas.Series): Metadata associated with this HostVariantCall object.
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.HostVariantCall: The HostVariantCall object that needs to be saved.
+    """
+    req_metadata = {}
+ 
+    raw_file_name = os.path.splitext(os.path.basename(variant_file))[0]
+
+    host_variant_calls = group_osdf_objects(_get_host_variant_calls(session, seq_set.id), 'comment')
+    host_variant_calls = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+                               in host_variant_calls.items())
+    
+    host_variant_call = host_variant_calls.get(raw_file_name)
+    host_variant_call = (cutlass.HostVariantCall() if not host_variant_call
+                                     else host_variant_call[0])
+
+    req_metadata.update(conf.get('variant_calls'))
+
+    req_metadata['study'] = study_id
+    req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
+    req_metadata['checksums'] = { "md5": md5sum }
+    req_metadata['comment'] = raw_file_name
+    req_metadata['private_files'] = True
+
+    req_metadata['tags'] = []
+    req_metadata['tags'].append(metadata.get('diagnosis'))
+
+    fields_to_update = get_fields_to_update(req_metadata, host_variant_call)
+
+    map(lambda key: setattr(host_variant_call, key, req_metadata.get(key)),
+        fields_to_update)
+
+    host_variant_call.updated = False
+    if fields_to_update:
+        host_variant_call.subtype = "host"
+        host_variant_call.study = study_id
+        host_variant_call.links['computed_from'] = [seq_set.id]
+
+        if not host_variant_call.is_valid():
+            raise ValueError('HostVariantCall validation failed: %s' % 
+                             host_variant_call.validate())
+
+        host_variant_call.updated = True
+
+    return host_variant_call
 
 
 def crud_sixs_trimmed_seq_set(dcc_parent, seq_file, md5sum, conf, metadata, 

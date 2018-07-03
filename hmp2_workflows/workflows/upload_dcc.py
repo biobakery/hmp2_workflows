@@ -120,7 +120,7 @@ def main(workflow):
             dtype_metadata = conf.get(data_type)
 
             input_files = data_files[data_type]['input']
-            output_files = data_files.get(data_type, {}).get('output')
+            output_files = data_files.get(data_type, {}).get('output').get('abundance_matrix')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
@@ -200,6 +200,7 @@ def main(workflow):
                         data_filename = os.path.basename(data_file)
                         file_md5sum = md5sums_map.get(os.path.basename(data_filename))
                         url_param = "_urls"
+                        input_dcc_objs = []
 
                         if not file_md5sum:
                             raise ValueError("Could not find md5sum for file %s" % data_filename)
@@ -220,7 +221,7 @@ def main(workflow):
                             dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
                                                                   conf.get('data_study'),
                                                                   data_type,
-                                                                  conf.get(data_type),
+                                                                  dtype_metadata,
                                                                   row)
                             dcc_seq_obj = dcc.crud_proteome(dcc_prep,
                                                             file_md5sum,
@@ -239,16 +240,29 @@ def main(workflow):
                                                                        conf.get(data_type),
                                                                        row)
                         elif data_type == "HG":
+                            host_variants_file = output_files['host_variant_calls']
+                            host_variants_fname = os.path.basename(host_variants_file)
+                            host_variants_md5 = md5sums_map.get(host_variants_fname)
+
                             dcc_prep =  dcc.crud_host_seq_prep(dcc_sample,
                                                                conf.get('data_study'),
                                                                data_type,
                                                                dtype_metadata,
                                                                row)
-                            dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
+                            dcc_seq_set = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
                                                                         file_md5sum,
                                                                         dcc_sample.name,
-                                                                        conf.get(data_type),
+                                                                        dtype_metadata,
                                                                         row)
+                            dcc_variant_calls  = dcc.crud_host_variant_call(session,
+                                                                            dcc_seq_set,
+                                                                            host_variants_file,
+                                                                            host_variants_md5,
+                                                                            conf.get('data_study'),
+                                                                            dtype_metadata,
+                                                                            row)
+
+                            input_dcc_objs.extend([dcc_seq_set, dcc_variant_calls])
                         elif data_type == "MTX":
                             dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                              conf.get('data_study'),
@@ -321,80 +335,39 @@ def main(workflow):
                                                             dtype_metadata,
                                                             row)
 
-                        uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
+                        input_dcc_objs = input_dcc_objs.append(dcc_seq_obj) if not input_dcc_objs else input_dcc_objs
+                        uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
                         ## The only output type currently supported are AbundanceMatrices 
                         ## so those are the only we will work with. Short-sided and 
                         ## ugly but can re-work this later.
                         if output_files_map and row.get('External ID') in output_files_map:
                             seq_out_files = output_files_map.get(row.get('External ID'))
-                            dcc_out_objs = []
+                            dcc_output_objs = []
 
-                            for out_file in seq_out_files:
-                                if data_type == "16S":
-                                    ## When we have 16S data we first need to associate a trimmed 
-                                    ## 16S dataset with our raw 16S dataset and then attach 
-                                    ## abundance matrices to the trimmed dataset.
+                            for output_file in seq_out_files:
+                                dcc_parent_obj = uploaded_files[-1]
 
-                                    ## Going to make another big assumption here that if we have a FASTQ
-                                    ## file in our output section for a 16S dataset it is a trimmed 
-                                    ## file.
-                                    trimmed_fastq = [trim for trim in seq_out_files if 'fastq' in trim]
-                                    trim_seq_obj = dcc.crud_sixs_trimmed_seq_set(dcc_seq_obj,
-                                                                                file_md5sum,
-                                                                                dcc_sample.name,
-                                                                                dtype_metadata,
-                                                                                row)
-                                    dcc_out_objs.append(upload_data_files(workflow, [trim_seq_obj]))
-                                elif data_type == "MVX":
-                                    ## Viromics data requires us to create a private node for the 
-                                    ## WGS raw seq set that is used to create our viral seq set.
-                                    viral_seqs = [viral_seq for viral_seq in seq_out_files 
-                                                if 'tar' in viral_seq]
-
-                                    if len(viral_seqs) > 1:
-                                        raise ValueError("Found more than one viral sequence " 
-                                                        "for visit: %s" % viral_seqs)
-
-                                    viral_seq = viral_seqs[0]
-                                    viral_seq_md5 = md5sums_map.get(os.path.basename(viral_seq))
-                                    if not viral_seq_md5:
-                                        raise ValueError("Could not find md5sum for file %s" % viral_seq)
-                                        
-                                    dcc_seq_obj = dcc.crud_viral_seq_set(dcc_seq_obj,
-                                                                        viral_seq,
-                                                                        viral_seq_md5,
-                                                                        dcc_sample.name,
-                                                                        dtype_metadata,
-                                                                        row)
-                                    uploaded_file = upload_data_files(workflow, [dcc_seq_obj])
-                                    dcc_out_objs.append(uploaded_file[0] if uploaded_file else dcc_seq_obj)
-
-                                    seq_out_files.remove(viral_seq)                                                                     
-                                else:
-                                    dcc_out_objs.append(uploaded_file[0] if uploaded_file else dcc_seq_obj)
-
-                            def _process_output(dcc_seq_obj, output_file):
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)
 
                                 if not output_md5sum:
                                     raise ValueError("Could not find md5sum for file", output_filename)
 
-                                dcc_seq_out = dcc.crud_abundance_matrix(session,
-                                                                        dcc_seq_obj,
-                                                                        output_file,
-                                                                        output_md5sum,
-                                                                        dcc_sample.name,
-                                                                        conf.get('data_study'),
-                                                                        dtype_metadata,
-                                                                        row,
-                                                                        url_param)
+                                dcc_abund_matrix = dcc.crud_abundance_matrix(session,
+                                                                                dcc_parent_obj,
+                                                                                output_file,
+                                                                                output_md5sum,
+                                                                                dcc_sample.name,
+                                                                                conf.get('data_study'),
+                                                                                dtype_metadata,
+                                                                                row,
+                                                                                url_param)
 
+                                dcc_output_objs.append(dcc_abund_matrix)
 
-                                uploaded_file = upload_data_files(workflow, [dcc_seq_out])
+                            uploaded_file = upload_data_files(workflow, dcc_output_objs)
 
-                            map(lambda dcc_seq_obj, out_file: _process_output(dcc_seq_obj, out_file), dcc_out_objs, seq_out_files)
 
 if __name__ == "__main__":
     main(parse_cli_arguments())
