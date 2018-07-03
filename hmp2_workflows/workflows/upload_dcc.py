@@ -119,8 +119,8 @@ def main(workflow):
         for data_type in data_files:
             dtype_metadata = conf.get(data_type)
 
-            input_files = data_files[data_type]['input']
-            output_files = data_files.get(data_type, {}).get('output').get('abundance_matrix')
+            input_files = data_files.get(data_type, {}).get('input')
+            output_files = data_files.get(data_type, {}).get('output')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
@@ -240,10 +240,6 @@ def main(workflow):
                                                                        conf.get(data_type),
                                                                        row)
                         elif data_type == "HG":
-                            host_variants_file = output_files['host_variant_calls']
-                            host_variants_fname = os.path.basename(host_variants_file)
-                            host_variants_md5 = md5sums_map.get(host_variants_fname)
-
                             dcc_prep =  dcc.crud_host_seq_prep(dcc_sample,
                                                                conf.get('data_study'),
                                                                data_type,
@@ -254,15 +250,6 @@ def main(workflow):
                                                                         dcc_sample.name,
                                                                         dtype_metadata,
                                                                         row)
-                            dcc_variant_calls  = dcc.crud_host_variant_call(session,
-                                                                            dcc_seq_set,
-                                                                            host_variants_file,
-                                                                            host_variants_md5,
-                                                                            conf.get('data_study'),
-                                                                            dtype_metadata,
-                                                                            row)
-
-                            input_dcc_objs.extend([dcc_seq_set, dcc_variant_calls])
                         elif data_type == "MTX":
                             dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                              conf.get('data_study'),
@@ -346,7 +333,7 @@ def main(workflow):
                             dcc_output_objs = []
 
                             for output_file in seq_out_files:
-                                dcc_parent_obj = uploaded_files[-1]
+                                dcc_parent_obj = input_dcc_objs[1]
 
                                 output_filename = os.path.basename(output_file)
                                 output_md5sum = md5sums_map.get(output_filename)
@@ -354,17 +341,28 @@ def main(workflow):
                                 if not output_md5sum:
                                     raise ValueError("Could not find md5sum for file", output_filename)
 
-                                dcc_abund_matrix = dcc.crud_abundance_matrix(session,
-                                                                                dcc_parent_obj,
-                                                                                output_file,
-                                                                                output_md5sum,
-                                                                                dcc_sample.name,
-                                                                                conf.get('data_study'),
-                                                                                dtype_metadata,
-                                                                                row,
-                                                                                url_param)
+                                ## We need a special case here when dealing with Host Genomes... 
+                                ## TODO: Clean this up to make this a lot better...
+                                if data_type == "HG":
+                                    dcc_output_obj  = dcc.crud_host_variant_call(session,
+                                                                                 dcc_parent_obj,
+                                                                                 output_file,
+                                                                                 output_md5sum,
+                                                                                 conf.get('data_study'),
+                                                                                 dtype_metadata,
+                                                                                 row)
+                                else:
+                                    dcc_output_obj = dcc.crud_abundance_matrix(session,
+                                                                               dcc_parent_obj,
+                                                                               output_file,
+                                                                               output_md5sum,
+                                                                               dcc_sample.name,
+                                                                               conf.get('data_study'),
+                                                                               dtype_metadata,
+                                                                               row,
+                                                                               url_param)
 
-                                dcc_output_objs.append(dcc_abund_matrix)
+                                dcc_output_objs.append(dcc_output_obj)
 
                             uploaded_file = upload_data_files(workflow, dcc_output_objs)
 
