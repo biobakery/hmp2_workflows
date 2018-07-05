@@ -891,7 +891,7 @@ def crud_visit(visits, visit_num, subject_id, dtype_abbrev, metadata, conf):
     Returns:
         cutlass.Visit: The created or updated OSDF Visit object.
     """
-    visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), visit_num)
+    visit_id = "%s_%s" % (metadata.get('ProjectSpecificID'), int(visit_num))
 
     visit = visits.get(visit_id)
     
@@ -1325,7 +1325,8 @@ def crud_sixs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     ## Fill in the remaining pieces of metadata needed from other sources
     req_metadata['prep_id'] = prep_id
     req_metadata['mimarks'].update(conf.get('mimarks'))
-    req_metadata['mimarks']['collection_date'] = metadata['date_of_receipt']
+    req_metadata['mimarks']['collection_date'] = (metadata.get('date_of_receipt') if not 
+                                                  np.isnan(metadata.get('date_of_receipt')) else "N/A")
 
     fields_to_update = get_fields_to_update(req_metadata, sixs_dna_prep)
     map(lambda key: setattr(sixs_dna_prep, key, req_metadata.get(key)),

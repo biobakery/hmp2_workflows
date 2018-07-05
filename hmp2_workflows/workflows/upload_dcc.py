@@ -119,8 +119,10 @@ def main(workflow):
         for data_type in data_files:
             dtype_metadata = conf.get(data_type)
 
-            input_files = data_files[data_type]['input']
-            output_files = data_files.get(data_type, {}).get('output', {})
+            inputs = data_files.get(data_type, {}).get('input')
+            input_files = inputs.get('files')
+            outputs = data_files.get(data_type, {}).get('output')
+            output_files = outputs.get('files')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
@@ -285,17 +287,25 @@ def main(workflow):
                                                                    dtype_metadata,
                                                                    row,
                                                                    private=True)
-                        elif data_type == '16S':
+                        elif data_type == '16SBP':
+                            sixs_raw_seqs = inputs['16S_raw_sequences']
+                            sixs_raw_seqs_md5sum = md5sums_map.get(os.path.basename(sixs_raw_seqs))
+
                             dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
                                                               conf.get('data_study'),
                                                               data_type,
                                                               dtype_metadata,
                                                               row)
-                            dcc_seq_obj = dcc.crud_sixs_raw_seq_set(dcc_prep,
-                                                                    file_md5sum,
-                                                                    dcc_sample.name,
-                                                                    dtype_metadata,
-                                                                    row)
+                            dcc_raw_seq_set = dcc.crud_sixs_raw_seq_set(dcc_prep,
+                                                                        sixs_raw_seqs,
+                                                                        sixs_raw_seqs_md5sum,
+                                                                        dtype_metadata,
+                                                                        row)
+                            dcc_trimmed_seq_set = dcc.crud_sixs_trimmed_seq_set(dcc_raw_seq_set,
+                                                                                file_md5sum,
+                                                                                dtype_metadata,
+                                                                                row)
+                            input_dcc_objs.extend([dcc_raw_seq_set, dcc_trimmed_seq_set])
                         elif data_type == 'RRBS':
                             dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                               conf.get('data_study'),
