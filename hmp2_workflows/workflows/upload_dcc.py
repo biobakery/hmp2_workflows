@@ -119,10 +119,8 @@ def main(workflow):
         for data_type in data_files:
             dtype_metadata = conf.get(data_type)
 
-            inputs = data_files.get(data_type, {}).get('input')
-            input_files = inputs.get('files')
-            outputs = data_files.get(data_type, {}).get('output')
-            output_files = outputs.get('files')
+            input_files = data_files.get(data_type, {}).get('input')
+            output_files = data_files.get(data_type, {}).get('output')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
 
             if md5sums_file:
