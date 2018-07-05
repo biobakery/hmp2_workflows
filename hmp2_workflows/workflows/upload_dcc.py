@@ -147,9 +147,6 @@ def main(workflow):
 
             ## Just in case there are more samples
             missing_samples = set(sample_ids) - set(sample_metadata_df[id_col].tolist())
-            if missing_samples:
-                seq_fname_map = {key: seq_fname_map[key] for key in seq_fname_map 
-                                if key not in missing_samples}
 
             ## In our proteomics dataset we occasionally see two datasets tied to the same
             ## sample so we need to do a little extra work to figure out which dataset
@@ -158,12 +155,12 @@ def main(workflow):
 
             ## Add an extra column to our sample metadata with the corresponding sequence file 
             ## for easy access later on.
-            sample_metadata_df['seq_file'] = None
+            #sample_metadata_df['seq_file'] = None
             sample_metadata_df = sample_metadata_df.apply(dcc.map_sample_id_to_file,
                                                           args=(id_col, seq_fname_map, 
                                                                 is_proteomics),
                                                           axis=1)
-            sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
+            #sample_metadata_df = sample_metadata_df.dropna(axis=0, subset=['seq_file'])
             
             output_files_map = None
             if output_files:
@@ -197,186 +194,182 @@ def main(workflow):
                                                  conf,
                                                  row)
 
-                    data_file = row.get('seq_file')
-                    if data_file:
-                        data_filename = os.path.basename(data_file)
-                        file_md5sum = md5sums_map.get(os.path.basename(data_filename))
-                        url_param = "_urls"
+                    #data_file = row.get('seq_file')
+                    #if data_file:
+                    #    data_filename = os.path.basename(data_file)
+                    #    file_md5sum = md5sums_map.get(os.path.basename(data_filename))
+                    #    url_param = "_urls"
 
-                        input_dcc_objs = []
+                    input_dcc_objs = []
 
-                        if not file_md5sum:
-                            raise ValueError("Could not find md5sum for file %s" % data_filename)
+                    #   if not file_md5sum:
+                    #       raise ValueError("Could not find md5sum for file %s" % data_filename)
 
-                        if data_type == "MBX": 
-                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
-                                                                conf.get('data_study'),
-                                                                data_type,
-                                                                conf.get(data_type),
-                                                                row)
-                            dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
-                                                              file_md5sum,
-                                                              dcc_sample.name,
-                                                              dtype_metadata,
-                                                              row)
-                        elif data_type == "MPX":
-                            #url_param = '_raw_url'
-                            dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
-                                                                  conf.get('data_study'),
-                                                                  data_type,
-                                                                  dtype_metadata,
-                                                                  row)
-                            dcc_seq_obj = dcc.crud_proteome(dcc_prep,
-                                                            file_md5sum,
-                                                            dcc_sample.name,
-                                                            dtype_metadata,
-                                                            row) 
-                        elif data_type == "HTX":
-                            dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
-                                                              conf.get('data_study'),
-                                                              data_type,
-                                                              dtype_metadata,
-                                                              row)
-                            dcc_seq_obj = dcc.crud_host_tx_raw_seq_set(dcc_prep,
-                                                                       file_md5sum,
-                                                                       dcc_sample.name,
-                                                                       conf.get(data_type),
-                                                                       row)
-                        elif data_type == "HG":
-                            dcc_prep =  dcc.crud_host_seq_prep(dcc_sample,
-                                                               conf.get('data_study'),
-                                                               data_type,
-                                                               dtype_metadata,
-                                                               row)
-                            dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
-                                                                        file_md5sum,
-                                                                        dcc_sample.name,
-                                                                        dtype_metadata,
-                                                                        row)
-                        elif data_type == "MTX":
-                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
-                                                             conf.get('data_study'),
-                                                             data_type,
-                                                             dtype_metadata,
-                                                             row)
-                            dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
-                                                                                      file_md5sum,
-                                                                                      dcc_sample.name,
-                                                                                      dtype_metadata,
-                                                                                      row)
-                        elif data_type == "MGX":
-                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
-                                                             conf.get('data_study'),
-                                                             data_type,
-                                                             dtype_metadata,
-                                                             row)
-                            dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
-                                                                   file_md5sum,
-                                                                   dcc_sample.name,
-                                                                   dtype_metadata,
-                                                                   row)
-                        elif data_type == "MVX":
-                            dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
-                                                             conf.get('data_study'),
-                                                             data_type,
-                                                             dtype_metadata,
-                                                             row) 
-                            dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
-                                                                   file_md5sum,
-                                                                   dcc_sample.name,
-                                                                   dtype_metadata,
-                                                                   row,
-                                                                   private=True)
-                        elif data_type == '16SBP':
-                            sixs_raw_seqs = inputs['16S_raw_sequences']
-                            sixs_raw_seqs_md5sum = md5sums_map.get(os.path.basename(sixs_raw_seqs))
-
-                            dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
-                                                              conf.get('data_study'),
-                                                              data_type,
-                                                              dtype_metadata,
-                                                              row)
-                            dcc_raw_seq_set = dcc.crud_sixs_raw_seq_set(dcc_prep,
-                                                                        sixs_raw_seqs,
-                                                                        sixs_raw_seqs_md5sum,
-                                                                        dtype_metadata,
-                                                                        row)
-                            dcc_trimmed_seq_set = dcc.crud_sixs_trimmed_seq_set(dcc_raw_seq_set,
-                                                                                file_md5sum,
-                                                                                dtype_metadata,
-                                                                                row)
-                            input_dcc_objs.extend([dcc_raw_seq_set, dcc_trimmed_seq_set])
-                        elif data_type == 'RRBS':
-                            dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
-                                                              conf.get('data_study'),
-                                                              data_type,
-                                                              dtype_metadata,
-                                                              row)
-                            dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(session,
-                                                                                dcc_prep,
-                                                                                file_md5sum,
-                                                                                dcc_sample.name,
-                                                                                conf.get('data_study'),
-                                                                                conf.get(data_type),
-                                                                                row)
-                        elif data_type == 'SER':
-                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
-                                                                conf.get('data_study'),
-                                                                data_type,
-                                                                conf.get(data_type),
-                                                                row)
-                            dcc_seq_obj = dcc.crud_serology(session,
-                                                            dcc_prep, 
-                                                            file_md5sum,
-                                                            dcc_sample.name,
+                    if data_type == "MBX": 
+                        dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
                                                             conf.get('data_study'),
+                                                            data_type,
+                                                            conf.get(data_type),
+                                                            row)
+                        dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
+                                                            file_md5sum,
+                                                            dcc_sample.name,
                                                             dtype_metadata,
                                                             row)
+                    elif data_type == "MPX":
+                        #url_param = '_raw_url'
+                        dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
+                                                                conf.get('data_study'),
+                                                                data_type,
+                                                                dtype_metadata,
+                                                                row)
+                        dcc_seq_obj = dcc.crud_proteome(dcc_prep,
+                                                        file_md5sum,
+                                                        dcc_sample.name,
+                                                        dtype_metadata,
+                                                        row) 
+                    elif data_type == "HTX":
+                        dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_seq_obj = dcc.crud_host_tx_raw_seq_set(dcc_prep,
+                                                                    file_md5sum,
+                                                                    dcc_sample.name,
+                                                                    conf.get(data_type),
+                                                                    row)
+                    elif data_type == "HG":
+                        dcc_prep =  dcc.crud_host_seq_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_seq_obj = dcc.crud_host_wgs_raw_seq_set(dcc_prep,
+                                                                    file_md5sum,
+                                                                    dcc_sample.name,
+                                                                    dtype_metadata,
+                                                                    row)
+                    elif data_type == "MTX":
+                        dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
+                                                                                    file_md5sum,
+                                                                                    dcc_sample.name,
+                                                                                    dtype_metadata,
+                                                                                    row)
+                    elif data_type == "MGX":
+                        dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
+                                                                file_md5sum,
+                                                                dcc_sample.name,
+                                                                dtype_metadata,
+                                                                row)
+                    elif data_type == "MVX":
+                        dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row) 
+                        dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
+                                                                file_md5sum,
+                                                                dcc_sample.name,
+                                                                dtype_metadata,
+                                                                row,
+                                                                private=True)
+                    elif data_type == '16SBP':
+                        dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_raw_seq_set = dcc.crud_sixs_raw_seq_set(dcc_prep,
+                                                                    md5sums_map.get('16S_raw_seq_set'),
+                                                                    dtype_metadata,
+                                                                    row)
+                        dcc_trimmed_seq_set = dcc.crud_sixs_trimmed_seq_set(dcc_raw_seq_set,
+                                                                            md5sums_map.get('16S_trimmed_seq_set'),
+                                                                            dtype_metadata,
+                                                                            row)
+                        input_dcc_objs.extend([dcc_raw_seq_set, dcc_trimmed_seq_set])
+                    elif data_type == 'RRBS':
+                        dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            dtype_metadata,
+                                                            row)
+                        dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(session,
+                                                                            dcc_prep,
+                                                                            file_md5sum,
+                                                                            dcc_sample.name,
+                                                                            conf.get('data_study'),
+                                                                            conf.get(data_type),
+                                                                            row)
+                    elif data_type == 'SER':
+                        dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            conf.get(data_type),
+                                                            row)
+                        dcc_seq_obj = dcc.crud_serology(session,
+                                                        dcc_prep, 
+                                                        file_md5sum,
+                                                        dcc_sample.name,
+                                                        conf.get('data_study'),
+                                                        dtype_metadata,
+                                                        row)
 
-                        if len(input_dcc_objs) == 0:
-                            input_dcc_objs.append(dcc_seq_obj)
+                    if len(input_dcc_objs) == 0:
+                        input_dcc_objs.append(dcc_seq_obj)
 
-                        uploaded_files = upload_data_files(workflow, input_dcc_objs)
+                    uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
-                        ## The only output type currently supported are AbundanceMatrices 
-                        ## so those are the only we will work with. Short-sided and 
-                        ## ugly but can re-work this later.
-                        if output_files_map and row.get('External ID') in output_files_map:
-                            seq_out_files = output_files_map.get(row.get('External ID'))
-                            dcc_output_objs = []
+                    ## The only output type currently supported are AbundanceMatrices 
+                    ## so those are the only we will work with. Short-sided and 
+                    ## ugly but can re-work this later.
+                    if output_files_map and row.get('External ID') in output_files_map:
+                        seq_out_files = output_files_map.get(row.get('External ID'))
+                        dcc_output_objs = []
 
-                            for output_file in seq_out_files:
-                                dcc_parent_obj = input_dcc_objs[-1]
-                                output_filename = os.path.basename(output_file)
-                                output_md5sum = md5sums_map.get(output_filename)
+                        for output_file in seq_out_files:
+                            dcc_parent_obj = input_dcc_objs[-1]
+                            output_filename = os.path.basename(output_file)
+                            output_md5sum = md5sums_map.get(output_filename)
 
-                                if not output_md5sum:
-                                    raise ValueError("Could not find md5sum for file", output_filename)
+                            if not output_md5sum:
+                                raise ValueError("Could not find md5sum for file", output_filename)
 
-                                ## We need a special case here when dealing with Host Genomes... 
-                                ## TODO: Clean this up to make this a lot better...
-                                if data_type == "HG":
-                                    dcc_output_obj  = dcc.crud_host_variant_call(session,
-                                                                                 dcc_parent_obj,
-                                                                                 output_file,
-                                                                                 output_md5sum,
-                                                                                 conf.get('data_study'),
-                                                                                 dtype_metadata,
-                                                                                 row)
-                                else:
-                                    dcc_output_obj = dcc.crud_abundance_matrix(session,
-                                                                               dcc_parent_obj,
-                                                                               output_file,
-                                                                               output_md5sum,
-                                                                               dcc_sample.name,
-                                                                               conf.get('data_study'),
-                                                                               dtype_metadata,
-                                                                               row,
-                                                                               url_param)
+                            ## We need a special case here when dealing with Host Genomes... 
+                            ## TODO: Clean this up to make this a lot better...
+                            if data_type == "HG":
+                                dcc_output_obj  = dcc.crud_host_variant_call(session,
+                                                                                dcc_parent_obj,
+                                                                                output_file,
+                                                                                output_md5sum,
+                                                                                conf.get('data_study'),
+                                                                                dtype_metadata,
+                                                                                row)
+                            else:
+                                dcc_output_obj = dcc.crud_abundance_matrix(session,
+                                                                            dcc_parent_obj,
+                                                                            output_file,
+                                                                            output_md5sum,
+                                                                            dcc_sample.name,
+                                                                            conf.get('data_study'),
+                                                                            dtype_metadata,
+                                                                            row,
+                                                                            url_param)
 
-                                dcc_output_objs.append(dcc_output_obj)
+                            dcc_output_objs.append(dcc_output_obj)
 
-                            uploaded_file = upload_data_files(workflow, dcc_output_objs)
+                        uploaded_file = upload_data_files(workflow, dcc_output_objs)
 
 
 if __name__ == "__main__":

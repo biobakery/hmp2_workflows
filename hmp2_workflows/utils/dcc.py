@@ -163,6 +163,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
             schemes for files are different and not to be handled on a case
             by case basis.
         tag (list): A list of tags that should be removed from sample 
+        omit (list): OPTIONAL: Omit the provided list of files
  
     Requires:
         None
@@ -185,38 +186,41 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
     ## may not have hyphens or underscores separating it. The Broad samples 
     ## are also prefixed by the originating center represented by one 
     ## one character in front of our 'SM' prefix.
-    for data_file in data_files:
-        ## With proteomics datasets we sometimes get 'pool' files that 
-        ## can be ignored for the time being.
-        if 'pool' in data_file:
-            continue
+    for file_type in data_files:
+        for data_file in data_files[file_type]:
+            ## With proteomics datasets we sometimes get 'pool' files that 
+            ## can be ignored for the time being.
+            if 'pool' in data_file:
+                continue
 
-        (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
+            (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
-        if data_type == 'MPX':
-            sample_id = "%s-%s" % ('SM', 
-                                   file_name.replace('_', '-').split('-')[2])
-        elif data_type == 'MBX':
-            sample_id = file_name.rsplit('_', 1)[-1]
-        else:
-            sample_id = file_name
-            
-            ## TODO: This shouldn't be hardcoded
-            sample_id = (sample_id.replace('_taxonomic_profile', '')
-                                  .replace('_pathabundance', '')
-                                  .replace('_genefamilies', ''))
-    
-        for tag in tags:
-            sample_id = sample_id.replace(tag, '')
+            if data_type == 'MPX':
+                sample_id = "%s-%s" % ('SM', 
+                                    file_name.replace('_', '-').split('-')[2])
+            elif data_type == 'MBX':
+                sample_id = file_name.rsplit('_', 1)[-1]
+            else:
+                sample_id = file_name
+                
+                ## TODO: This shouldn't be hardcoded
+                sample_id = (sample_id.replace('_taxonomic_profile', '')
+                                    .replace('_pathabundance', '')
+                                    .replace('_genefamilies', ''))
+        
+            for tag in tags:
+                sample_id = sample_id.replace(tag, '')
 
-        sample_id_map[sample_id] = data_file
+            sample_id_map.setdefault(sample_id, {})
+            sample_id_map[sample_id][file_type] = data_file
 
     return sample_id_map
     
 
 def create_output_file_map(data_type, output_files):
-    """Create a dictionary containing all output files keyed on an identifier
-    can be mapped back to the corresponding input files.
+    """Create a dictionary containing all files keyed on an identifier
+    that can be mapped back to the corresponding input files. Groups files 
+    by type as well.
 
     Args:
         data_type (string): Data type for output files
@@ -230,24 +234,26 @@ def create_output_file_map(data_type, output_files):
     """
     output_map = {}       
     
-    for output_file in output_files:
-        basename = os.path.splitext(os.path.basename(output_file.replace('.gz', '')))[0]
-        
-        ## We are assuming here that our basename split on '_' is going to 
-        ## provide us with our sample name.
-        sample_id = basename.split('_', 1)[0]
+    for output_type in output_files:
+        for output_file in output_files.get(output_type):
+            basename = os.path.splitext(os.path.basename(output_file.replace('.gz', '')))[0]
+            
+            ## We are assuming here that our basename split on '_' is going to 
+            ## provide us with our sample name.
+            sample_id = basename.split('_', 1)[0]
 
-        if "_TR" in basename:
-            sample_id += "_TR"
-        elif "_P" in basename:
-            sample_id += "_P"
+            if "_TR" in basename:
+                sample_id += "_TR"
+            elif "_P" in basename:
+                sample_id += "_P"
 
-        output_map.setdefault(sample_id, []).append(output_file)
+            output_map.setdefault(sample_id, {})
+            output_map[sample_id][output_type] = output_file
     
     return output_map
 
 
-def map_sample_id_to_file(row, id_col, fname_map, is_proteomics, out_col='seq_file'):
+def map_sample_id_to_file(row, id_col, fname_map, is_proteomics):
     """Given a a row from a pandas DataFrame, map the sample identifier 
     in the metadata to a file map and return the corresponding file for 
     the given row.
@@ -271,13 +277,14 @@ def map_sample_id_to_file(row, id_col, fname_map, is_proteomics, out_col='seq_fi
             with a given metadata row.
     """
     sample_id = row.get(id_col)
-    sample_file = fname_map.get(sample_id)
+    sample_files = fname_map.get(sample_id)
     pdo_number = row.get('PDO Number')
 
-    if is_proteomics and str(pdo_number) in sample_file:
-        row[out_col] = fname_map.get(sample_id)
-    else:
-        row[out_col] = sample_file
+    for file_type in sample_files:
+        if is_proteomics and str(pdo_number) in sample_files.get(file_type):
+            row[file_type] = fname_map.get(sample_id)
+        else:
+            row[file_type] = sample_file
 
     return row
 
@@ -1963,7 +1970,7 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     return metatranscriptome
 
 
-def crud_sixs_raw_seq_set(prep, seq_file, md5sum, conf, metadata):
+def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     """Creates or updates an iHMP OSDF SixteenSRawSeqSet object.
 
     Args:
@@ -1981,6 +1988,7 @@ def crud_sixs_raw_seq_set(prep, seq_file, md5sum, conf, metadata):
     Returns:
         cutlass.16sRawSeqSet: The 16S raw seq set to be saved.
     """
+    seq_file = metadata.get('16S_raw_seq_set')
     raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
