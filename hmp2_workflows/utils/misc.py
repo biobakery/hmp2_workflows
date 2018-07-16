@@ -147,7 +147,7 @@ def parse_checksums_file(checksums_file):
             (checksum, filename) = line.split()
             
             #filename = filename.split(os.extsep, 1)[0].replace('*', '')
-            filename = os.path.basename(filename).replace('*', '')
+            #filename = os.path.basename(filename).replace('*', '')
 
             # Quick check to make sure the checksum is 32 characters long   
             # since MD5 checksums should always be 32 characters long.

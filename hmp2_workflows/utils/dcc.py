@@ -284,7 +284,7 @@ def map_sample_id_to_file(row, id_col, fname_map, is_proteomics):
         if is_proteomics and str(pdo_number) in sample_files.get(file_type):
             row[file_type] = fname_map.get(sample_id)
         else:
-            row[file_type] = sample_file
+            row[file_type] = sample_files.get(file_type)
 
     return row
 
