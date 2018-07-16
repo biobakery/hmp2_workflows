@@ -283,17 +283,20 @@ def main(workflow):
                                                                 row,
                                                                 private=True)
                     elif data_type == '16SBP':
+                        raw_seq_set_fname = os.path.basename(row.get('16S_raw_seq_set'))
+                        trimmed_seq_set_fname = os.path.basename(row.get('16S_trimmed_seq_set'))
+
                         dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
                                                           conf.get('data_study'),
                                                           data_type,
                                                           dtype_metadata,
                                                           row)
                         dcc_raw_seq_set = dcc.crud_sixs_raw_seq_set(dcc_prep,
-                                                                    md5sums_map.get(row.get('16S_raw_seq_set')),
+                                                                    md5sums_map.get(raw_seq_set_fname),
                                                                     dtype_metadata,
                                                                     row)
                         dcc_trimmed_seq_set = dcc.crud_sixs_trimmed_seq_set(dcc_raw_seq_set,
-                                                                            md5sums_map.get(row.get('16S_trimmed_seq_set')),
+                                                                            md5sums_map.get(trimmed_seq_set_fname),
                                                                             dtype_metadata,
                                                                             row)
                         input_dcc_objs.extend([dcc_raw_seq_set, dcc_trimmed_seq_set])
