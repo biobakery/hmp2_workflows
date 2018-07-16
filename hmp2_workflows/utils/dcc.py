@@ -1989,15 +1989,14 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
         cutlass.16sRawSeqSet: The 16S raw seq set to be saved.
     """
     seq_file = metadata.get('16S_raw_seq_set')
-    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
+    raw_file_name = os.path.basename(seq_file)
 
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
     sixs_raw_seqs = group_osdf_objects(prep.child_seq_sets(),
                                        'urls')
-    sixs_raw_seqs = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
-                          in sixs_raw_seqs.items())
+    sixs_raw_seqs = dict((os.path.basename(k), v) for (k,v) in sixs_raw_seqs.items())
     sixs_raw_seq = sixs_raw_seqs.get(raw_file_name)
 
     if not sixs_raw_seq:
