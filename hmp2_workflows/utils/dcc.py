@@ -195,6 +195,9 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
 
             (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
+            for tag in tags:
+                file_name = file_name.replace(tag, '')
+
             if data_type == 'MPX':
                 sample_id = "%s-%s" % ('SM', 
                                     file_name.replace('_', '-').split('-')[2])
@@ -208,8 +211,6 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
                                     .replace('_pathabundance', '')
                                     .replace('_genefamilies', ''))
         
-            for tag in tags:
-                sample_id = sample_id.replace(tag, '')
 
             sample_id_map.setdefault(sample_id, {})
             sample_id_map[sample_id][file_type] = data_file
