@@ -133,8 +133,12 @@ def main(workflow):
             ## be different. We need to account for this and create a map 
             ## of the 'universal ID' back to the specific file it references
             id_cols = conf['metadata_id_mappings'][data_type]
-            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=['_1_sequence', 
-                                                                                   '_2_sequence'])
+            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=['_1_sequence',
+                                                                                   '_2_sequence',
+                                                                                   '_C18_neg',
+                                                                                   '_C8_ps'
+                                                                                   '_HILIC_neg',
+                                                                                   '_HILIC_pos'])
  
             sample_ids = seq_fname_map.keys()
             dtype_name = data_type_mapping.get(data_type)
@@ -204,16 +208,18 @@ def main(workflow):
                     #       raise ValueError("Could not find md5sum for file %s" % data_filename)
 
                     if data_type == "MBX": 
+                        metabolome_fname = os.path.basename(row.get('metabolome'))
+
                         dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
                                                             conf.get('data_study'),
                                                             data_type,
                                                             conf.get(data_type),
                                                             row)
                         dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
-                                                            file_md5sum,
-                                                            dcc_sample.name,
-                                                            dtype_metadata,
-                                                            row)
+                                                          md5sums_map.get(metabolome_fname),
+                                                          dcc_sample.name,
+                                                          dtype_metadata,
+                                                          row)
                     elif data_type == "MPX":
                         #url_param = '_raw_url'
                         dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
@@ -328,9 +334,9 @@ def main(workflow):
                                                         row)
 
                     if len(input_dcc_objs) == 0:
-                       input_dcc_objs.append(dcc_seq_obj)
+                        input_dcc_objs.append(dcc_seq_obj)
 
-                    #uploaded_files = upload_data_files(workflow, input_dcc_objs)
+                    uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
                     ## The only output type currently supported are AbundanceMatrices 
                     ## so those are the only we will work with. Short-sided and 
@@ -339,7 +345,7 @@ def main(workflow):
                         seq_out_files = output_files_map.get(row.get('External ID'))
                         dcc_output_objs = []
 
-                        for (output_file_type, output_file) in seq_out_files.items():
+                        for output_file in seq_out_files:
                             dcc_parent_obj = input_dcc_objs[-1]
                             output_filename = os.path.basename(output_file)
                             output_md5sum = md5sums_map.get(output_filename)
@@ -365,7 +371,8 @@ def main(workflow):
                                                                             dcc_sample.name,
                                                                             conf.get('data_study'),
                                                                             dtype_metadata,
-                                                                            row)
+                                                                            row,
+                                                                            url_param)
 
                             dcc_output_objs.append(dcc_output_obj)
 

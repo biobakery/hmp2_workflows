@@ -2086,14 +2086,18 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
     map(lambda key: setattr(metabolome, key, req_metadata.get(key)),
         fields_to_update)
 
-    metabolome.updated = False
     if fields_to_update:
         metabolome.study = prep.study
         metabolome.links['derived_from'] = [prep.id]
 
-        if not metabolome.is_valid():
+        if metabolome.is_valid():
+            success = metabolome.save()
+            if not success:
+                raise ValueError('Saving metabolome %s failed.' % 
+                                 req_metadata.get('local_file'))
+        else:
             raise ValueError('Metabolome validation failed: %s' % 
-                             metabolome.validate())
+                                metabolome.validate())
 
         metabolome.updated = True
 
