@@ -1994,15 +1994,17 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
 
-    sixs_raw_seqs = group_osdf_objects(prep.child_seq_sets(),
-                                       'urls')
+
+    sixs_raw_seqs = group_osdf_objects([raw_seq for raw_seq in prep.children(flatten=True) if 
+                                        isinstance(raw_seq, cutlass.SixteenSRawSeqSet)], 
+                                        'urls')
     sixs_raw_seqs = dict((os.path.basename(k), v) for (k,v) in sixs_raw_seqs.items())
     sixs_raw_seq = sixs_raw_seqs.get(raw_file_name)
 
     if not sixs_raw_seq:
         sixs_raw_seq = cutlass.SixteenSRawSeqSet()
     else:
-        sixs_raw_seq = sixs_raw_seqs[0]
+        sixs_raw_seq = sixs_raw_seq[0]
 
     req_metadata.update(conf.get('amplicon_raw'))
     req_metadata['local_file'] = seq_file
@@ -2018,7 +2020,13 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
         sixs_raw_seq.updated = True
         sixs_raw_seq.links['sequenced_from'] = [prep.id]
 
-        if not sixs_raw_seq.is_valid():
+        if sixs_raw_seq.is_valid():
+            success = sixs_raw_seq.save()
+
+            if not success:
+                raise ValueError('Saving 16S raw seq set %s failed.' %
+                                 req_metadata['local_file'])
+        else:
             raise ValueError('16S raw sequence set validation failed: %s' % 
                              sixs_raw_seq.validate())
 
@@ -2250,14 +2258,14 @@ def crud_sixs_trimmed_seq_set(dcc_parent, md5sum, conf, metadata, url_param='_ur
     """
     req_metadata = {}
     
-    seq_file = metadata.get('seq_file')
-    sixs_trimmed_fname = os.path.splitext(os.path.basename(seq_file))[0]
+    seq_file = metadata.get('16S_trimmed_seq_set')
+    sixs_trimmed_fname = os.path.basename(seq_file)
     data_type = metadata.get('data_type')
 
-    sixs_trimmed_seqs = group_osdf_objects([trim_seq for trim_seq in dcc_parent.children() if 
+    sixs_trimmed_seqs = group_osdf_objects([trim_seq for trim_seq in dcc_parent.children(flatten=True) if 
                                             isinstance(trim_seq, cutlass.SixteenSTrimmedSeqSet)], 
                                            url_param)
-    sixs_trimmed_seqs = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v)
+    sixs_trimmed_seqs = dict((os.path.basename(k), v) for (k,v)
                              in sixs_trimmed_seqs.items())
     sixs_trimmed_seq = sixs_trimmed_seqs.get(sixs_trimmed_fname)
 
@@ -2280,6 +2288,16 @@ def crud_sixs_trimmed_seq_set(dcc_parent, md5sum, conf, metadata, url_param='_ur
     if fields_to_update:
         sixs_trimmed_seq.updated = True
         sixs_trimmed_seq.links['computed_from'] = [dcc_parent.id]
+
+        if sixs_trimmed_seq.is_valid():
+            success = sixs_trimmed_seq.save()
+            if not success:
+                raise ValueError('Saving 16S trimmed seq %s failed.' %
+                                 req_metadata.get('local_file'))
+        else:
+            raise ValueError('16S trimmed sequence set validation failed: %s' % 
+                             sixs_trimmed_seq.validate())
+
     return sixs_trimmed_seq
 
 
@@ -2346,7 +2364,7 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
     if "taxonomic_profile" in abund_file:
         if data_type in ["metagenomics", "viromics"]:
             req_metadata['matrix_type'] = "wgs_community"
-        elif data_type == "amplicon":
+        elif data_type == "amplicon" or data_type == "biopsy_16S":
             req_metadata['matrix_type'] = "16s_community"
     elif "path" in abund_file or "gene" in abund_file or 'ecs' in abund_file:
         if "path" in abund_file:

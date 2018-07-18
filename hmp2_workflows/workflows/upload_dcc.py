@@ -328,9 +328,9 @@ def main(workflow):
                                                         row)
 
                     if len(input_dcc_objs) == 0:
-                        input_dcc_objs.append(dcc_seq_obj)
+                       input_dcc_objs.append(dcc_seq_obj)
 
-                    uploaded_files = upload_data_files(workflow, input_dcc_objs)
+                    #uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
                     ## The only output type currently supported are AbundanceMatrices 
                     ## so those are the only we will work with. Short-sided and 
@@ -339,7 +339,7 @@ def main(workflow):
                         seq_out_files = output_files_map.get(row.get('External ID'))
                         dcc_output_objs = []
 
-                        for output_file in seq_out_files:
+                        for (output_file_type, output_file) in seq_out_files.items():
                             dcc_parent_obj = input_dcc_objs[-1]
                             output_filename = os.path.basename(output_file)
                             output_md5sum = md5sums_map.get(output_filename)
@@ -365,8 +365,7 @@ def main(workflow):
                                                                             dcc_sample.name,
                                                                             conf.get('data_study'),
                                                                             dtype_metadata,
-                                                                            row,
-                                                                            url_param)
+                                                                            row)
 
                             dcc_output_objs.append(dcc_output_obj)
 
