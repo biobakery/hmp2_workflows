@@ -136,7 +136,7 @@ def main(workflow):
             seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=['_1_sequence',
                                                                                    '_2_sequence',
                                                                                    '_C18_neg',
-                                                                                   '_C8_ps'
+                                                                                   '_C8_pos',
                                                                                    '_HILIC_neg',
                                                                                    '_HILIC_pos'])
  

@@ -200,9 +200,9 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
 
             if data_type == 'MPX':
                 sample_id = "%s-%s" % ('SM', 
-                                    file_name.replace('_', '-').split('-')[2])
+                                       file_name.replace('_', '-').split('-')[2])
             elif data_type == 'MBX':
-                sample_id = file_name.rsplit('_', 1)[-1]
+                sample_id = "SM-" + file_name.rsplit('SM-', 1)[-1]
             else:
                 sample_id = file_name
                 
@@ -212,8 +212,8 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
                                     .replace('_genefamilies', ''))
         
 
-            sample_id_map.setdefault(sample_id, {})
-            sample_id_map[sample_id][file_type] = data_file
+            sample_id_map.setdefault(sample_id, {}).setdefault(file_type, [])
+            sample_id_map[sample_id][file_type].append(data_file)
 
     return sample_id_map
     
