@@ -122,6 +122,7 @@ def main(workflow):
             input_files = data_files.get(data_type, {}).get('input')
             output_files = data_files.get(data_type, {}).get('output')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
+            file_tags = data_files.get(data_type).get('tags')
 
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
@@ -133,12 +134,7 @@ def main(workflow):
             ## be different. We need to account for this and create a map 
             ## of the 'universal ID' back to the specific file it references
             id_cols = conf['metadata_id_mappings'][data_type]
-            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=['_1_sequence',
-                                                                                   '_2_sequence',
-                                                                                   '_C18_neg',
-                                                                                   '_C8_ps'
-                                                                                   '_HILIC_neg',
-                                                                                   '_HILIC_pos'])
+            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=tags)
  
             sample_ids = seq_fname_map.keys()
             dtype_name = data_type_mapping.get(data_type)
@@ -196,30 +192,31 @@ def main(workflow):
                                                  conf,
                                                  row)
 
-                    #data_file = row.get('seq_file')
-                    #if data_file:
-                    #    data_filename = os.path.basename(data_file)
-                    #    file_md5sum = md5sums_map.get(os.path.basename(data_filename))
-                    #    url_param = "_urls"
-
                     input_dcc_objs = []
-
-                    #   if not file_md5sum:
-                    #       raise ValueError("Could not find md5sum for file %s" % data_filename)
-
                     if data_type == "MBX": 
                         metabolome_fname = os.path.basename(row.get('metabolome'))
 
-                        dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
-                                                            conf.get('data_study'),
-                                                            data_type,
-                                                            conf.get(data_type),
-                                                            row)
-                        dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
-                                                          md5sums_map.get(metabolome_fname),
-                                                          dcc_sample.name,
-                                                          dtype_metadata,
-                                                          row)
+                        ## MBX is a curious case in that we have multiple raw files (and multiple outputs) so 
+                        ## we'll need to handle all these files (in another loop.) I need to refactor this 
+                        ## to be way more elegant in the future.
+                        ##
+                        ## This is going to be a bit trickier than other data types because of that 
+                        input_metabolomes = row.filter(like='metabolome')
+
+                        for metabolome in input_metabolomes:
+                            metabolome_fname = os.path.basename(row.get(metabolome))
+                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
+                                                                conf.get('data_study'),
+                                                                data_type,
+                                                                conf.get(data_type),
+                                                                row)
+                            dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
+                                                              md5sums_map.get(metabolome_fname),
+                                                              dcc_sample.name,
+                                                              conf.get('data_study'),
+                                                              dtype_metadata,
+                                                              row)
+                            input_dcc_objs.append(dcc_seq_obj)
                     elif data_type == "MPX":
                         #url_param = '_raw_url'
                         dcc_prep = dcc.crud_microb_assay_prep(dcc_sample,
@@ -363,6 +360,8 @@ def main(workflow):
                                                                                 conf.get('data_study'),
                                                                                 dtype_metadata,
                                                                                 row)
+                            elif data_type == "MBX":
+                                pass
                             else:
                                 dcc_output_obj = dcc.crud_abundance_matrix(session,
                                                                             dcc_parent_obj,

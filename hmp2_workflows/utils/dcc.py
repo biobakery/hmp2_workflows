@@ -202,7 +202,12 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
                 sample_id = "%s-%s" % ('SM', 
                                     file_name.replace('_', '-').split('-')[2])
             elif data_type == 'MBX':
-                sample_id = file_name.rsplit('_', 1)[-1]
+                (sample_id, analysis_type) = (file_name.rsplit('_', 1)[-1]).split('_')
+                
+                # MBX data is a bit tricky in that we have multiple sets of inputs and outputs
+                # so we need to take care of this in a bit of a unique way. Should figure out a 
+                # way to do this a bit cleaner for all data types
+                file_type = file_type + "_" + analysis_type
             else:
                 sample_id = file_name
                 
@@ -247,6 +252,10 @@ def create_output_file_map(data_type, output_files):
                 sample_id += "_TR"
             elif "_P" in basename:
                 sample_id += "_P"
+
+            if data_type == "MBX":
+                (sample_id, analysis_type) = sample_id.split('_')
+                output_type = output_type + "_" + analysis_type
 
             output_map.setdefault(sample_id, {})
             output_map[sample_id][output_type] = output_file
