@@ -40,6 +40,7 @@ furnished to do so, subject to the following conditions:
 import argparse
 import importlib
 import itertools
+import json
 import types
 
 import anytree
@@ -66,6 +67,8 @@ def parse_cli_arguments():
     parser.add_argument('-s', '--study-id', required=True, 
                         default='52d8c92f2d3660b9add954d544a0216e',
                         help='The study ID from which to cascade delete down.')
+    parser.add_argument('-t', '--node-type-filter', 
+                        help='OPTIONAL. Filter nodes to delete by a node type.')
     parser.add_argument('-q', '--oql-query',
                         help='OQL query to establish the basis from which '
                         'to do a deletion.')
@@ -119,14 +122,15 @@ def build_osdf_tree(study_id):
         if not parent_node:
             print "WARNING: Could not find parent node for following object:", osdf_obj.to_json()
         else:
-            osdf_node = anytree.Node(osdf_obj.id, osdf=osdf_obj, parent=parent_node)
+
+            osdf_node = anytree.Node(osdf_obj.id, osdf=osdf_obj, type=json.loads(osdf_obj.to_json()).get('node_type'), parent=parent_node)
             return osdf_node
 
     study_obj = cutlass.Study.load(study_id)
-    study_node = anytree.Node("root", osdf=study_obj)
+    study_node = anytree.Node("root", osdf=study_obj, type='study')
     
     subjects = list(study_obj.subjects())
-    subject_nodes = [anytree.Node(s.id, osdf=s, parent=study_node) for s in subjects]
+    subject_nodes = [anytree.Node(s.id, osdf=s, parent=study_node, type='subject') for s in subjects]
     osdf_lookup_map.update({s.name: s for s in subject_nodes})
 
     subject_attrs = [list(s.attributes()) for s in subjects]
@@ -179,6 +183,31 @@ def build_osdf_tree(study_id):
     osdf_lookup_map.update({po.name: po for po in product_nodes2})
 
     return study_node
+
+
+def filter_osdf_tree(root_node, node_type):
+    """Filters an existing OSDF tree by a specific node_type.
+
+    Args:
+        root_node (anytree.Node): The root node of the tree to filter upon
+        node_type (string): THe type of node to filter the tree down by.
+
+    """
+    filtered_nodes = anytree.search.findall(study_node, 
+                                            filter_=lambda node: node.type in 
+                                                node_type)
+
+    filtered_root_node = anytree.Node('root', osdf=root_ndoe.osdf, type='study')
+
+    for filtered_node in filtered_nodes:
+        path = filtered_node.path[1:]
+        
+        parent_node = filtered_root_node
+        for node in path:
+            new_node = anytree.Node(node.osdf.id, osdf=node.osdf, type=node.type, parent=parent_node)
+            parent_node = new_node 
+
+    return filtered_root_node
 
 
 def delete_nodes(root_node, dry_run, delete_root, stop_node="root"):
@@ -234,6 +263,10 @@ def main(args):
     osdf = session.get_osdf()
 
     root_node = build_osdf_tree(args.study_id)
+
+    if args.node_type_filter:
+        root_node = filter_osdf_tree(root_node, args.node_type_filter)
+            
     delete_nodes(root_node, args.dry_run, args.delete_root)
 
 

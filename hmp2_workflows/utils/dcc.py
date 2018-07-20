@@ -188,6 +188,8 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
     ## one character in front of our 'SM' prefix.
     for file_type in data_files:
         for data_file in data_files[file_type]:
+            type_tag = None
+
             ## With proteomics datasets we sometimes get 'pool' files that 
             ## can be ignored for the time being.
             if 'pool' in data_file:
@@ -196,19 +198,19 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
             (file_name, ext) = os.path.basename(data_file).split(os.extsep, 1)
 
             for tag in tags:
-                file_name = file_name.replace(tag, '')
-
+                if tag in file_name:
+                    file_name = file_name.replace("_" + tag, '')
+                    type_tag = tag
+    
             if data_type == 'MPX':
                 sample_id = "%s-%s" % ('SM', 
                                        file_name.replace('_', '-').split('-')[2])
             elif data_type == 'MBX':
-                (sample_id, analysis_type) = (file_name.rsplit('SM-', 1)[-1]).split('_')
-                sample_id = "SM-" + sample_id
+                sample_id = "SM-" + file_name.rsplit('SM-', 1)[-1]
                 
                 # MBX data is a bit tricky in that we have multiple sets of inputs and outputs
                 # so we need to take care of this in a bit of a unique way. Should figure out a 
                 # way to do this a bit cleaner for all data types
-                file_type = file_type + "_" + analysis_type
             else:
                 sample_id = file_name
                 
@@ -217,14 +219,19 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
                                       .replace('_pathabundance', '')
                                       .replace('_genefamilies', ''))
         
+            
 
-            sample_id_map.setdefault(sample_id, {}).setdefault(file_type, [])
-            sample_id_map[sample_id][file_type].append(data_file)
+            if type_tag:
+                sample_id_map.setdefault(sample_id, {}).setdefault(file_type + "_" + type_tag, [])
+                sample_id_map[sample_id][file_type + "_" + type_tag].append(data_file)
+            else: 
+                sample_id_map.setdefault(sample_id, {}).setdefault(file_type, [])
+                sample_id_map[sample_id][file_type].append(data_file)
 
     return sample_id_map
     
 
-def create_output_file_map(data_type, output_files):
+def create_output_file_map(data_type, output_files, tags=[]):
     """Create a dictionary containing all files keyed on an identifier
     that can be mapped back to the corresponding input files. Groups files 
     by type as well.
@@ -232,6 +239,8 @@ def create_output_file_map(data_type, output_files):
     Args:
         data_type (string): Data type for output files
         output_files (list): List of output files to group together.
+        tags (list): A list of tags to remove from our file names and 
+            to add to our output file type for further grouping
     
     Requires:
         None
@@ -243,8 +252,14 @@ def create_output_file_map(data_type, output_files):
     
     for output_type in output_files:
         for output_file in output_files.get(output_type):
+            type_tag = None
             basename = os.path.splitext(os.path.basename(output_file.replace('.gz', '')))[0]
-            
+              
+            for tag in tags:
+                if tag in basename:
+                    file_name = basename.replace("_" + tag, '')
+                    type_tag = tag
+
             ## We are assuming here that our basename split on '_' is going to 
             ## provide us with our sample name.
             sample_id = basename.split('_', 1)[0]
@@ -254,12 +269,12 @@ def create_output_file_map(data_type, output_files):
             elif "_P" in basename:
                 sample_id += "_P"
 
-            if data_type == "MBX":
-                (sample_id, analysis_type) = sample_id.split('_')
-                output_type = output_type + "_" + analysis_type
-
-            output_map.setdefault(sample_id, {})
-            output_map[sample_id][output_type] = output_file
+            if type_tag:
+                output_map.setdefault(sample_id, {}).setdefault(output_type + "_" + type_tag, [])
+                output_map[sample_id][output_type + "_" + type_tag].append(output_file)
+            else:
+                output_map.setdefault(sample_id, {}).setdefault(output_type, [])
+                output_map[sample_id][output_type].append(output_file)
     
     return output_map
 
@@ -2043,7 +2058,7 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
 
     return sixs_raw_seq
 
-def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
+def crud_metabolome(prep, metabolome_file, md5sum, sample_id, study_id, conf, metadata):
     """Creates an iHMP OSDF Metabolome object if it doesn't exist or updates
     an already existing Metabolome object with the provided metadta.
 
@@ -2054,6 +2069,7 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
     Args:
         prep (cutlass.HostAssayPrep): The Host Assay Prep object that
             this Metabolome object will be assocaited with.
+        metabolome_file (string): Metabolome file to upload.
         md5sum (string): md5 checksum for the associated Metabolome file.
         sample_id (string): Sample ID assocaited with this Metabolome  
         study (string): The study name for the project.        
@@ -2070,12 +2086,11 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
     """
     req_metadata = {}
 
-    seq_file = metadata.get('seq_file')
-    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
+    raw_file_name = os.path.basename(metabolome_file)
 
     metabolomes = group_osdf_objects(prep.metabolomes(),
                                      'urls')
-    metabolomes = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+    metabolomes = dict((os.path.basename(k), v) for (k,v) 
                       in metabolomes.items())
     
     metabolome = metabolomes.get(raw_file_name)
@@ -2109,8 +2124,6 @@ def crud_metabolome(prep, md5sum, sample_id, study_id, conf, metadata):
         else:
             raise ValueError('Metabolome validation failed: %s' % 
                                 metabolome.validate())
-
-        metabolome.updated = True
 
     return metabolome       
 

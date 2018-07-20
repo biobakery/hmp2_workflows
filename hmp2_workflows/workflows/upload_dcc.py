@@ -122,7 +122,7 @@ def main(workflow):
             input_files = data_files.get(data_type, {}).get('input')
             output_files = data_files.get(data_type, {}).get('output')
             md5sums_file = data_files.get(data_type).get('md5sums_file')
-            file_tags = data_files.get(data_type).get('tags')
+            file_tags = data_files.get(data_type).get('tags', [])
 
             if md5sums_file:
                 md5sums_map.update(parse_checksums_file(md5sums_file))
@@ -134,7 +134,7 @@ def main(workflow):
             ## be different. We need to account for this and create a map 
             ## of the 'universal ID' back to the specific file it references
             id_cols = conf['metadata_id_mappings'][data_type]
-            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=tags)
+            seq_fname_map = dcc.create_seq_fname_map(data_type, input_files, tags=file_tags)
  
             sample_ids = seq_fname_map.keys()
             dtype_name = data_type_mapping.get(data_type)
@@ -163,7 +163,7 @@ def main(workflow):
             output_files_map = None
             if output_files:
                 ## Do a bunch of stuff here since we have output files
-                output_files_map = dcc.create_output_file_map(data_type, output_files)
+                output_files_map = dcc.create_output_file_map(data_type, output_files, tags=file_tags)
     
             for (subject_id, metadata) in sample_metadata_df.groupby(['Participant ID']):
                 dcc_subject = dcc_subjects.get(subject_id[1:])
@@ -194,7 +194,11 @@ def main(workflow):
 
                     input_dcc_objs = []
                     if data_type == "MBX": 
-                        metabolome_fname = os.path.basename(row.get('metabolome'))
+                        dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
+                                                            conf.get('data_study'),
+                                                            data_type,
+                                                            conf.get(data_type),
+                                                            row)
 
                         ## MBX is a curious case in that we have multiple raw files (and multiple outputs) so 
                         ## we'll need to handle all these files (in another loop.) I need to refactor this 
@@ -203,14 +207,12 @@ def main(workflow):
                         ## This is going to be a bit trickier than other data types because of that 
                         input_metabolomes = row.filter(like='metabolome')
 
-                        for metabolome in input_metabolomes:
-                            metabolome_fname = os.path.basename(row.get(metabolome))
-                            dcc_prep = dcc.crud_host_assay_prep(dcc_sample, 
-                                                                conf.get('data_study'),
-                                                                data_type,
-                                                                conf.get(data_type),
-                                                                row)
+                        for (metabolome_type, metabolome_file) in input_metabolomes.iteritems():
+                            metabolome_fname = os.path.basename(metabolome_file[0])
+                            analysis_type = metabolome_type.split('_', 1)[-1]
+
                             dcc_seq_obj = dcc.crud_metabolome(dcc_prep,
+                                                              metabolome_file[0],
                                                               md5sums_map.get(metabolome_fname),
                                                               dcc_sample.name,
                                                               conf.get('data_study'),
@@ -333,7 +335,7 @@ def main(workflow):
                     if len(input_dcc_objs) == 0:
                         input_dcc_objs.append(dcc_seq_obj)
 
-                    uploaded_files = upload_data_files(workflow, input_dcc_objs)
+                    ##uploaded_files = upload_data_files(workflow, input_dcc_objs)
 
                     ## The only output type currently supported are AbundanceMatrices 
                     ## so those are the only we will work with. Short-sided and 
@@ -342,36 +344,43 @@ def main(workflow):
                         seq_out_files = output_files_map.get(row.get('External ID'))
                         dcc_output_objs = []
 
-                        for output_file in seq_out_files:
-                            dcc_parent_obj = input_dcc_objs[-1]
-                            output_filename = os.path.basename(output_file)
+                        for (output_ftype, output_file) in seq_out_files.iteritems():
+                            output_filename = os.path.basename(output_file[0])
                             output_md5sum = md5sums_map.get(output_filename)
+
 
                             if not output_md5sum:
                                 raise ValueError("Could not find md5sum for file", output_filename)
+
+                            if data_type == "MBX" and file_tags:
+                                output_base = os.path.splitext(output_filename)[0]
+
+                                ## MBX data is a bit tricky since we can have multiple inputs and outputs
+                                ## that need to be threaded together.
+                                analysis_type = output_base.split('_', 1)[-1]
+                                dcc_parent_obj = next((p for p in input_dcc_objs if analysis_type in p.urls[0]), None)
+                            else:
+                               dcc_parent_obj = input_dcc_objs[-1]
 
                             ## We need a special case here when dealing with Host Genomes... 
                             ## TODO: Clean this up to make this a lot better...
                             if data_type == "HG":
                                 dcc_output_obj  = dcc.crud_host_variant_call(session,
-                                                                                dcc_parent_obj,
-                                                                                output_file,
-                                                                                output_md5sum,
-                                                                                conf.get('data_study'),
-                                                                                dtype_metadata,
-                                                                                row)
-                            elif data_type == "MBX":
-                                pass
+                                                                             dcc_parent_obj,
+                                                                             output_file[0],
+                                                                             output_md5sum,
+                                                                             conf.get('data_study'),
+                                                                             dtype_metadata,
+                                                                             row)
                             else:
                                 dcc_output_obj = dcc.crud_abundance_matrix(session,
-                                                                            dcc_parent_obj,
-                                                                            output_file,
-                                                                            output_md5sum,
-                                                                            dcc_sample.name,
-                                                                            conf.get('data_study'),
-                                                                            dtype_metadata,
-                                                                            row,
-                                                                            url_param)
+                                                                           dcc_parent_obj,
+                                                                           output_file[0],
+                                                                           output_md5sum,
+                                                                           dcc_sample.name,
+                                                                           conf.get('data_study'),
+                                                                           dtype_metadata,
+                                                                           row)
 
                             dcc_output_objs.append(dcc_output_obj)
 
