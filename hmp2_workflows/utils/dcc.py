@@ -206,7 +206,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
                 sample_id = "%s-%s" % ('SM', 
                                        file_name.replace('_', '-').split('-')[2])
             elif data_type == 'MBX':
-                sample_id = "SM-" + file_name.rsplit('SM-', 1)[-1]
+                sample_id = "SM-" + file_name.rsplit('SM-', 1)[-1][:5]
                 
                 # MBX data is a bit tricky in that we have multiple sets of inputs and outputs
                 # so we need to take care of this in a bit of a unique way. Should figure out a 
@@ -2102,7 +2102,7 @@ def crud_metabolome(prep, metabolome_file, md5sum, sample_id, study_id, conf, me
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = sample_id
 
-    req_metadata['local_file'] = metadata.get('seq_file')
+    req_metadata['local_file'] = metabolome_file
 
     req_metadata['tags'] = []
     req_metadata['tags'].append(metadata.get('diagnosis'))
