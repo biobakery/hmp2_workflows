@@ -2140,7 +2140,7 @@ def crud_metabolome(prep, metabolome_file, md5sum, sample_id, study_id, conf, me
     return metabolome       
 
 
-def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id, conf, metadata):
+def crud_host_epigenetics_raw_seq_set(session, prep, seq_file, md5sum, sample_id, study_id, conf, metadata):
     """Creates an iHMP OSDF HostEpigeneticsRawSeqSet object if it doesn't exist or updates
     an already existing HostEpigeneticsRawSeqSet object with the provided metadta.
 
@@ -2152,6 +2152,7 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
         session (cutlass.osdf_session): The current OSDF session.
         prep (cutlass.HostSeqPrep): The Host Seq Prep object that
             this HostEpigeneticsRawSeqSet object will be assocaited with.
+        seq_file (string): Path to the input data set to be uploaded.
         md5sum (string): md5 checksum for the associated HostEpigeneticsRawSeqSet file.
         sample_id (string): Sample ID assocaited with this HostEpigeneticsRawSeqSet  
         study (string): The study name for the project.        
@@ -2168,11 +2169,10 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
     """
     req_metadata = {}
 
-    seq_file = metadata.get('seq_file')
-    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
+    raw_file_name = os.path.basename(seq_file)
 
     host_epigenetics_raw_seq_sets = group_osdf_objects(_get_epigenetics_raw_seq_sets(session, prep.id), 'comment')
-    host_epigenetics_raw_seq_sets = dict((os.path.splitext(os.path.basename(k))[0], v) for (k,v) 
+    host_epigenetics_raw_seq_sets = dict((os.path.basename(k), v) for (k,v)
                                          in host_epigenetics_raw_seq_sets.items())
     
     host_epigenetics_raw_seq_set = host_epigenetics_raw_seq_sets.get(raw_file_name)
@@ -2182,8 +2182,8 @@ def crud_host_epigenetics_raw_seq_set(session, prep, md5sum, sample_id, study_id
     req_metadata.update(conf.get('methylome'))
 
     req_metadata['study'] = study_id
-    req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
+    req_metadata['local_file'] = seq_file
+    req_metadata['size'] = os.path.getsize(seq_file)
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = raw_file_name
     req_metadata['private_files'] = True

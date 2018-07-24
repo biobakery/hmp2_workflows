@@ -306,6 +306,9 @@ def main(workflow):
                                                                             row)
                         input_dcc_objs.extend([dcc_raw_seq_set, dcc_trimmed_seq_set])
                     elif data_type == 'RRBS':
+                        raw_epigenetics_seq_set = row.get('host_epigenetics_raw_seq_set')
+                        raw_epigenetics_fname = os.path.basename(raw_epigenetics_seq_set[0])
+
                         dcc_prep = dcc.crud_host_seq_prep(dcc_sample,
                                                             conf.get('data_study'),
                                                             data_type,
@@ -313,7 +316,8 @@ def main(workflow):
                                                             row)
                         dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(session,
                                                                             dcc_prep,
-                                                                            file_md5sum,
+                                                                            raw_epigenetics_seq_set,
+                                                                            md5sums_map.get(raw_epigenetics_fname),
                                                                             dcc_sample.name,
                                                                             conf.get('data_study'),
                                                                             conf.get(data_type),
