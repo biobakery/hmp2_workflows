@@ -1169,10 +1169,6 @@ def _crud_sample_attribute(sample, metadata, conf):
     else:
         ## Sometimes we get these weird errors...
         sample_attr = sample_attrs[0]
-
-    sample_attr = next(sample_attrs, None)
-    if not sample_attr:
-        sample_attr = cutlass.SampleAttribute()
     
     req_metadata = {}
     req_metadata['study'] = conf.get('data_study')
