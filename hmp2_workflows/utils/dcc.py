@@ -1027,19 +1027,19 @@ def _crud_visit_attribute(visit, metadata, conf):
         cutlass.VisitAttribute: The created or updated OSDF Visit Attribute
             object.
     """
-    visit_attrs = visit.visit_attributes()
+    visit_attrs = list(visit.visit_attributes())
     visit_attr_conf = conf.get('visit_attribute')
     req_metadata = {}
 
-    ## We should only ever have one VisitAttr object associated with a Visit
-    ## object so updating shoudl be a little aeasier.
-    visit_attr = next(visit_attrs, None)
-    if not visit_attr:
+    if len(visit_attrs) == 0:
         visit_attr = cutlass.VisitAttribute()
         req_metadata['survey_id'] = visit_attr_conf.get('survey_id')
+    elif len(visit_attrs) > 1:
+        ## We should only ever have one VisitAttr object associated with a Visit
+        ## object so this is an error....
+        raise ValueError("Visit %s should not have more than one visit_attr" % visit.visit_id)
     else:
-        ## Sometimes we get these weird errors...
-        visit_attr = cutlass.VisitAttribute.load(visit_attr.id)
+        visit_attr = visit_attrs[0]
 
     disease_map = conf.get('disease_map')
     disease_desc_map = visit_attr_conf.get('desc_map')
@@ -1146,10 +1146,8 @@ def _crud_sample_attribute(sample, metadata, conf):
         cutlass.SampleAttribute: The created or updated OSDF Sample Attribute
             object.
     """
-    sample_attrs = sample.sampleAttributes()
+    sample_attrs = list(sample.sampleAttributes())
 
-    ## Sample Attributes are a bit tricky to handle in that they are a 
-    ## colleciton associated with a sample and not key'd up on an specific
     ## field so its more difficult to keep track of when we are dealing with
     ## updating an existing SampleAttribute object or we need to create a new 
     ## one.
@@ -1158,6 +1156,16 @@ def _crud_sample_attribute(sample, metadata, conf):
     ## SampleAttribute object associated with it so this simplifies the process
     ## of checking whether or not we are updating the object or creating a new 
     ## object.
+    if len(sample_attrs) == 0:
+        sample_attr = cutlass.SampleAttribute()
+    elif len(sample_attrs) > 1:
+        ## We should only ever have one VisitAttr object associated with a Visit
+        ## object so this is an error....
+        raise ValueError("Sample %s should not have more than one associated sample_attr" % sample.name)
+    else:
+        ## Sometimes we get these weird errors...
+        sample_attr = sample_attrs[0]
+
     sample_attr = next(sample_attrs, None)
     if not sample_attr:
         sample_attr = cutlass.SampleAttribute()
