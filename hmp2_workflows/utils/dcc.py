@@ -2128,7 +2128,7 @@ def crud_metabolome(prep, metabolome_file, md5sum, sample_id, study_id, conf, me
             success = metabolome.save()
             if not success:
                 raise ValueError('Saving metabolome %s failed.' % 
-                                 req_metadata.get('local_file'))
+                                 metabolome_file)
         else:
             raise ValueError('Metabolome validation failed: %s' % 
                                 metabolome.validate())
@@ -2192,17 +2192,19 @@ def crud_host_epigenetics_raw_seq_set(session, prep, seq_file, md5sum, sample_id
     map(lambda key: setattr(host_epigenetics_raw_seq_set, key, req_metadata.get(key)),
         fields_to_update)
 
-    host_epigenetics_raw_seq_set.updated = False
     if fields_to_update:
         host_epigenetics_raw_seq_set.subtype = "host"
         host_epigenetics_raw_seq_set.study = study_id
         host_epigenetics_raw_seq_set.links['sequenced_from'] = [prep.id]
 
-        if not host_epigenetics_raw_seq_set.is_valid():
+        if host_epigenetics_raw_seq_set.is_valid():
+            success = host_epigenetics_raw_seq_set.save()
+            if not success:
+                raise ValueError('Saving host_epigenetics_raw_seq_set %s failed.' % 
+                                 seq_file)        
+        else:
             raise ValueError('HostEpigeneticsRawSeqSet validation failed: %s' % 
                              host_epigenetics_raw_seq_set.validate())
-
-        host_epigenetics_raw_seq_set.updated = True
 
     return host_epigenetics_raw_seq_set
 
