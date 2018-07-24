@@ -803,12 +803,16 @@ def _crud_subject_attribute(subject, metadata, study_id, conf):
         cutlass.SubjectAttribute: The created or updated OSDF 
             SubjectAttribute object.
     """
-    subject_attrs = subject.attributes()
+    subject_attrs = list(subject.attributes())
     sa_col_map = conf.get('col_map')
 
-    subject_attr = next(subject_attrs, None)
-    if not subject_attr:
+
+    if len(subject_attrs) == 0:
         subject_attr = cutlass.SubjectAttribute()
+    elif len(subject_attrs) > 1:
+        raise ValueError('Subject %s should not have more than one associated sample_attr.' % subject.rand_subject_id)
+    else:
+       subject_attr = subject_attrs[0]
  
     req_metadata = {}
     req_metadata = dict((k, metadata.get(sa_col_map.get(k))) for k in 
