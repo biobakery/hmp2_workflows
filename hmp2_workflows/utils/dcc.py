@@ -1873,7 +1873,7 @@ def crud_host_tx_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
     return transcriptome        
 
 
-def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False):
+def crud_wgs_raw_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata, private=False):
     """Creates an iHMP OSDF WGSRawSeqSet object if it doesn't exist or 
     updates an already existing object with the provided metadta.
 
@@ -1884,6 +1884,7 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     Args:
         prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
             WGSRawSeqSet object will be associated with.
+        seq_file (string): Sequence file to upload to the DCC.
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
@@ -1897,7 +1898,7 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     Returns:
         cutlass.WgsRawSeqSet: The WGS sequence data to be saved.
     """
-    raw_file_name = os.path.splitext(os.path.basename(metadata.get('seq_file')))[0]
+    raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
     req_metadata = {}
@@ -1916,8 +1917,8 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
         metagenome = metagenome[0]
 
     req_metadata.update(conf.get('metagenome'))
-    req_metadata['local_file'] = metadata.get('seq_file')
-    req_metadata['size'] = os.path.getsize(metadata.get('seq_file'))
+    req_metadata['local_file'] = seq_file
+    req_metadata['size'] = os.path.getsize(seq_file)
     req_metadata['checksums'] = { "md5": md5sum }
     req_metadata['comment'] = raw_file_name
 
@@ -1928,12 +1929,15 @@ def crud_wgs_raw_seq_set(prep, md5sum, sample_id, conf, metadata, private=False)
     map(lambda key: setattr(metagenome, key, req_metadata.get(key)),
         fields_to_update)
 
-    metagenome.updated = False
     if fields_to_update:
-        metagenome.updated = True
         metagenome.links['sequenced_from'] = [prep.id]
 
-        if not metagenome.is_valid():
+        if metagenome.is_valid():
+            success = metagenome.save()
+
+            if not success:
+                raise ValueError('Saving raw WGS seq set %s failed.' % seq_file)
+        else:
             raise ValueError('WGS raw seq set validation failed: %s' % 
                              metagenome.validate())
 

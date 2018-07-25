@@ -265,16 +265,20 @@ def main(workflow):
                                                                                     dtype_metadata,
                                                                                     row)
                     elif data_type == "MGX":
+                        wgs_raw_seq_set = row.get('wgs_raw_seq_set')
+                        wgs_raw_fname = os.path.basename(wgs_raw_seq_set[0])
+
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                             conf.get('data_study'),
                                                             data_type,
                                                             dtype_metadata,
                                                             row)
                         dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
-                                                                file_md5sum,
-                                                                dcc_sample.name,
-                                                                dtype_metadata,
-                                                                row)
+                                                               wgs_raw_seq_set[0],
+                                                               md5sums_map.get(wgs_raw_fname)
+                                                               dcc_sample.name,
+                                                               dtype_metadata,
+                                                               row)
                     elif data_type == "MVX":
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                             conf.get('data_study'),
