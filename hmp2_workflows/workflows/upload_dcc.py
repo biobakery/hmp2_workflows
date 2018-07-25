@@ -316,7 +316,7 @@ def main(workflow):
                                                             row)
                         dcc_seq_obj = dcc.crud_host_epigenetics_raw_seq_set(session,
                                                                             dcc_prep,
-                                                                            raw_epigenetics_seq_set,
+                                                                            raw_epigenetics_seq_set[0],
                                                                             md5sums_map.get(raw_epigenetics_fname),
                                                                             dcc_sample.name,
                                                                             conf.get('data_study'),

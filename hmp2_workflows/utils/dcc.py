@@ -556,7 +556,7 @@ def _get_epigenetics_raw_seq_sets(session, prep_id):
     osdf = session.get_osdf()
 
     linkage_query = ('"host_epigenetics_raw_seq_set"[node_type] && '
-                     '"{}"[linkage.derived_from]'.format(prep_id))
+                     '"{}"[linkage.sequenced_from]'.format(prep_id))
 
     from cutlass.HostEpigeneticsRawSeqSet import HostEpigeneticsRawSeqSet
 
@@ -2173,7 +2173,7 @@ def crud_host_epigenetics_raw_seq_set(session, prep, seq_file, md5sum, sample_id
     
     host_epigenetics_raw_seq_set = host_epigenetics_raw_seq_sets.get(raw_file_name)
     host_epigenetics_raw_seq_set = (cutlass.HostEpigeneticsRawSeqSet() if not host_epigenetics_raw_seq_set 
-                                     else host_epigenetics_raw_seq_sets[0])
+                                     else host_epigenetics_raw_seq_set[0])
 
     req_metadata.update(conf.get('methylome'))
 
