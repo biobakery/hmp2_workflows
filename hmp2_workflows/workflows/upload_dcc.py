@@ -352,45 +352,46 @@ def main(workflow):
                         seq_out_files = output_files_map.get(row.get('External ID'))
                         dcc_output_objs = []
 
-                        for (output_ftype, output_file) in seq_out_files.iteritems():
-                            output_filename = os.path.basename(output_file[0])
-                            output_md5sum = md5sums_map.get(output_filename)
+                        for (output_ftype, output_files) in seq_out_files.iteritems():
+                            for output_file in output_files:
+                                output_filename = os.path.basename(output_file)
+                                output_md5sum = md5sums_map.get(output_filename)
 
 
-                            if not output_md5sum:
-                                raise ValueError("Could not find md5sum for file", output_filename)
+                                if not output_md5sum:
+                                    raise ValueError("Could not find md5sum for file", output_filename)
 
-                            if data_type == "MBX" and file_tags:
-                                output_base = os.path.splitext(output_filename)[0]
+                                if data_type == "MBX" and file_tags:
+                                    output_base = os.path.splitext(output_filename)[0]
 
-                                ## MBX data is a bit tricky since we can have multiple inputs and outputs
-                                ## that need to be threaded together.
-                                analysis_type = output_base.split('_', 1)[-1]
-                                dcc_parent_obj = next((p for p in input_dcc_objs if analysis_type in p.urls[0]), None)
-                            else:
-                               dcc_parent_obj = input_dcc_objs[-1]
+                                    ## MBX data is a bit tricky since we can have multiple inputs and outputs
+                                    ## that need to be threaded together.
+                                    analysis_type = output_base.split('_', 1)[-1]
+                                    dcc_parent_obj = next((p for p in input_dcc_objs if analysis_type in p.urls[0]), None)
+                                else:
+                                dcc_parent_obj = input_dcc_objs[-1]
 
-                            ## We need a special case here when dealing with Host Genomes... 
-                            ## TODO: Clean this up to make this a lot better...
-                            if data_type == "HG":
-                                dcc_output_obj  = dcc.crud_host_variant_call(session,
-                                                                             dcc_parent_obj,
-                                                                             output_file[0],
-                                                                             output_md5sum,
-                                                                             conf.get('data_study'),
-                                                                             dtype_metadata,
-                                                                             row)
-                            else:
-                                dcc_output_obj = dcc.crud_abundance_matrix(session,
-                                                                           dcc_parent_obj,
-                                                                           output_file[0],
-                                                                           output_md5sum,
-                                                                           dcc_sample.name,
-                                                                           conf.get('data_study'),
-                                                                           dtype_metadata,
-                                                                           row)
+                                ## We need a special case here when dealing with Host Genomes... 
+                                ## TODO: Clean this up to make this a lot better...
+                                if data_type == "HG":
+                                    dcc_output_obj  = dcc.crud_host_variant_call(session,
+                                                                                dcc_parent_obj,
+                                                                                output_file[0],
+                                                                                output_md5sum,
+                                                                                conf.get('data_study'),
+                                                                                dtype_metadata,
+                                                                                row)
+                                else:
+                                    dcc_output_obj = dcc.crud_abundance_matrix(session,
+                                                                            dcc_parent_obj,
+                                                                            output_file[0],
+                                                                            output_md5sum,
+                                                                            dcc_sample.name,
+                                                                            conf.get('data_study'),
+                                                                            dtype_metadata,
+                                                                            row)
 
-                            dcc_output_objs.append(dcc_output_obj)
+                                dcc_output_objs.append(dcc_output_obj)
 
                         uploaded_file = upload_data_files(workflow, dcc_output_objs)
 
