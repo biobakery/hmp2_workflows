@@ -275,7 +275,7 @@ def main(workflow):
                                                             row)
                         dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
                                                                wgs_raw_seq_set[0],
-                                                               md5sums_map.get(wgs_raw_fname)
+                                                               md5sums_map.get(wgs_raw_fname),
                                                                dcc_sample.name,
                                                                dtype_metadata,
                                                                row)
