@@ -254,16 +254,20 @@ def main(workflow):
                                                                     dtype_metadata,
                                                                     row)
                     elif data_type == "MTX":
+                        mtx_raw_seq_set = row.get('microb_transcriptomics_raw_seq_set')
+                        mtx_raw_fname = os.path.basename(mtx_raw_seq_set[0])
+
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
-                                                            conf.get('data_study'),
-                                                            data_type,
-                                                            dtype_metadata,
-                                                            row)
+                                                         conf.get('data_study'),
+                                                         data_type,
+                                                         dtype_metadata,
+                                                         row)
                         dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
-                                                                                    file_md5sum,
-                                                                                    dcc_sample.name,
-                                                                                    dtype_metadata,
-                                                                                    row)
+                                                                                  mtx_raw_seq_set,
+                                                                                  md5sums_map.get(mtx_raw_fname)
+                                                                                  dcc_sample.name,
+                                                                                  dtype_metadata,
+                                                                                  row)
                     elif data_type == "MGX":
                         wgs_raw_seq_set = row.get('wgs_raw_seq_set')
                         wgs_raw_fname = os.path.basename(wgs_raw_seq_set[0])

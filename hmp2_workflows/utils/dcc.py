@@ -1944,7 +1944,7 @@ def crud_wgs_raw_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata, priv
     return metagenome
 
 
-def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metadata):
+def crud_microb_transcriptomics_raw_seq_set(prep, seq_file, md5sum, sample_id, conf, metadata):
     """Creates an iHMP OSDF MicrobTranscriptomicsRawSeqSet object if it 
     doesn't exist or updates an already existing object with the provided
     metadta.
@@ -1956,6 +1956,7 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     Args:
         prep (cutlass.WgsDnaPrep): The WgsDnaPrep object that this 
             WGSRawSeqSet object will be associated with.
+        seq_file (string): The transcriptomics sequence file to be uploaded.
         md5sum (string): md5 checksum for the associated sequence file.
         sample_id (string): Sample ID assocaited with this transcriptome           
         conf (dict): Config dictionary containing some "hard-coded" pieces of
@@ -1968,7 +1969,6 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     Returns:
         cutlass.MicrobTranscriptomicsRawSeqSet: The Microbe Transcriptomics object.
     """
-    seq_file = metadata.get('seq_file')
     raw_file_name = os.path.splitext(os.path.basename(seq_file))[0]
 
     ## Setup our 'static' metadata pulled from our YAML config
@@ -1995,13 +1995,15 @@ def crud_microb_transcriptomics_raw_seq_set(prep, md5sum, sample_id, conf, metad
     map(lambda key: setattr(metatranscriptome, key, req_metadata.get(key)),
         fields_to_update)
 
-    metatranscriptome.updated = False
-
     if fields_to_update:
-        metatranscriptome.updated = True
         metatranscriptome.links['sequenced_from'] = [prep.id]
 
-        if not metatranscriptome.is_valid():
+        if metatranscriptome.is_valid():
+            success = metatranscriptome.save()
+
+            if not success:
+                raise ValueError('Saving raw MTX seq set %s failed.' % seq_file)
+        else:
             raise ValueError('Microbe Transcritpome validation failed: %s' % 
                              metatranscriptome.validate())
 
