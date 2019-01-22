@@ -200,7 +200,7 @@ def create_seq_fname_map(data_type, data_files, tags=[]):
             for tag in tags:
                 if tag in file_name:
                     file_name = file_name.replace("_" + tag, '')
-                    type_tag = tag
+                    type_tag = tag if data_type == "MBX" else None
     
             if data_type == 'MPX':
                 sample_id = "%s-%s" % ('SM', 
@@ -258,7 +258,7 @@ def create_output_file_map(data_type, output_files, tags=[]):
             for tag in tags:
                 if tag in basename:
                     file_name = basename.replace("_" + tag, '')
-                    type_tag = tag
+                    type_tag = tag if data_type =="MBX" else None
 
             ## We are assuming here that our basename split on '_' is going to 
             ## provide us with our sample name.
@@ -1367,7 +1367,7 @@ def crud_sixs_dna_prep(sample, study_id, dtype_abbrev, conf, metadata):
     req_metadata['prep_id'] = prep_id
     req_metadata['mimarks'].update(conf.get('mimarks'))
     req_metadata['mimarks']['collection_date'] = (metadata.get('date_of_receipt') if not 
-                                                  np.isnan(metadata.get('date_of_receipt')) else "N/A")
+                                                  pd.isnull(metadata.get('date_of_receipt')) else "N/A")
 
     fields_to_update = get_fields_to_update(req_metadata, sixs_dna_prep)
     map(lambda key: setattr(sixs_dna_prep, key, req_metadata.get(key)),
@@ -2028,7 +2028,7 @@ def crud_sixs_raw_seq_set(prep, md5sum, conf, metadata):
     Returns:
         cutlass.16sRawSeqSet: The 16S raw seq set to be saved.
     """
-    seq_file = metadata.get('16S_raw_seq_set')
+    seq_file = metadata.get('16S_raw_seq_set')[0]
     raw_file_name = os.path.basename(seq_file)
 
     ## Setup our 'static' metadata pulled from our YAML config
@@ -2302,7 +2302,7 @@ def crud_sixs_trimmed_seq_set(dcc_parent, md5sum, conf, metadata, url_param='_ur
     """
     req_metadata = {}
     
-    seq_file = metadata.get('16S_trimmed_seq_set')
+    seq_file = metadata.get('16S_trimmed_seq_set')[0]
     sixs_trimmed_fname = os.path.basename(seq_file)
     data_type = metadata.get('data_type')
 
@@ -2343,6 +2343,63 @@ def crud_sixs_trimmed_seq_set(dcc_parent, md5sum, conf, metadata, url_param='_ur
                              sixs_trimmed_seq.validate())
 
     return sixs_trimmed_seq
+
+
+def crud_viral_seq_set(dcc_parent, viral_seq_file, md5sum, conf, metadata, url_param='_urls'):
+    """Creates or updates an iHMP OSDF ViralSeqSet record.
+
+    Args:
+        dcc_parent (cutlass.<SEQ OR ASSAY PREP OBJECTS>): Any OSDF sequence set object 
+            or an assay prep from which an abundance matrice may be derived.
+             (i.e. WgsRawSeqSet or HostAssayPrep)
+        viral_seq_file (string): Path the viral sequences file to be uploaded.
+        md5sum (string): md5 checksum for the associated sequence file.
+        conf (dict): Config dictionary containing some "hard-coded" pieces of
+            metadata assocaited with all transcriptomes
+        metadata (pandas.Series): Metadata associated with this transcriptome
+
+    Requires:
+        None
+
+    Returns:
+        cutlass.ViralSeqSet: Cutlass object representation of the viral sequences
+    """
+    req_metadata = {}
+    
+    viral_seq_fname = os.path.basename(viral_seq_file)
+
+    viral_seqs = group_osdf_objects([trim_seq for trim_seq in dcc_parent.children(flatten=True) if 
+                                     isinstance(trim_seq, cutlass.SixteenSTrimmedSeqSet)], 
+                                    url_param)
+    viral_seqs = dict((os.path.basename(k), v) for (k,v)
+                      in sixs_trimmed_seqs.items())
+    viral_seq = viral_seqs.get(viral_seq_fname)
+
+    viral_seq = viral_seq[0] if viral_seq else cutlass.ViralSeqSet()
+
+    req_metadata.update(conf.get('viral_seq_set'))
+
+    req_metadata['local_file'] = viral_seq_file
+    req_metadata['size'] =  os.path.getsize(viral_seq_file)
+    req_metadata['checksums'] = { "md5": md5sum }
+
+    fields_to_update = get_fields_to_update(req_metadata, viral_seq)
+    map(lambda key: setattr(viral_seq, key, req_metadata.get(key)),
+        fields_to_update)
+
+    if fields_to_update:
+        viral_seq.links['computed_from'] = [dcc_parent.id]
+
+        if viral_seq.is_valid():
+            success = viral_seq.save()
+            if not success:
+                raise ValueError('Saving viral seq %s failed.' %
+                                 req_metadata.get('local_file'))
+        else:
+            raise ValueError('Viral seq set validation failed: %s' % 
+                             viral_seq.validate())
+
+    return viral_seq
 
 
 def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id, 
@@ -2405,10 +2462,10 @@ def crud_abundance_matrix(session, dcc_parent, abund_file, md5sum, sample_id,
         raise ValueError("Unknown abundance matrix type:", abund_fname)
 
     ## TODO: Figure out a better way to take care of this
-    if "taxonomic_profile" in abund_file:
+    if "taxonomic_profile" in abund_file or "taxonomy" in abund_file:
         if data_type in ["metagenomics", "viromics"]:
             req_metadata['matrix_type'] = "wgs_community"
-        elif data_type == "amplicon" or data_type == "biopsy_16S":
+        elif data_type == "stool_16S" or data_type == "biopsy_16S":
             req_metadata['matrix_type'] = "16s_community"
     elif "path" in abund_file or "gene" in abund_file or 'ecs' in abund_file:
         if "path" in abund_file:

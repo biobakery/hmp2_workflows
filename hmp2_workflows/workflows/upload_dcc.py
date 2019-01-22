@@ -264,7 +264,7 @@ def main(workflow):
                                                          row)
                         dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
                                                                                   mtx_raw_seq_set,
-                                                                                  md5sums_map.get(mtx_raw_fname)
+                                                                                  md5sums_map.get(mtx_raw_fname),
                                                                                   dcc_sample.name,
                                                                                   dtype_metadata,
                                                                                   row)
@@ -284,17 +284,27 @@ def main(workflow):
                                                                dtype_metadata,
                                                                row)
                     elif data_type == "MVX":
+                        raw_seq_set_fname = os.path.basename(row.get('wgs_raw_seq_set'))
+                        viral_seq_set_fname = os.path.basename(row.get('viral_seq_set'))
+
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                             conf.get('data_study'),
                                                             data_type,
                                                             dtype_metadata,
                                                             row) 
-                        dcc_seq_obj = dcc.crud_wgs_raw_seq_set(dcc_prep,
-                                                                file_md5sum,
-                                                                dcc_sample.name,
-                                                                dtype_metadata,
-                                                                row,
-                                                                private=True)
+                        dcc_raw_seq_set = dcc.crud_wgs_raw_seq_set(dcc_prep,
+                                                                   row.get('wgs_raw_seq_set'),
+                                                                   md5sums_map.get(raw_seq_set_fname),
+                                                                   dcc_sample.name,
+                                                                   dtype_metadata,
+                                                                   row)
+                        dcc_viral_seq_set = dcc.crud_viral_seq_set(dcc_raw_seq_set,
+                                                                   row.get('viral_seq_set'),
+                                                                   md5sums_map.get(viral_seq_set_fname),
+                                                                   dtype_metadata,
+                                                                   row)
+                        input_dcc_objs.extend([dcc_raw_seq_set, dcc_viral_seq_set])
+
                     elif data_type == '16SBP':
                         raw_seq_set_fname = os.path.basename(row.get('16S_raw_seq_set'))
                         trimmed_seq_set_fname = os.path.basename(row.get('16S_trimmed_seq_set'))

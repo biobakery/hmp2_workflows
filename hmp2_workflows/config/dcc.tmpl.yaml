@@ -246,23 +246,21 @@ visit_attribute:
         almost completely. The primers used for amplification contain adapters for MiSeq sequencing
         and single-index barcodes so that the PCR products may be pooled and sequenced directly,
         targeting at least 10,000 reads per sample.
-  amplicon_raw:
+  amplicon:
     study: ibd
     exp_length: 0
     format: fastq
     sequence_type: nucleotide
     format_doc: "https://en.wikipedia.org/wiki/fastq_format"
-    seq_model: "Illumina MiSeq"
-    comment: IBDMDB
+    seq_model: ""
+    comment: ""
   amplicon_trimmed:
     study: ibd
     format: fastq
     sequence_type: nucleotide
     format_doc: "https://en.wikipedia.org/wiki/fastq_format"
-    seq_model: "illumina MiSeq"
-    comment: IBDMDB
-  abundance_matrix:
-    sop: "https://ibdmdb.org/cb/document/Data%20Generation%20Protocols/16S_Biopsy_HMP2_Protocol.pdf"
+    seq_model: ""
+    comment: ""
 
 MGX:
   assay:
@@ -556,9 +554,9 @@ MVX:
         handler. Insert sizes and concentrations for each pooled
         library were determined using an Agilent Bioanalyzer DNA 1000
         kit (Agilent Technologies).
-  virome:
-    format: fastq
-    format_doc: "https://en.wikipedia.org/wiki/FASTQ_format"
+  viral_seq_set:
+    format: bam
+    format_doc: "https://en.wikipedia.org/wiki/SAM_(file_format)"
     study: ibd
 
 MPX:                                                                                                                                                                                                                 
