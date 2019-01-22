@@ -263,7 +263,7 @@ def main(workflow):
                                                          dtype_metadata,
                                                          row)
                         dcc_seq_obj = dcc.crud_microb_transcriptomics_raw_seq_set(dcc_prep,
-                                                                                  mtx_raw_seq_set,
+                                                                                  mtx_raw_seq_set[0],
                                                                                   md5sums_map.get(mtx_raw_fname),
                                                                                   dcc_sample.name,
                                                                                   dtype_metadata,
@@ -305,9 +305,9 @@ def main(workflow):
                                                                    row)
                         input_dcc_objs.extend([dcc_raw_seq_set, dcc_viral_seq_set])
 
-                    elif data_type == '16SBP':
-                        raw_seq_set_fname = os.path.basename(row.get('16S_raw_seq_set'))
-                        trimmed_seq_set_fname = os.path.basename(row.get('16S_trimmed_seq_set'))
+                    elif data_type == '16SBP' or data_type == "16S":
+                        raw_seq_set_fname = os.path.basename(row.get('16S_raw_seq_set')[0])
+                        trimmed_seq_set_fname = os.path.basename(row.get('16S_trimmed_seq_set')[0])
 
                         dcc_prep = dcc.crud_sixs_dna_prep(dcc_sample,
                                                           conf.get('data_study'),
