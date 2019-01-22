@@ -284,8 +284,8 @@ def main(workflow):
                                                                dtype_metadata,
                                                                row)
                     elif data_type == "MVX":
-                        raw_seq_set_fname = os.path.basename(row.get('wgs_raw_seq_set'))
-                        viral_seq_set_fname = os.path.basename(row.get('viral_seq_set'))
+                        raw_seq_set_fname = os.path.basename(row.get('wgs_raw_seq_set')[0])
+                        viral_seq_set_fname = os.path.basename(row.get('viral_seq_set')[0])
 
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
                                                             conf.get('data_study'),
