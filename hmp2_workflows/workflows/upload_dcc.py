@@ -288,18 +288,18 @@ def main(workflow):
                         viral_seq_set_fname = os.path.basename(row.get('viral_seq_set')[0])
 
                         dcc_prep = dcc.crud_wgs_dna_prep(dcc_sample,
-                                                            conf.get('data_study'),
-                                                            data_type,
-                                                            dtype_metadata,
-                                                            row) 
+                                                         conf.get('data_study'),
+                                                         data_type,
+                                                         dtype_metadata,
+                                                         row) 
                         dcc_raw_seq_set = dcc.crud_wgs_raw_seq_set(dcc_prep,
-                                                                   row.get('wgs_raw_seq_set'),
+                                                                   row.get('wgs_raw_seq_set')[0],
                                                                    md5sums_map.get(raw_seq_set_fname),
                                                                    dcc_sample.name,
                                                                    dtype_metadata,
                                                                    row)
                         dcc_viral_seq_set = dcc.crud_viral_seq_set(dcc_raw_seq_set,
-                                                                   row.get('viral_seq_set'),
+                                                                   row.get('viral_seq_set')[0],
                                                                    md5sums_map.get(viral_seq_set_fname),
                                                                    dtype_metadata,
                                                                    row)
