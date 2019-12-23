@@ -4,7 +4,7 @@ https://bitbucket.org/biobakery/biobakery_workflows/get/tip.zip#egg=biobakery_wo
 numpy==1.12.1
 cutplace==0.8.8
 pandas==0.19.2
-pyyaml==3.12
+pyyaml==5.1
 biom-format==2.1.5
 glob2==0.5
 osdf-python==0.7
