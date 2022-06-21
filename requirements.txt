@@ -1,7 +1,7 @@
 https://bitbucket.org/biobakery/anadama2/get/tip.zip#egg=anadama2
 https://bitbucket.org/biobakery/biobakery_workflows/get/tip.zip#egg=biobakery_workflows
 -e git://github.com/ihmpdcc/cutlass.git#egg=cutlass
-numpy==1.12.1
+numpy==1.22.0
 cutplace==0.8.8
 pandas==0.19.2
 pyyaml==3.12
